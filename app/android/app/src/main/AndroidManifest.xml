@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <application
-        android:label="Truco! Sofá de zona"
+        android:label="Truco!"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
