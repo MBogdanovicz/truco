@@ -288,6 +288,14 @@ class OnlineRoom {
   Future<void> undo(Team team) =>
       _request({'type': 'intent', 'kind': 'undo', 'team': team.name});
 
+  /// Leaves the room (non-host). In the lobby the seat is freed; during a
+  /// game it is kept for the record, and when every app user of a team has
+  /// left, the host closes the room.
+  Future<void> leave() async {
+    if (_isHost) return;
+    await _request({'type': 'leave'});
+  }
+
   /// Votes for a rematch on behalf of the teams this device can speak for.
   Future<void> voteRematch() => _request({'type': 'vote'});
 
@@ -430,9 +438,16 @@ class OnlineRoom {
       _lastSeen[userId] = _clock();
       _notifyPresence(snap);
     }
+    if (m['type'] != 'leave' && snap.left.contains(userId)) {
+      // Someone who had left is back.
+      await _update(snap.copyWith(left: {...snap.left}..remove(userId)));
+      return _handle(m);
+    }
     switch (m['type']) {
       case 'hello':
         await _broadcast();
+      case 'leave':
+        await _leave(snap, userId);
       case 'pick':
         await _pick(
           snap,
@@ -467,6 +482,25 @@ class OnlineRoom {
         ],
       ),
     );
+  }
+
+  Future<void> _leave(RoomSnapshot snap, String userId) async {
+    final seat = snap.seatOfUser(userId);
+    if (seat == null || userId == snap.hostUserId) return;
+    if (snap.phase == RoomPhase.lobby) {
+      await _update(
+        snap.copyWith(
+          seats: snap.seats.where((s) => s.userId != userId).toList(),
+        ),
+      );
+      return;
+    }
+    final next = snap.copyWith(left: {...snap.left, userId});
+    if (next.teamLeft(seat.team)) {
+      await _update(next.copyWith(phase: RoomPhase.closed));
+    } else {
+      await _update(next);
+    }
   }
 
   Future<void> _intent(

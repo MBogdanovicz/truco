@@ -164,7 +164,13 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
   Future<void> leave() async {
     final view = state;
     if (view == null) return;
-    if (view.room.isHost && view.nearby) {
+    if (!view.room.isHost) {
+      // Best effort: tell the host, so it can free the seat or close the room.
+      await view.room
+          .leave()
+          .timeout(const Duration(seconds: 2), onTimeout: () {})
+          .catchError((_) {});
+    } else if (view.nearby) {
       await view.room.closeRoom();
     } else if (view.room.isHost) {
       await view.room.closeRoom();

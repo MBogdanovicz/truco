@@ -307,6 +307,37 @@ void main() {
     expect(host.canMark(Team.b), isFalse);
   });
 
+  test('the room closes when a whole team leaves', () async {
+    final [p2, p3, p4] = await fullTable();
+    final completed = <CompletedGame>[];
+    host.completedGames.listen(completed.add);
+    await host.addPoints(Team.a, 12);
+    await settle();
+
+    await p3.leave();
+    await settle();
+    expect(host.snapshot!.phase, RoomPhase.playing);
+    expect(host.snapshot!.left, {'p3'});
+
+    await p4.leave();
+    await settle();
+    expect(host.snapshot!.phase, RoomPhase.closed);
+    expect(p2.snapshot!.phase, RoomPhase.closed);
+    expect(completed, hasLength(1));
+  });
+
+  test('a player who left and comes back is no longer marked as gone', () async {
+    final [_, p3, _] = await fullTable();
+    await p3.leave();
+    await settle();
+    expect(host.snapshot!.left, {'p3'});
+    now = now.add(const Duration(seconds: 20));
+    await p3.addPoints(Team.b, 1);
+    await settle();
+    expect(host.snapshot!.left, isEmpty);
+    expect(host.snapshot!.state.scoreOf(Team.b), 1);
+  });
+
   test('snapshot JSON round trip', () async {
     await fullTable();
     await host.setGroup(const RoomGroup(id: 'g1', name: 'Bar'));

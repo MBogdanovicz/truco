@@ -38,6 +38,7 @@ class RoomSnapshot {
     this.cooldownSeconds = 15,
     this.revision = 0,
     this.hostEpoch = 0,
+    this.left = const {},
     this.ranked = true,
     this.group,
   });
@@ -68,6 +69,19 @@ class RoomSnapshot {
   /// a later epoch wins over any revision from an earlier one, so a host
   /// that comes back after losing signal cannot overwrite the new host.
   final int hostEpoch;
+
+  /// App users who left the room on purpose during a game (their seats stay,
+  /// since the game record needs them). Cleared when they come back.
+  final Set<String> left;
+
+  /// Whether every app user seated on [team] has left the room.
+  bool teamLeft(Team team) {
+    final users = [
+      for (final s in seatsOf(team))
+        if (s.userId != null) s.userId!,
+    ];
+    return users.isNotEmpty && users.every(left.contains);
+  }
 
   /// Whether this snapshot should replace [other].
   bool isNewerThan(RoomSnapshot other) => hostEpoch != other.hostEpoch
@@ -115,6 +129,7 @@ class RoomSnapshot {
   RoomSnapshot copyWith({
     String? hostUserId,
     int? hostEpoch,
+    Set<String>? left,
     String? gameId,
     RoomPhase? phase,
     List<Seat>? seats,
@@ -140,6 +155,7 @@ class RoomSnapshot {
     cooldownSeconds: cooldownSeconds,
     revision: revision + 1,
     hostEpoch: hostEpoch ?? this.hostEpoch,
+    left: left ?? this.left,
     ranked: ranked ?? this.ranked,
     group: clearGroup ? null : (group ?? this.group),
   );
@@ -175,6 +191,7 @@ class RoomSnapshot {
     'cooldownSeconds': cooldownSeconds,
     'revision': revision,
     'hostEpoch': hostEpoch,
+    'left': left.toList(),
     'ranked': ranked,
     'group': group?.toJson(),
   };
@@ -204,6 +221,7 @@ class RoomSnapshot {
       cooldownSeconds: json['cooldownSeconds']! as int,
       revision: json['revision']! as int,
       hostEpoch: json['hostEpoch'] as int? ?? 0,
+      left: {...?(json['left'] as List?)?.cast<String>()},
       ranked: json['ranked'] as bool? ?? true,
       group: json['group'] == null
           ? null
