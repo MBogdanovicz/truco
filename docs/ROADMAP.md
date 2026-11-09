@@ -11,7 +11,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the design behind each milestone.
 | M2 ✅ | Scorekeeper – single device | Domain event log, scoring rules, scoreboard UI, undo, mão de onze/ferro cues, guests, rematch/series, local history. |
 | M3 ✅ | Scorekeeper – online | Lobby with code/QR, team selection, Supabase Realtime transport, host authority, cooldown, host hand-off, `finish_match` RPC. |
 | M4 🟡 | Groups & ranking | Groups (public/private, join code/link), global + group leaderboards for players and duos, stats + Elo. |
-| M5 🟡 | Scorekeeper – nearby (Android) | Nearby Connections transport, offline result queue and upload. |
+| M5 ✅ | Scorekeeper – nearby (Android) | Nearby Connections transport, offline result queue and upload. |
 | M6 | Polish & release | App name/icon, Play Store internal testing track, PWA install prompt, basic analytics. |
 
 M2 is built first because it is useful on its own and exercises the domain layer that every transport reuses.
@@ -34,5 +34,5 @@ M2 is built first because it is useful on its own and exercises the domain layer
   PWA at https://truco.mytrophies.app.
 * M4 in testing: groups (public/private, join codes, free limit of 2 owned groups), global and group leaderboards for
   players and duos (Elo + win rate), ranked/friendly toggle and group choice in the online lobby.
-* Host hand-off: if the host goes silent for 15 s, the next app user in seat order takes over the room.
-* M5 in testing: rooms between Android phones without internet (Nearby Connections), results queued for upload.
+* M3 host hand-off done: if the host goes silent for 15 s, the next app user in seat order takes over the room.
+* M5 done (tested on two phones in airplane mode with Bluetooth only): rooms between Android phones without internet, results queued for upload.
