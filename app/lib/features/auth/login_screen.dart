@@ -53,7 +53,11 @@ class _LoginState extends ConsumerState<LoginScreen> {
     if (e.statusCode == '429' || code.contains('rate_limit')) {
       return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
     }
-    return 'Erro: ${e.message}';
+    if (e.message.toLowerCase().contains('sending')) {
+      return 'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.';
+    }
+    debugPrint('Auth error: ${e.code} ${e.statusCode} ${e.message}');
+    return 'Não foi possível entrar agora. Tente de novo.';
   }
 
   Future<void> _sendCode() async {
