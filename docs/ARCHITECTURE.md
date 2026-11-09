@@ -269,7 +269,7 @@ of test vectors keeps both in sync.
 
 Supabase pauses free-tier projects after 7 days without activity. A scheduled GitHub Actions workflow
 (`.github/workflows/supabase-keepalive.yml`) runs every 3 days and performs a lightweight authenticated read against
-the REST API (`SUPABASE_URL` and `SUPABASE_ANON_KEY` stored as repository secrets).
+the REST API (`SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` stored as repository secrets).
 
 ---
 

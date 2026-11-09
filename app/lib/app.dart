@@ -1,0 +1,33 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'router.dart';
+import 'ui/adaptive/platform_style.dart';
+import 'ui/theme/app_theme.dart';
+
+class TrucoApp extends ConsumerWidget {
+  const TrucoApp({super.key, this.style});
+
+  /// Defaults to [defaultPlatformStyle]; overridable in tests.
+  final AppPlatformStyle? style;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final effective = style ?? defaultPlatformStyle;
+    final cupertino = effective == AppPlatformStyle.cupertino;
+    return PlatformStyleScope(
+      style: effective,
+      child: MaterialApp.router(
+        title: 'Truco',
+        debugShowCheckedModeBanner: false,
+        theme: cupertino ? AppTheme.cupertinoBase(Brightness.light) : AppTheme.material(Brightness.light),
+        darkTheme: cupertino ? AppTheme.cupertinoBase(Brightness.dark) : AppTheme.material(Brightness.dark),
+        locale: const Locale('pt', 'BR'),
+        supportedLocales: const [Locale('pt', 'BR')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        routerConfig: ref.watch(routerProvider),
+      ),
+    );
+  }
+}
