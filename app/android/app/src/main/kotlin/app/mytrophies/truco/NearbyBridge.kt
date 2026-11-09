@@ -1,4 +1,4 @@
-package com.mbogdanovicz.truco
+package app.mytrophies.truco
 
 import android.Manifest
 import android.app.Activity
@@ -32,7 +32,7 @@ class NearbyBridge(private val activity: Activity, messenger: BinaryMessenger) :
     MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
     companion object {
-        private const val SERVICE_ID = "com.mbogdanovicz.truco.scorekeeper"
+        private const val SERVICE_ID = "app.mytrophies.truco.scorekeeper"
         private const val PERMISSION_REQUEST = 4711
     }
 

@@ -53,6 +53,7 @@ class _LoginState extends ConsumerState<LoginScreen> {
   String _describe(AuthException e) {
     final code = e.code ?? '';
     if (code.contains('otp_expired') ||
+        code.contains('invalid_credentials') ||
         e.message.toLowerCase().contains('expired')) {
       return 'Código inválido ou expirado.';
     }

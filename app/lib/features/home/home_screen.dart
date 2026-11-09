@@ -110,7 +110,7 @@ class HomeScreen extends ConsumerWidget {
     );
 
     return AppScaffold(
-      title: 'Truco',
+      title: 'Truco!',
       largeTitle: true,
       maxWidth: 1040,
       actions: [
@@ -130,11 +130,16 @@ class HomeScreen extends ConsumerWidget {
             child: Row(
               children: [
                 Flexible(
-                  child: Text(
-                    'Olá, ${user!.displayName}!',
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  child: GestureDetector(
+                    onTap: user!.isGuest
+                        ? null
+                        : () => _accountMenu(context, ref),
+                    child: Text(
+                      'Olá, ${user.displayName}!',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -196,6 +201,53 @@ class HomeScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+enum _AccountAction { delete, cancel }
+
+/// Account options behind the greeting: for now, deleting the account
+/// (required by Google Play for apps with sign-in).
+Future<void> _accountMenu(BuildContext context, WidgetRef ref) async {
+  final user = ref.read(authRepositoryProvider).currentUser;
+  final action = await showAppDialog<_AccountAction>(
+    context,
+    title: 'Sua conta',
+    message: user?.email,
+    actions: const [
+      AppDialogAction(
+        label: 'Excluir minha conta',
+        value: _AccountAction.delete,
+        isDestructive: true,
+      ),
+      AppDialogAction(
+        label: 'Fechar',
+        value: _AccountAction.cancel,
+        isPrimary: true,
+      ),
+    ],
+  );
+  if (action != _AccountAction.delete || !context.mounted) return;
+  final sure = await showAppDialog<bool>(
+    context,
+    title: 'Excluir a conta?',
+    message:
+        'Seu e-mail, nome, grupos, pontuação e o Premium serão apagados e não '
+        'dá para desfazer. As partidas continuam no histórico dos outros '
+        'jogadores, sem o seu nome vinculado à conta.',
+    actions: const [
+      AppDialogAction(label: 'Cancelar', value: false, isPrimary: true),
+      AppDialogAction(label: 'Excluir', value: true, isDestructive: true),
+    ],
+  );
+  if (sure != true || !context.mounted) return;
+  try {
+    await ref.read(authRepositoryProvider).deleteAccount();
+    if (context.mounted) showAppToast(context, 'Conta excluída.');
+  } on Object {
+    if (context.mounted) {
+      showAppToast(context, 'Não foi possível excluir a conta. Tente de novo.');
+    }
   }
 }
 

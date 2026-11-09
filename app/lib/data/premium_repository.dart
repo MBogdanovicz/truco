@@ -6,6 +6,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_repository.dart';
+import 'crash_reporting.dart';
 import 'entitlements.dart';
 
 /// Google Play one-time products.
@@ -198,8 +199,8 @@ class PremiumStore extends Notifier<StoreStatus> {
       await InAppPurchase.instance.buyNonConsumable(
         purchaseParam: PurchaseParam(productDetails: product),
       );
-    } on Object catch (e) {
-      debugPrint('Buy failed: $e');
+    } on Object catch (e, st) {
+      CrashReporting.recordError(e, st, reason: 'buy ${product.id}');
       state = StoreStatus.failed;
     }
   }
@@ -216,6 +217,7 @@ class PremiumStore extends Notifier<StoreStatus> {
         case PurchaseStatus.canceled:
           state = StoreStatus.idle;
         case PurchaseStatus.error:
+          CrashReporting.log('Purchase error: ${p.error?.message}');
           state = StoreStatus.failed;
         case PurchaseStatus.purchased || PurchaseStatus.restored:
           await _verify(p);
@@ -242,8 +244,8 @@ class PremiumStore extends Notifier<StoreStatus> {
         ..invalidate(boughtFullPriceProvider)
         ..invalidate(receivedInviteProvider);
       state = granted ? StoreStatus.done : StoreStatus.buying;
-    } on Object catch (e) {
-      debugPrint('Verify failed: $e');
+    } on Object catch (e, st) {
+      CrashReporting.recordError(e, st, reason: 'verify ${p.productID}');
       state = StoreStatus.failed;
     }
   }

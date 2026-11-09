@@ -49,7 +49,7 @@ is enforced by the server as soon as the migration runs.
    Sideloaded test APKs keep the committed test key, so the test phones can
    still update in place (a phone with the Play version must uninstall it
    first, the signatures differ).
-3. Play Console: create the app `com.mbogdanovicz.truco`, upload an AAB to
+3. Play Console: create the app `app.mytrophies.truco`, upload an AAB to
    the internal testing track, set up the payments profile, and create the
    two one-time products above.
 4. Google Cloud: enable the Google Play Android Developer API, create a

@@ -22,7 +22,7 @@ class TrucoApp extends ConsumerWidget {
     return PlatformStyleScope(
       style: effective,
       child: MaterialApp.router(
-        title: 'Truco',
+        title: 'Truco! Sofá de zona',
         debugShowCheckedModeBanner: false,
         theme: cupertino
             ? AppTheme.cupertinoBase(Brightness.light)

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'data/auth_repository.dart';
+import 'data/crash_reporting.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/groups/group_detail_screen.dart';
@@ -65,12 +66,16 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     refreshListenable: refresh,
-    redirect: (context, state) => authRedirect(
-      authAvailable: auth.isAvailable,
-      user: auth.currentUser,
-      location: state.matchedLocation,
-      uri: state.uri.toString(),
-    ),
+    redirect: (context, state) {
+      // Breadcrumb for crash reports (route path only, no query values).
+      CrashReporting.log('route ${state.matchedLocation}');
+      return authRedirect(
+        authAvailable: auth.isAvailable,
+        user: auth.currentUser,
+        location: state.matchedLocation,
+        uri: state.uri.toString(),
+      );
+    },
     routes: [
       GoRoute(
         path: '/',

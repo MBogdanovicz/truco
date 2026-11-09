@@ -6,14 +6,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env.dart';
+import 'data/crash_reporting.dart';
 import 'data/result_uploader.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CrashReporting.init();
   if (Env.hasSupabase) {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       publishableKey: Env.supabasePublishableKey,
+    );
+    final auth = Supabase.instance.client.auth;
+    CrashReporting.setUser(auth.currentUser?.id);
+    auth.onAuthStateChange.listen(
+      (state) => CrashReporting.setUser(state.session?.user.id),
     );
   }
   final container = ProviderContainer();

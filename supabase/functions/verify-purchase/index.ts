@@ -9,14 +9,14 @@
 // Secrets (supabase secrets set ...):
 //   GOOGLE_SERVICE_ACCOUNT_JSON  key of a service account with access to the
 //                                app in Play Console (financial data / orders)
-//   ANDROID_PACKAGE_NAME         defaults to com.mbogdanovicz.truco
+//   ANDROID_PACKAGE_NAME         defaults to app.mytrophies.truco
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
 // by the platform.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const PRODUCTS = new Set(["premium", "premium_invite"]);
-const PACKAGE = Deno.env.get("ANDROID_PACKAGE_NAME") ?? "com.mbogdanovicz.truco";
+const PACKAGE = Deno.env.get("ANDROID_PACKAGE_NAME") ?? "app.mytrophies.truco";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

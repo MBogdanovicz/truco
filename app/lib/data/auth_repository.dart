@@ -56,10 +56,30 @@ class AuthRepository {
     await _client!.auth.signInAnonymously(data: {'display_name': name.trim()});
   }
 
-  Future<void> sendCode(String email) =>
-      _client!.auth.signInWithOtp(email: email.trim(), shouldCreateUser: true);
+  /// Account used by Google Play's app review. Its inbox can't receive
+  /// codes, so it signs in with a numeric password typed in the code field.
+  /// The user (and its password) is created by hand in Supabase Auth.
+  static const reviewEmail = 'revisao@mytrophies.app';
+
+  static bool isReviewEmail(String email) =>
+      email.trim().toLowerCase() == reviewEmail;
+
+  Future<void> sendCode(String email) async {
+    if (isReviewEmail(email)) return;
+    await _client!.auth.signInWithOtp(
+      email: email.trim(),
+      shouldCreateUser: true,
+    );
+  }
 
   Future<void> verifyCode(String email, String code) async {
+    if (isReviewEmail(email)) {
+      await _client!.auth.signInWithPassword(
+        email: reviewEmail,
+        password: code.trim(),
+      );
+      return;
+    }
     await _client!.auth.verifyOTP(
       email: email.trim(),
       token: code.trim(),
@@ -84,6 +104,13 @@ class AuthRepository {
   }
 
   Future<void> signOut() async => _client?.auth.signOut();
+
+  /// Deletes the account and its data on the server, then signs out.
+  Future<void> deleteAccount() async {
+    final client = _client!;
+    await client.rpc('delete_my_account');
+    await client.auth.signOut();
+  }
 
   static AppUser? _toAppUser(User? user) {
     if (user == null) return null;

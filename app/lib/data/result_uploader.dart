@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/scorekeeper/match_record.dart';
 import 'auth_repository.dart';
+import 'crash_reporting.dart';
 import 'online_room_repository.dart';
 
 /// Uploads finished games, queueing them on the device while offline.
@@ -59,7 +59,7 @@ class ResultUploader {
           groupId: item['groupId'] as String?,
         );
       } on Object catch (e) {
-        debugPrint('Result upload failed, will retry: $e');
+        CrashReporting.log('Result upload failed, will retry: $e');
         failed.add(item);
       }
     }
