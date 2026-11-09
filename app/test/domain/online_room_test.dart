@@ -278,6 +278,35 @@ void main() {
     expect(host.snapshot!.state.scoreOf(Team.b), 3);
   });
 
+  test('host marks for a team whose players all lost signal', () async {
+    final [p2, p3, p4] = await fullTable();
+    expect(host.canMark(Team.b), isFalse);
+
+    Future<void> tickAll(List<OnlineRoom> rooms) async {
+      for (final r in rooms) {
+        await r.tick();
+      }
+      await settle();
+    }
+
+    await tickAll([host, p2, p3, p4]);
+    // p3 and p4 lose signal (they stop ticking, so no pings); p2 stays.
+    for (var i = 0; i < 3; i++) {
+      now = now.add(OnlineRoom.heartbeat);
+      await tickAll([host, p2]);
+    }
+    expect(host.canMark(Team.b), isTrue);
+    await host.addPoints(Team.b, 3);
+    await settle();
+    expect(p2.snapshot!.state.scoreOf(Team.b), 3);
+
+    // One of them is back: their team marks for itself again.
+    now = now.add(OnlineRoom.heartbeat);
+    await p3.tick();
+    await settle();
+    expect(host.canMark(Team.b), isFalse);
+  });
+
   test('snapshot JSON round trip', () async {
     await fullTable();
     await host.setGroup(const RoomGroup(id: 'g1', name: 'Bar'));

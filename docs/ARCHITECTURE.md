@@ -231,7 +231,9 @@ user has heard nothing for 15 s × (their place in seat order), they take over w
 broadcast it under a new `hostEpoch`. Snapshots compare by (epoch, revision), so a former host that comes back steps
 down even if it kept counting revisions alone, and is told that its offline changes were dropped. A non-host device that
 has not heard the host for 10 s shows "Sem conexão" and cannot mark; the host is blocked only while its own Realtime
-link is down. So with two devices, the one left behind takes over after 15 s and keeps marking alone. In
+link is down. So with two devices, the one left behind takes over after 15 s and keeps marking alone. Non-host
+devices ping the host every 5 s; when every app user of a team has been quiet for 10 s, the host may mark for that team
+(as it does for a team of guests) until one of them is back. In
 `nearby` mode the match pauses until the host reconnects.
 
 Finished games are uploaded by the host through the `finish_match` RPC (idempotent, recomputes the score from the event

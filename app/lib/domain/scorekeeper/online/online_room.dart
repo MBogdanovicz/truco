@@ -160,6 +160,7 @@ class OnlineRoom {
     final now = _clock();
     _notifyConnection();
     if (_isHost) {
+      _notifyPresence(snap);
       final last = _broadcastAt;
       if (snap.phase != RoomPhase.closed &&
           (last == null || now.difference(last) >= heartbeat)) {
@@ -168,6 +169,11 @@ class OnlineRoom {
       return;
     }
     if (snap.phase == RoomPhase.closed) return;
+    final pinged = _pingedAt;
+    if (pinged == null || now.difference(pinged) >= heartbeat) {
+      _pingedAt = now;
+      await _channel.send({'type': 'ping', 'userId': me.userId});
+    }
     final rank = _successorRank(snap);
     if (rank == null) return;
     final silent = now.difference(_heardFromHostAt ?? now);
@@ -188,9 +194,53 @@ class OnlineRoom {
     _isHost = true;
     _helloRetry?.cancel();
     _notices.add(RoomNotice.youAreHost);
+    // Give everyone a fresh start; whoever is really there pings soon.
+    _lastSeen.clear();
+    for (final s in snap.seats) {
+      if (s.userId != null) _lastSeen[s.userId!] = _clock();
+    }
     await _update(
       snap.copyWith(hostUserId: me.userId, hostEpoch: snap.hostEpoch + 1),
     );
+  }
+
+  DateTime? _pingedAt;
+
+  /// Host: when each app user was last heard (they ping every [heartbeat]).
+  final _lastSeen = <String, DateTime>{};
+  Set<Team> _awayTeams = const {};
+
+  /// Host: whether [userId] has gone quiet. Users never heard from count
+  /// as present until they had a chance to ping.
+  bool _isAway(String userId) {
+    if (userId == me.userId) return false;
+    final seen = _lastSeen[userId];
+    if (seen == null) {
+      _lastSeen[userId] = _clock();
+      return false;
+    }
+    return _clock().difference(seen) >= connectionTimeout;
+  }
+
+  /// Host: teams whose app users have all gone quiet. The host marks for
+  /// them (like for a team of guests) until one of them is back.
+  Set<Team> _teamsAway(RoomSnapshot snap) => {
+    for (final t in Team.values)
+      if (snap.seatsOf(t).any((s) => s.userId != null) &&
+          snap
+              .seatsOf(t)
+              .where((s) => s.userId != null)
+              .every((s) => _isAway(s.userId!)))
+        t,
+  };
+
+  void _notifyPresence(RoomSnapshot snap) {
+    final away = _teamsAway(snap);
+    if (away.length == _awayTeams.length && away.containsAll(_awayTeams)) {
+      return;
+    }
+    _awayTeams = away;
+    if (!_changes.isClosed) _changes.add(snap);
   }
 
   void _notifyConnection() {
@@ -368,6 +418,10 @@ class OnlineRoom {
     final snap = _snapshot!;
     final userId = m['userId'] as String?;
     if (userId == null) return;
+    if (userId != me.userId) {
+      _lastSeen[userId] = _clock();
+      _notifyPresence(snap);
+    }
     switch (m['type']) {
       case 'hello':
         await _broadcast();
@@ -470,7 +524,9 @@ class OnlineRoom {
       rules: snap.rules,
       seatTeams: {for (final s in snap.seats) s.index: s.team},
       extraPermission: (seat, team) =>
-          seat == hostSeat && !snap.teamHasAppUser(team),
+          seat == hostSeat &&
+          (!snap.teamHasAppUser(team) ||
+              (_isHost && _teamsAway(snap).contains(team))),
       events: snap.events,
     );
   }
