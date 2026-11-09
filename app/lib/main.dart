@@ -20,6 +20,12 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(container: container, child: const TrucoApp()),
   );
-  // Upload games finished while offline.
+  // Upload games finished while offline, now and whenever the app comes
+  // back to the foreground (the internet may be back by then).
   unawaited(container.read(resultUploaderProvider).flush());
+  AppLifecycleListener(
+    onResume: () => unawaited(
+      container.read(resultUploaderProvider).flush().catchError((_) {}),
+    ),
+  );
 }
