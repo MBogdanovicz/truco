@@ -22,8 +22,11 @@ class MatchHistoryRepository {
     final records = <MatchRecord>[];
     for (final entry in raw) {
       try {
-        records.add(MatchRecord.fromJson(
-            (jsonDecode(entry) as Map).cast<String, Object?>()));
+        records.add(
+          MatchRecord.fromJson(
+            (jsonDecode(entry) as Map).cast<String, Object?>(),
+          ),
+        );
       } on Object {
         // Skip corrupted entries instead of losing the whole history.
       }
@@ -33,7 +36,10 @@ class MatchHistoryRepository {
 
   Future<void> add(MatchRecord record) async {
     final raw = await _prefs.getStringList(_key) ?? const [];
-    final updated = [jsonEncode(record.toJson()), ...raw].take(maxEntries).toList();
+    final updated = [
+      jsonEncode(record.toJson()),
+      ...raw,
+    ].take(maxEntries).toList();
     await _prefs.setStringList(_key, updated);
   }
 

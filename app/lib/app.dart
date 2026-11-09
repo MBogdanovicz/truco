@@ -21,8 +21,12 @@ class TrucoApp extends ConsumerWidget {
       child: MaterialApp.router(
         title: 'Truco',
         debugShowCheckedModeBanner: false,
-        theme: cupertino ? AppTheme.cupertinoBase(Brightness.light) : AppTheme.material(Brightness.light),
-        darkTheme: cupertino ? AppTheme.cupertinoBase(Brightness.dark) : AppTheme.material(Brightness.dark),
+        theme: cupertino
+            ? AppTheme.cupertinoBase(Brightness.light)
+            : AppTheme.material(Brightness.light),
+        darkTheme: cupertino
+            ? AppTheme.cupertinoBase(Brightness.dark)
+            : AppTheme.material(Brightness.dark),
         locale: const Locale('pt', 'BR'),
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,

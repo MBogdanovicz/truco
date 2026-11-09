@@ -16,7 +16,8 @@ class AppUser {
   /// Null until the user finishes onboarding.
   final String? displayName;
 
-  bool get needsOnboarding => displayName == null || displayName!.trim().isEmpty;
+  bool get needsOnboarding =>
+      displayName == null || displayName!.trim().isEmpty;
 }
 
 /// Passwordless authentication with a 6-digit code sent by email.
@@ -56,7 +57,9 @@ class AuthRepository {
   Future<void> setDisplayName(String name) async {
     final client = _client!;
     final trimmed = name.trim();
-    await client.auth.updateUser(UserAttributes(data: {'display_name': trimmed}));
+    await client.auth.updateUser(
+      UserAttributes(data: {'display_name': trimmed}),
+    );
     await client.from('profiles').upsert({
       'id': client.auth.currentUser!.id,
       'display_name': trimmed,

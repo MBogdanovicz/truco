@@ -36,7 +36,9 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
     try {
       await ref.read(authRepositoryProvider).setDisplayName(name);
     } on Object {
-      if (mounted) setState(() => _error = 'Não foi possível salvar. Tente de novo.');
+      if (mounted) {
+        setState(() => _error = 'Não foi possível salvar. Tente de novo.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -49,9 +51,14 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text('Como você quer ser chamado?', style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            'Como você quer ser chamado?',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
-          const Text('Esse nome aparece para os outros jogadores e no ranking.'),
+          const Text(
+            'Esse nome aparece para os outros jogadores e no ranking.',
+          ),
           const SizedBox(height: 24),
           AppTextField(
             controller: _name,
@@ -62,9 +69,14 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
             onSubmitted: (_) => _save(),
           ),
           if (_error != null)
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           const SizedBox(height: 24),
-          _busy ? const Center(child: AppProgress()) : AppButton(label: 'Continuar', onPressed: _save),
+          _busy
+              ? const Center(child: AppProgress())
+              : AppButton(label: 'Continuar', onPressed: _save),
         ],
       ),
     );

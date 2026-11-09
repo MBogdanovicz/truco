@@ -6,6 +6,9 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/scorekeeper/join_room_screen.dart';
+import 'features/scorekeeper/mode_screen.dart';
+import 'features/scorekeeper/online_room_screen.dart';
 import 'features/scorekeeper/scoreboard_screen.dart';
 import 'features/scorekeeper/setup_screen.dart';
 
@@ -22,7 +25,9 @@ String? authRedirect({
     return location.startsWith('/entrar') ? '/' : null;
   }
   if (user == null) return location == '/entrar' ? null : '/entrar';
-  if (user.needsOnboarding) return location == '/entrar/nome' ? null : '/entrar/nome';
+  if (user.needsOnboarding) {
+    return location == '/entrar/nome' ? null : '/entrar/nome';
+  }
   return location.startsWith('/entrar') ? '/' : null;
 }
 
@@ -39,13 +44,38 @@ final routerProvider = Provider<GoRouter>((ref) {
       location: state.matchedLocation,
     ),
     routes: [
-      GoRoute(path: '/', builder: (_, _) => const HomeScreen(), routes: [
-        GoRoute(path: 'marcador/novo', builder: (_, _) => const ScorekeeperSetupScreen()),
-        GoRoute(path: 'marcador/partida', builder: (_, _) => const ScoreboardScreen()),
-        GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
-      ]),
+      GoRoute(
+        path: '/',
+        builder: (_, _) => const HomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'marcador/novo',
+            builder: (_, _) => const ScorekeeperModeScreen(),
+          ),
+          GoRoute(
+            path: 'marcador/novo/local',
+            builder: (_, _) => const ScorekeeperSetupScreen(),
+          ),
+          GoRoute(
+            path: 'marcador/entrar',
+            builder: (_, _) => const JoinRoomScreen(),
+          ),
+          GoRoute(
+            path: 'marcador/sala',
+            builder: (_, _) => const OnlineRoomScreen(),
+          ),
+          GoRoute(
+            path: 'marcador/partida',
+            builder: (_, _) => const ScoreboardScreen(),
+          ),
+          GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
+        ],
+      ),
       GoRoute(path: '/entrar', builder: (_, _) => const LoginScreen()),
-      GoRoute(path: '/entrar/nome', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(
+        path: '/entrar/nome',
+        builder: (_, _) => const OnboardingScreen(),
+      ),
     ],
   );
 });

@@ -25,10 +25,10 @@ class ScoringRules {
   int get handOfElevenScore => targetScore - 1;
 
   ScoringRules copyWith({Duration? teamScoreCooldown}) => ScoringRules(
-        targetScore: targetScore,
-        allowedDeltas: allowedDeltas,
-        teamScoreCooldown: teamScoreCooldown ?? this.teamScoreCooldown,
-      );
+    targetScore: targetScore,
+    allowedDeltas: allowedDeltas,
+    teamScoreCooldown: teamScoreCooldown ?? this.teamScoreCooldown,
+  );
 
   static const standard = ScoringRules();
 }

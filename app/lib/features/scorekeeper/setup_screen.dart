@@ -29,7 +29,10 @@ class _SetupState extends ConsumerState<ScorekeeperSetupScreen> {
   void initState() {
     super.initState();
     final me = ref.read(authRepositoryProvider).currentUser;
-    _players = List.generate(4, (i) => TextEditingController(text: i == 0 ? me?.displayName ?? '' : ''));
+    _players = List.generate(
+      4,
+      (i) => TextEditingController(text: i == 0 ? me?.displayName ?? '' : ''),
+    );
   }
 
   @override
@@ -47,37 +50,57 @@ class _SetupState extends ConsumerState<ScorekeeperSetupScreen> {
       final name = _players[i].text.trim();
       final mine = i == 0 && me != null && name == me.displayName;
       if (name.isEmpty && !mine) continue;
-      seats.add(Seat(
-        index: i,
-        team: i.isEven ? Team.a : Team.b,
-        name: name,
-        userId: mine ? me.id : null,
-      ));
+      seats.add(
+        Seat(
+          index: i,
+          team: i.isEven ? Team.a : Team.b,
+          name: name,
+          userId: mine ? me.id : null,
+        ),
+      );
     }
     String teamName(TextEditingController c, String fallback) =>
         c.text.trim().isEmpty ? fallback : c.text.trim();
-    ref.read(scorekeeperControllerProvider.notifier).start(MatchSetup(
-          teamNames: {Team.a: teamName(_teamA, 'Nós'), Team.b: teamName(_teamB, 'Eles')},
-          seats: seats,
-        ));
+    ref
+        .read(scorekeeperControllerProvider.notifier)
+        .start(
+          MatchSetup(
+            teamNames: {
+              Team.a: teamName(_teamA, 'Nós'),
+              Team.b: teamName(_teamB, 'Eles'),
+            },
+            seats: seats,
+          ),
+        );
     context.go('/marcador/partida');
   }
 
-  Widget _teamCard(String label, Color color, TextEditingController team, List<int> seats) {
+  Widget _teamCard(
+    String label,
+    Color color,
+    TextEditingController team,
+    List<int> seats,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              Icon(Icons.circle, color: color, size: 14),
-              const SizedBox(width: 8),
-              Text(label, style: Theme.of(context).textTheme.titleMedium),
-            ]),
+            Row(
+              children: [
+                Icon(Icons.circle, color: color, size: 14),
+                const SizedBox(width: 8),
+                Text(label, style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
             const SizedBox(height: 12),
-            AppTextField(controller: team, label: 'Nome da dupla', maxLength: 20,
-                textCapitalization: TextCapitalization.words),
+            AppTextField(
+              controller: team,
+              label: 'Nome da dupla',
+              maxLength: 20,
+              textCapitalization: TextCapitalization.words,
+            ),
             const SizedBox(height: 8),
             for (final s in seats) ...[
               AppTextField(
@@ -111,7 +134,11 @@ class _SetupState extends ConsumerState<ScorekeeperSetupScreen> {
           const SizedBox(height: 12),
           _teamCard('Dupla 2', AppColors.teamB, _teamB, const [1, 3]),
           const SizedBox(height: 24),
-          AppButton(label: 'Começar partida', icon: Icons.play_arrow, onPressed: _start),
+          AppButton(
+            label: 'Começar partida',
+            icon: Icons.play_arrow,
+            onPressed: _start,
+          ),
         ],
       ),
     );

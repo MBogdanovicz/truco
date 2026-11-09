@@ -1,6 +1,7 @@
 # Architecture
 
-Status: **draft for review** (2026-11-09). This document covers the whole product, but only the parts needed for
+Status: living document, last updated 2026-11-09. The schema in §4 is the target; see `supabase/migrations` for what
+exists today. This document covers the whole product, but only the parts needed for
 **Phase 1 (scorekeeper / "marcador")** are specified in detail. The card game itself (Phase 2) is sketched so that
 Phase 1 decisions don't block it.
 
@@ -103,6 +104,8 @@ groups(id uuid PK, name text, description text, visibility enum('public','privat
 group_members(group_id → groups, user_id → profiles, role enum('owner','admin','member'),
               joined_at, PK(group_id, user_id))
 
+rooms(id uuid PK, code text, host_id → profiles, created_at, closed_at)   -- online scorekeeper tables
+
 matches(id uuid PK, kind enum('scorekeeper','game'), mode enum('ranked','friendly'),
         group_id uuid null → groups, series_id uuid null → match_series,
         host_id → profiles, transport enum('online','nearby','single_device'),
@@ -179,7 +182,7 @@ abstract interface class MatchTransport {
 
 | Transport | Platforms | Needs internet? | How it works |
 |-----------|-----------|-----------------|--------------|
-| `online` | Android + PWA | Yes | Supabase Realtime **broadcast** channel `match:<id>`. Host app holds the authoritative log. Joining via 6-char code or QR. |
+| `online` | Android + PWA | Yes | A **room** (`rooms` table, 6-char join code) plus a Supabase Realtime **broadcast** channel `room:<id>`. The host device holds the authoritative state and broadcasts a full `RoomSnapshot` after every change; other devices send requests (`hello`, `pick`, `intent`, `vote`). See `lib/domain/scorekeeper/online/`. |
 | `nearby` | Android only | **No** (not even shared Wi-Fi) | Google Nearby Connections, `P2P_STAR` strategy: host advertises, others discover and connect via Bluetooth/Wi-Fi Direct. Results stored locally and uploaded when the host is back online. |
 | `single_device` | Android + PWA | No | One phone marks for both teams. Other seats can be registered users (picked from recent players/group) or **guests**. |
 
@@ -220,8 +223,13 @@ ranked independently, so "best of 3/5" is up to the players.
 5. Host calls `finish_match` (immediately if online, or later from the local queue) → results and ratings are saved.
 6. Rematch prompt (§5.5).
 
-If the host disconnects in `online` mode, the next registered player by seat becomes host (they already have the full
-log). In `nearby` mode the match pauses until the host reconnects.
+**Implemented so far (M3):** if the host leaves, the room closes; finished games were already saved. Host hand-off
+(the next registered player by seat takes over, since every device has the full snapshot) is planned. In `nearby`
+mode the match pauses until the host reconnects.
+
+Finished games are uploaded by the host through the `finish_match` RPC (idempotent, recomputes the score from the event
+log). Uploads are queued on the device while offline and retried on the next app start. Every device also keeps the game
+in its local history.
 
 ---
 

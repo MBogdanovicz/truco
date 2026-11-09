@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/auth_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
+import '../scorekeeper/online_room_controller.dart';
 import '../scorekeeper/scorekeeper_controller.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -15,6 +16,7 @@ class HomeScreen extends ConsumerWidget {
     final auth = ref.watch(authRepositoryProvider);
     final user = ref.watch(currentUserProvider).value ?? auth.currentUser;
     final ongoing = ref.watch(scorekeeperControllerProvider);
+    final room = ref.watch(onlineRoomControllerProvider);
     final theme = Theme.of(context);
 
     return AppScaffold(
@@ -33,14 +35,29 @@ class HomeScreen extends ConsumerWidget {
           if (user?.displayName != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: Text('Olá, ${user!.displayName}!', style: theme.textTheme.headlineSmall),
+              child: Text(
+                'Olá, ${user!.displayName}!',
+                style: theme.textTheme.headlineSmall,
+              ),
+            ),
+          if (room != null)
+            _HomeCard(
+              icon: Icons.wifi_tethering,
+              color: AppColors.red,
+              title: 'Voltar para a sala',
+              subtitle: room.snapshot == null
+                  ? 'Conectando…'
+                  : 'Sala ${room.snapshot!.code}',
+              onTap: () => context.go('/marcador/sala'),
             ),
           _HomeCard(
             icon: Icons.scoreboard,
             color: AppColors.felt,
             title: ongoing == null ? 'Novo marcador' : 'Continuar partida',
             subtitle: 'Marque os tentos de uma partida com baralho de verdade.',
-            onTap: () => context.go(ongoing == null ? '/marcador/novo' : '/marcador/partida'),
+            onTap: () => context.go(
+              ongoing == null ? '/marcador/novo' : '/marcador/partida',
+            ),
           ),
           _HomeCard(
             icon: Icons.history,

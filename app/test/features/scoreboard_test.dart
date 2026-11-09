@@ -10,28 +10,38 @@ import 'package:truco/ui/adaptive/platform_style.dart';
 
 void main() {
   setUp(() {
-    SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
   });
 
   for (final style in AppPlatformStyle.values) {
-    testWidgets('single-device game to 12 with rematch (${style.name})', (tester) async {
+    testWidgets('single-device game to 12 with rematch (${style.name})', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2340);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
 
       final container = ProviderContainer();
       addTearDown(container.dispose);
-      await tester.pumpWidget(UncontrolledProviderScope(
-        container: container,
-        child: TrucoApp(style: style),
-      ));
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: TrucoApp(style: style),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Novo marcador'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Um aparelho só'));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(EditableText).at(1), 'Ana');
-      await tester.scrollUntilVisible(find.text('Começar partida'), 200,
-          scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('Começar partida'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Começar partida'));
       await tester.pumpAndSettle();
 
@@ -73,8 +83,17 @@ void main() {
   }
 
   test('auth redirect rules', () {
-    expect(authRedirect(authAvailable: false, user: null, location: '/'), isNull);
-    expect(authRedirect(authAvailable: false, user: null, location: '/entrar'), '/');
-    expect(authRedirect(authAvailable: true, user: null, location: '/'), '/entrar');
+    expect(
+      authRedirect(authAvailable: false, user: null, location: '/'),
+      isNull,
+    );
+    expect(
+      authRedirect(authAvailable: false, user: null, location: '/entrar'),
+      '/',
+    );
+    expect(
+      authRedirect(authAvailable: true, user: null, location: '/'),
+      '/entrar',
+    );
   });
 }

@@ -39,7 +39,9 @@ class _LoginState extends ConsumerState<LoginScreen> {
     } on AuthException catch (e) {
       setState(() => _error = _describe(e));
     } on Object {
-      setState(() => _error = 'Não foi possível conectar. Verifique sua internet.');
+      setState(
+        () => _error = 'Não foi possível conectar. Verifique sua internet.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -47,7 +49,8 @@ class _LoginState extends ConsumerState<LoginScreen> {
 
   String _describe(AuthException e) {
     final code = e.code ?? '';
-    if (code.contains('otp_expired') || e.message.toLowerCase().contains('expired')) {
+    if (code.contains('otp_expired') ||
+        e.message.toLowerCase().contains('expired')) {
       return 'Código inválido ou expirado.';
     }
     if (e.statusCode == '429' || code.contains('rate_limit')) {
@@ -77,7 +80,10 @@ class _LoginState extends ConsumerState<LoginScreen> {
       return;
     }
     // On success the router redirects (auth state listener).
-    await _run(() => ref.read(authRepositoryProvider).verifyCode(_email.text, _code.text));
+    await _run(
+      () =>
+          ref.read(authRepositoryProvider).verifyCode(_email.text, _code.text),
+    );
   }
 
   @override
@@ -88,11 +94,16 @@ class _LoginState extends ConsumerState<LoginScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text(_codeSent ? 'Confira seu e-mail' : 'Bem-vindo ao Truco!', style: theme.textTheme.headlineSmall),
+          Text(
+            _codeSent ? 'Confira seu e-mail' : 'Bem-vindo ao Truco!',
+            style: theme.textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
-          Text(_codeSent
-              ? 'Enviamos um código para ${_email.text.trim()}. Digite-o abaixo.'
-              : 'Digite seu e-mail. Vamos enviar um código para você entrar, sem senha.'),
+          Text(
+            _codeSent
+                ? 'Enviamos um código para ${_email.text.trim()}. Digite-o abaixo.'
+                : 'Digite seu e-mail. Vamos enviar um código para você entrar, sem senha.',
+          ),
           const SizedBox(height: 24),
           if (!_codeSent)
             AppTextField(

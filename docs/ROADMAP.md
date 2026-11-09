@@ -7,9 +7,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the design behind each milestone.
 | # | Milestone | Scope |
 |---|-----------|-------|
 | M0 ✅ | Foundations | Flutter project (Android + Web/PWA), adaptive UI layer, theme, routing, CI (analyze/test/build), Supabase project + keep-alive workflow. |
-| M1 🟡 | Accounts | Email OTP login, display name onboarding, profile screen. |
+| M1 ✅ | Accounts | Email OTP login, display name onboarding, profile screen. |
 | M2 ✅ | Scorekeeper – single device | Domain event log, scoring rules, scoreboard UI, undo, mão de onze/ferro cues, guests, rematch/series, local history. |
-| M3 | Scorekeeper – online | Lobby with code/QR, team selection, Supabase Realtime transport, host authority, cooldown, host hand-off, `finish_match` RPC. |
+| M3 🟡 | Scorekeeper – online | Lobby with code/QR, team selection, Supabase Realtime transport, host authority, cooldown, host hand-off, `finish_match` RPC. |
 | M4 | Groups & ranking | Groups (public/private, join code/link), global + group leaderboards for players and duos, stats + Elo. |
 | M5 | Scorekeeper – nearby (Android) | Nearby Connections transport, offline result queue and upload. |
 | M6 | Polish & release | App name/icon, Play Store internal testing track, PWA install prompt, basic analytics. |
@@ -30,7 +30,6 @@ M2 is built first because it is useful on its own and exercises the domain layer
 
 ## Status (2026-11-09)
 
-* M0 and M2 done: Flutter project, adaptive UI, single-device scorekeeper with local history.
-* M1 code done (email code login, display name, `profiles` migration); waiting for the Supabase project to be created
-  and configured.
+* M0, M1 and M2 done: Flutter project, adaptive UI, email-code login, single-device scorekeeper with local history.
+* M3 in testing: rooms with join code, Realtime sync, cooldown, rematch voting, result upload. Host hand-off pending.
 * CI builds the APK and PWA on every push to `main`.

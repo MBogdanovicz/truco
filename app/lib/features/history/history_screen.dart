@@ -17,7 +17,8 @@ class HistoryScreen extends ConsumerWidget {
       title: 'Histórico',
       body: history.when(
         loading: () => const Center(child: AppProgress()),
-        error: (e, _) => Center(child: Text('Não foi possível carregar o histórico.\n$e')),
+        error: (e, _) =>
+            Center(child: Text('Não foi possível carregar o histórico.\n$e')),
         data: (records) => records.isEmpty
             ? const Center(child: Text('Nenhuma partida ainda.'))
             : ListView.separated(
@@ -46,21 +47,32 @@ class _HistoryTile extends StatelessWidget {
     final state = record.state;
     final winner = record.winner;
     String side(Team t) {
-      final players = record.seatsOf(t).map((s) => s.name).where((n) => n.isNotEmpty);
-      return players.isEmpty ? record.teamNames[t]! : '${record.teamNames[t]} (${players.join(', ')})';
+      final players = record
+          .seatsOf(t)
+          .map((s) => s.name)
+          .where((n) => n.isNotEmpty);
+      return players.isEmpty
+          ? record.teamNames[t]!
+          : '${record.teamNames[t]} (${players.join(', ')})';
     }
 
     final series = record.series;
     return ListTile(
-      leading: Icon(Icons.emoji_events,
-          color: winner == Team.a ? AppColors.teamA : AppColors.teamB),
-      title: Text('${record.teamNames[Team.a]} ${state.scoreOf(Team.a)} × '
-          '${state.scoreOf(Team.b)} ${record.teamNames[Team.b]}'),
-      subtitle: Text([
-        '${side(Team.a)} vs ${side(Team.b)}',
-        _date(record.finishedAt),
-        if (series.gamesPlayed > 1) 'Série ${series.winsA} × ${series.winsB}',
-      ].join('\n')),
+      leading: Icon(
+        Icons.emoji_events,
+        color: winner == Team.a ? AppColors.teamA : AppColors.teamB,
+      ),
+      title: Text(
+        '${record.teamNames[Team.a]} ${state.scoreOf(Team.a)} × '
+        '${state.scoreOf(Team.b)} ${record.teamNames[Team.b]}',
+      ),
+      subtitle: Text(
+        [
+          '${side(Team.a)} vs ${side(Team.b)}',
+          _date(record.finishedAt),
+          if (series.gamesPlayed > 1) 'Série ${series.winsA} × ${series.winsB}',
+        ].join('\n'),
+      ),
       isThreeLine: true,
     );
   }

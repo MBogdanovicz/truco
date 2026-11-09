@@ -10,11 +10,16 @@ void main() {
   final t0 = DateTime.utc(2026, 1, 1, 20);
   const seats = {0: Team.a, 1: Team.b, 2: Team.a, 3: Team.b};
 
-  MatchEngine engine({ScoringRules rules = ScoringRules.standard, bool any = false}) =>
-      MatchEngine(rules: rules, seatTeams: seats, anySeatMarksAnyTeam: any);
+  MatchEngine engine({
+    ScoringRules rules = ScoringRules.standard,
+    bool any = false,
+  }) => MatchEngine(rules: rules, seatTeams: seats, anySeatMarksAnyTeam: any);
 
   AddPointsIntent add(Team team, int delta, {int? seat}) => AddPointsIntent(
-      team: team, delta: delta, authorSeat: seat ?? (team == Team.a ? 0 : 1));
+    team: team,
+    delta: delta,
+    authorSeat: seat ?? (team == Team.a ? 0 : 1),
+  );
 
   test('adds points and derives the score', () {
     final e = engine();
@@ -43,19 +48,28 @@ void main() {
   test('cooldown blocks the partner within the window', () {
     final e = engine();
     e.apply(add(Team.a, 1, seat: 0), t0);
-    final r = e.apply(add(Team.a, 1, seat: 2), t0.add(const Duration(seconds: 5)));
+    final r = e.apply(
+      add(Team.a, 1, seat: 2),
+      t0.add(const Duration(seconds: 5)),
+    );
     expect((r as IntentRejected).reason, IntentRejection.cooldown);
     expect(r.retryAfter, const Duration(seconds: 10));
     // The other team is not affected.
-    expect(e.apply(add(Team.b, 1), t0.add(const Duration(seconds: 5))),
-        isA<IntentAccepted>());
+    expect(
+      e.apply(add(Team.b, 1), t0.add(const Duration(seconds: 5))),
+      isA<IntentAccepted>(),
+    );
     // After the window, the team can score again.
-    expect(e.apply(add(Team.a, 1, seat: 2), t0.add(const Duration(seconds: 15))),
-        isA<IntentAccepted>());
+    expect(
+      e.apply(add(Team.a, 1, seat: 2), t0.add(const Duration(seconds: 15))),
+      isA<IntentAccepted>(),
+    );
   });
 
   test('cooldown can be disabled', () {
-    final e = engine(rules: const ScoringRules(teamScoreCooldown: Duration.zero));
+    final e = engine(
+      rules: const ScoringRules(teamScoreCooldown: Duration.zero),
+    );
     e.apply(add(Team.a, 1), t0);
     expect(e.apply(add(Team.a, 1), t0), isA<IntentAccepted>());
   });
@@ -79,7 +93,9 @@ void main() {
   });
 
   test('score is capped at the target and finishes the game', () {
-    final e = engine(rules: const ScoringRules(teamScoreCooldown: Duration.zero));
+    final e = engine(
+      rules: const ScoringRules(teamScoreCooldown: Duration.zero),
+    );
     e.apply(add(Team.a, 9), t0);
     e.apply(add(Team.a, 6), t0);
     expect(e.state.scoreOf(Team.a), 12);
@@ -89,14 +105,18 @@ void main() {
   });
 
   test('undo after the end reopens the game', () {
-    final e = engine(rules: const ScoringRules(teamScoreCooldown: Duration.zero));
+    final e = engine(
+      rules: const ScoringRules(teamScoreCooldown: Duration.zero),
+    );
     e.apply(add(Team.a, 12), t0);
     e.apply(const UndoIntent(team: Team.a, authorSeat: 0), t0);
     expect(e.state.isFinished, isFalse);
   });
 
   test('hand of eleven and iron hand cues', () {
-    final e = engine(rules: const ScoringRules(teamScoreCooldown: Duration.zero));
+    final e = engine(
+      rules: const ScoringRules(teamScoreCooldown: Duration.zero),
+    );
     for (var i = 0; i < 11; i++) {
       e.apply(add(Team.a, 1), t0);
     }
@@ -110,12 +130,16 @@ void main() {
   });
 
   test('event log survives a JSON round trip', () {
-    final e = engine(rules: const ScoringRules(teamScoreCooldown: Duration.zero));
+    final e = engine(
+      rules: const ScoringRules(teamScoreCooldown: Duration.zero),
+    );
     e.apply(add(Team.a, 3), t0);
     e.apply(const UndoIntent(team: Team.a, authorSeat: 0), t0);
     e.apply(add(Team.b, 6), t0);
     final json = [for (final ev in e.state.events) ev.toJson()];
-    final restored = MatchState.fromEvents([for (final j in json) ScoreEvent.fromJson(j)]);
+    final restored = MatchState.fromEvents([
+      for (final j in json) ScoreEvent.fromJson(j),
+    ]);
     expect(restored.scoreOf(Team.a), 0);
     expect(restored.scoreOf(Team.b), 6);
   });

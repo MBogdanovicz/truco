@@ -4,7 +4,12 @@ import 'team.dart';
 
 /// A player sitting at the table. Guests have no [userId].
 class Seat {
-  const Seat({required this.index, required this.team, required this.name, this.userId});
+  const Seat({
+    required this.index,
+    required this.team,
+    required this.name,
+    this.userId,
+  });
 
   final int index;
   final Team team;
@@ -13,15 +18,19 @@ class Seat {
 
   bool get isGuest => userId == null;
 
-  Map<String, Object?> toJson() =>
-      {'index': index, 'team': team.name, 'name': name, 'userId': userId};
+  Map<String, Object?> toJson() => {
+    'index': index,
+    'team': team.name,
+    'name': name,
+    'userId': userId,
+  };
 
   factory Seat.fromJson(Map<String, Object?> json) => Seat(
-        index: json['index']! as int,
-        team: Team.fromName(json['team']! as String),
-        name: json['name']! as String,
-        userId: json['userId'] as String?,
-      );
+    index: json['index']! as int,
+    team: Team.fromName(json['team']! as String),
+    name: json['name']! as String,
+    userId: json['userId'] as String?,
+  );
 }
 
 /// Running tally of a rematch chain ("revanche").
@@ -36,18 +45,18 @@ class SeriesTally {
   int get gamesPlayed => winsA + winsB;
 
   SeriesTally recordWin(Team team) => SeriesTally(
-        id: id,
-        winsA: winsA + (team == Team.a ? 1 : 0),
-        winsB: winsB + (team == Team.b ? 1 : 0),
-      );
+    id: id,
+    winsA: winsA + (team == Team.a ? 1 : 0),
+    winsB: winsB + (team == Team.b ? 1 : 0),
+  );
 
   Map<String, Object?> toJson() => {'id': id, 'winsA': winsA, 'winsB': winsB};
 
   factory SeriesTally.fromJson(Map<String, Object?> json) => SeriesTally(
-        id: json['id']! as String,
-        winsA: json['winsA']! as int,
-        winsB: json['winsB']! as int,
-      );
+    id: json['id']! as String,
+    winsA: json['winsA']! as int,
+    winsB: json['winsB']! as int,
+  );
 }
 
 /// A finished game as stored in history.
@@ -79,14 +88,14 @@ class MatchRecord {
       seats.where((s) => s.team == team).toList(growable: false);
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'teamNames': {for (final e in teamNames.entries) e.key.name: e.value},
-        'seats': [for (final s in seats) s.toJson()],
-        'events': [for (final e in events) e.toJson()],
-        'startedAt': startedAt.toUtc().toIso8601String(),
-        'finishedAt': finishedAt.toUtc().toIso8601String(),
-        'series': series.toJson(),
-      };
+    'id': id,
+    'teamNames': {for (final e in teamNames.entries) e.key.name: e.value},
+    'seats': [for (final s in seats) s.toJson()],
+    'events': [for (final e in events) e.toJson()],
+    'startedAt': startedAt.toUtc().toIso8601String(),
+    'finishedAt': finishedAt.toUtc().toIso8601String(),
+    'series': series.toJson(),
+  };
 
   factory MatchRecord.fromJson(Map<String, Object?> json) {
     final names = (json['teamNames']! as Map).cast<String, Object?>();
@@ -105,8 +114,9 @@ class MatchRecord {
       ],
       startedAt: DateTime.parse(json['startedAt']! as String),
       finishedAt: DateTime.parse(json['finishedAt']! as String),
-      series:
-          SeriesTally.fromJson((json['series']! as Map).cast<String, Object?>()),
+      series: SeriesTally.fromJson(
+        (json['series']! as Map).cast<String, Object?>(),
+      ),
     );
   }
 }

@@ -48,15 +48,20 @@ class MatchEngine {
     required this.rules,
     required Map<int, Team> seatTeams,
     this.anySeatMarksAnyTeam = false,
+    this.extraPermission,
     List<ScoreEvent> events = const [],
-  })  : _seatTeams = Map.unmodifiable(seatTeams),
-        _state = MatchState.fromEvents(events, rules: rules);
+  }) : _seatTeams = Map.unmodifiable(seatTeams),
+       _state = MatchState.fromEvents(events, rules: rules);
 
   final ScoringRules rules;
   final Map<int, Team> _seatTeams;
 
   /// True in single-device mode, where one person marks for both teams.
   final bool anySeatMarksAnyTeam;
+
+  /// Extra marking rights beyond "own team", e.g. the host marking for a team
+  /// made only of guests in online mode.
+  final bool Function(int seat, Team team)? extraPermission;
 
   MatchState _state;
   MatchState get state => _state;
@@ -72,8 +77,13 @@ class MatchEngine {
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
+  bool canMark(int seat, Team team) =>
+      anySeatMarksAnyTeam ||
+      _seatTeams[seat] == team ||
+      (extraPermission?.call(seat, team) ?? false);
+
   IntentResult apply(ScoreIntent intent, DateTime now) {
-    if (!anySeatMarksAnyTeam && _seatTeams[intent.authorSeat] != intent.team) {
+    if (!canMark(intent.authorSeat, intent.team)) {
       return const IntentRejected(IntentRejection.notYourTeam);
     }
     final ScoreEvent event;

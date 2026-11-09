@@ -33,24 +33,24 @@ class ScoreEvent {
   final DateTime timestamp;
 
   Map<String, Object?> toJson() => {
-        'seq': seq,
-        'kind': kind.name,
-        'team': team.name,
-        'delta': delta,
-        'authorSeat': authorSeat,
-        'undoesSeq': undoesSeq,
-        'timestamp': timestamp.toUtc().toIso8601String(),
-      };
+    'seq': seq,
+    'kind': kind.name,
+    'team': team.name,
+    'delta': delta,
+    'authorSeat': authorSeat,
+    'undoesSeq': undoesSeq,
+    'timestamp': timestamp.toUtc().toIso8601String(),
+  };
 
   factory ScoreEvent.fromJson(Map<String, Object?> json) => ScoreEvent(
-        seq: json['seq']! as int,
-        kind: ScoreEventKind.values.byName(json['kind']! as String),
-        team: Team.fromName(json['team']! as String),
-        delta: json['delta'] as int? ?? 0,
-        authorSeat: json['authorSeat']! as int,
-        undoesSeq: json['undoesSeq'] as int?,
-        timestamp: DateTime.parse(json['timestamp']! as String),
-      );
+    seq: json['seq']! as int,
+    kind: ScoreEventKind.values.byName(json['kind']! as String),
+    team: Team.fromName(json['team']! as String),
+    delta: json['delta'] as int? ?? 0,
+    authorSeat: json['authorSeat']! as int,
+    undoesSeq: json['undoesSeq'] as int?,
+    timestamp: DateTime.parse(json['timestamp']! as String),
+  );
 }
 
 /// A request from a player to change the score. The host validates it and,

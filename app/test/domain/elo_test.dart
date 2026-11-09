@@ -21,7 +21,10 @@ void main() {
   test('2v2 deltas use team averages and individual K', () {
     final d = Elo.playerDeltas(
       winners: const [PlayerRating('w1', 1100, 30), PlayerRating('w2', 900, 5)],
-      losers: const [PlayerRating('l1', 1000, 30), PlayerRating('l2', 1000, 30)],
+      losers: const [
+        PlayerRating('l1', 1000, 30),
+        PlayerRating('l2', 1000, 30),
+      ],
     );
     expect(d['w1'], closeTo(12, 1e-9));
     expect(d['w2'], closeTo(20, 1e-9));

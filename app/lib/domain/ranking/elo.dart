@@ -24,8 +24,7 @@ abstract final class Elo {
     required bool won,
     required int gamesPlayed,
   }) =>
-      kFactor(gamesPlayed) *
-      ((won ? 1 : 0) - expectedScore(rating, opponent));
+      kFactor(gamesPlayed) * ((won ? 1 : 0) - expectedScore(rating, opponent));
 
   /// Rating changes for the four players of a 2v2 match.
   ///
@@ -42,13 +41,18 @@ abstract final class Elo {
     return {
       for (final p in winners)
         p.id: delta(
-            rating: winAvg, opponent: loseAvg, won: true, gamesPlayed: p.games),
+          rating: winAvg,
+          opponent: loseAvg,
+          won: true,
+          gamesPlayed: p.games,
+        ),
       for (final p in losers)
         p.id: delta(
-            rating: loseAvg,
-            opponent: winAvg,
-            won: false,
-            gamesPlayed: p.games),
+          rating: loseAvg,
+          opponent: winAvg,
+          won: false,
+          gamesPlayed: p.games,
+        ),
     };
   }
 

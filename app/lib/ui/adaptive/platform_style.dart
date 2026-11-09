@@ -17,7 +17,11 @@ AppPlatformStyle get defaultPlatformStyle {
 
 /// Makes the style available to adaptive widgets below it.
 class PlatformStyleScope extends InheritedWidget {
-  const PlatformStyleScope({super.key, required this.style, required super.child});
+  const PlatformStyleScope({
+    super.key,
+    required this.style,
+    required super.child,
+  });
 
   final AppPlatformStyle style;
 
@@ -26,9 +30,11 @@ class PlatformStyleScope extends InheritedWidget {
       defaultPlatformStyle;
 
   @override
-  bool updateShouldNotify(PlatformStyleScope oldWidget) => style != oldWidget.style;
+  bool updateShouldNotify(PlatformStyleScope oldWidget) =>
+      style != oldWidget.style;
 }
 
 extension PlatformStyleContext on BuildContext {
-  bool get isCupertino => PlatformStyleScope.of(this) == AppPlatformStyle.cupertino;
+  bool get isCupertino =>
+      PlatformStyleScope.of(this) == AppPlatformStyle.cupertino;
 }

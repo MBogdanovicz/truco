@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/ids.dart';
 import '../../data/match_history_repository.dart';
+import '../../data/online_room_repository.dart';
+import '../../data/result_uploader.dart';
 import '../../domain/scorekeeper/match_engine.dart';
 import '../../domain/scorekeeper/match_record.dart';
 import '../../domain/scorekeeper/match_state.dart';
@@ -41,15 +43,18 @@ class ScorekeeperSession {
   /// True once the finished game was written to history.
   final bool saved;
 
-  ScorekeeperSession copyWith({MatchState? state, SeriesTally? series, bool? saved}) =>
-      ScorekeeperSession(
-        matchId: matchId,
-        setup: setup,
-        state: state ?? this.state,
-        series: series ?? this.series,
-        startedAt: startedAt,
-        saved: saved ?? this.saved,
-      );
+  ScorekeeperSession copyWith({
+    MatchState? state,
+    SeriesTally? series,
+    bool? saved,
+  }) => ScorekeeperSession(
+    matchId: matchId,
+    setup: setup,
+    state: state ?? this.state,
+    series: series ?? this.series,
+    startedAt: startedAt,
+    saved: saved ?? this.saved,
+  );
 }
 
 /// Single-device scorekeeper: one phone marks for both teams.
@@ -58,7 +63,9 @@ class ScorekeeperSession {
 /// [MatchEngine] on the host and stream accepted events to the other devices.
 class ScorekeeperController extends Notifier<ScorekeeperSession?> {
   /// One person marks for everyone, so the partner cooldown is not needed.
-  static final rules = ScoringRules.standard.copyWith(teamScoreCooldown: Duration.zero);
+  static final rules = ScoringRules.standard.copyWith(
+    teamScoreCooldown: Duration.zero,
+  );
 
   /// The device owner's seat; authors every event in single-device mode.
   static const hostSeat = 0;
@@ -102,6 +109,10 @@ class ScorekeeperController extends Notifier<ScorekeeperSession?> {
     );
     await ref.read(matchHistoryRepositoryProvider).add(record);
     ref.invalidate(matchHistoryProvider);
+    // Fire and forget: queued on the device if offline.
+    ref
+        .read(resultUploaderProvider)
+        .submit(record, transport: MatchTransportKind.singleDevice);
     state = session.copyWith(saved: true);
     return record;
   }
@@ -142,11 +153,13 @@ class ScorekeeperController extends Notifier<ScorekeeperSession?> {
   }
 
   MatchEngine _newEngine(MatchSetup setup) => MatchEngine(
-        rules: rules,
-        seatTeams: {for (final s in setup.seats) s.index: s.team},
-        anySeatMarksAnyTeam: true,
-      );
+    rules: rules,
+    seatTeams: {for (final s in setup.seats) s.index: s.team},
+    anySeatMarksAnyTeam: true,
+  );
 }
 
 final scorekeeperControllerProvider =
-    NotifierProvider<ScorekeeperController, ScorekeeperSession?>(ScorekeeperController.new);
+    NotifierProvider<ScorekeeperController, ScorekeeperSession?>(
+      ScorekeeperController.new,
+    );

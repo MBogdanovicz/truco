@@ -29,14 +29,17 @@ abstract final class AppTheme {
   /// Material theme used under the Cupertino look on the PWA, so shared
   /// Material widgets pick up iOS-like behaviour (scroll physics, page
   /// transitions, fonts).
-  static ThemeData cupertinoBase(Brightness brightness) =>
-      material(brightness).copyWith(
+  static ThemeData cupertinoBase(Brightness brightness) => material(brightness)
+      .copyWith(
         platform: TargetPlatform.iOS,
         cupertinoOverrideTheme: cupertino(brightness),
       );
 
-  static CupertinoThemeData cupertino(Brightness brightness) => CupertinoThemeData(
+  static CupertinoThemeData cupertino(Brightness brightness) =>
+      CupertinoThemeData(
         brightness: brightness,
-        primaryColor: brightness == Brightness.dark ? AppColors.gold : AppColors.felt,
+        primaryColor: brightness == Brightness.dark
+            ? AppColors.gold
+            : AppColors.felt,
       );
 }
