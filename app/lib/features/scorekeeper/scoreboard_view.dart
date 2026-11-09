@@ -178,6 +178,19 @@ class _TeamPanel extends StatelessWidget {
       model.onAdd(team, delta);
     }
 
+    // Mão de onze / de ferro: a team on 11 only needs one more point, so it
+    // gets a single "Vitória" button; its opponent can score 1 (the team on
+    // 11 refused to play the hand) or 3 (won the hand).
+    final eleven = state.rules.handOfElevenScore;
+    final onEleven =
+        (state.isHandOfEleven || state.isIronHand) && score == eleven;
+    final facingEleven = state.isHandOfEleven && score != eleven;
+    final extraDeltas = onEleven
+        ? const <int>[]
+        : facingEleven
+        ? const [3]
+        : const [3, 6, 9, 12];
+
     return Container(
       color: color,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -256,8 +269,16 @@ class _TeamPanel extends StatelessWidget {
                           key: ValueKey('add-${team.name}-1'),
                           label: cooldown > Duration.zero
                               ? '${(cooldown.inMilliseconds / 1000).ceil()}s'
+                              : onEleven
+                              ? 'Vitória'
                               : '+1',
-                          caption: cooldown > Duration.zero ? 'Aguarde' : null,
+                          caption: cooldown > Duration.zero
+                              ? 'Aguarde'
+                              : onEleven
+                              ? 'Ganhou a mão'
+                              : facingEleven
+                              ? 'Correram'
+                              : null,
                           big: true,
                           onPressed: scoringEnabled ? () => add(1) : null,
                         ),
@@ -268,20 +289,24 @@ class _TeamPanel extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _TentoPips(score: score, target: state.rules.targetScore),
-              if (canMark) ...[
+              if (canMark && extraDeltas.isNotEmpty) ...[
                 SizedBox(height: compact ? 6 : 10),
                 Row(
                   children: [
-                    for (final d in const [3, 6, 9, 12]) ...[
+                    for (final d in extraDeltas) ...[
                       Expanded(
                         child: _AddButton(
                           key: ValueKey('add-${team.name}-$d'),
                           label: '+$d',
-                          caption: compact ? null : _labels[d],
+                          caption: compact
+                              ? null
+                              : facingEleven
+                              ? 'Ganhou a mão'
+                              : _labels[d],
                           onPressed: scoringEnabled ? () => add(d) : null,
                         ),
                       ),
-                      if (d != 12) const SizedBox(width: 8),
+                      if (d != extraDeltas.last) const SizedBox(width: 8),
                     ],
                   ],
                 ),
