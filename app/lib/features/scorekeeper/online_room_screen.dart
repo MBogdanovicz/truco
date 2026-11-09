@@ -608,18 +608,40 @@ class _RoomSettings extends ConsumerWidget {
   final RoomSnapshot snap;
 
   Future<void> _pickGroup(BuildContext context, WidgetRef ref) async {
-    final groups = await ref.read(myGroupsProvider.future);
+    final List<Group> groups;
+    try {
+      final mine = await ref.read(myGroupsProvider.future);
+      final players = {
+        for (final s in snap.seats)
+          if (s.userId != null) s.userId!,
+      };
+      final shared = await ref.read(groupsRepositoryProvider)!.groupsShared([
+        for (final g in mine) g.id,
+      ], players);
+      groups = [
+        for (final g in mine)
+          if (shared.contains(g.id)) g,
+      ];
+    } on Object {
+      if (context.mounted) {
+        showAppToast(context, 'Não foi possível carregar os grupos.');
+      }
+      return;
+    }
     if (!context.mounted) return;
     if (groups.isEmpty) {
-      showAppToast(context, 'Você ainda não participa de nenhum grupo.');
+      showAppToast(
+        context,
+        'Nenhum grupo tem todos os jogadores desta sala como membros.',
+      );
       return;
     }
     final picked = await showAppDialog<RoomGroup?>(
       context,
       title: 'Contar para o ranking de qual grupo?',
       message:
-          'A partida só conta para o grupo se os 4 jogadores forem membros dele. '
-          'Ela sempre conta para o ranking geral.',
+          'Aparecem só os grupos dos quais todos os jogadores da sala são '
+          'membros. A partida sempre conta também para o ranking geral.',
       actions: [
         const AppDialogAction(label: 'Nenhum grupo', value: null),
         for (final g in groups)

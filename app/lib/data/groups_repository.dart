@@ -232,6 +232,27 @@ class GroupsRepository {
     }
   }
 
+  /// Ids of the groups that every one of [userIds] belongs to.
+  Future<Set<String>> groupsShared(
+    Iterable<String> groupIds,
+    Set<String> userIds,
+  ) async {
+    if (groupIds.isEmpty || userIds.isEmpty) return {};
+    final rows = await _client
+        .from('group_members')
+        .select('group_id, user_id')
+        .inFilter('group_id', groupIds.toList())
+        .inFilter('user_id', userIds.toList());
+    final members = <String, Set<String>>{};
+    for (final r in rows) {
+      (members[r['group_id'] as String] ??= {}).add(r['user_id'] as String);
+    }
+    return {
+      for (final e in members.entries)
+        if (e.value.containsAll(userIds)) e.key,
+    };
+  }
+
   Future<void> leave(String groupId) =>
       _client.rpc('leave_group', params: {'p_group_id': groupId});
 
