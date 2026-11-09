@@ -338,6 +338,31 @@ void main() {
     expect(host.snapshot!.state.scoreOf(Team.b), 1);
   });
 
+  test('someone joining mid-game takes the seat of a player who left', () async {
+    final [_, p3, _] = await fullTable();
+    final p5 = joiner('p5', 'Eva');
+    await p5.start();
+    await settle();
+    final rejections = <IntentRejection>[];
+    p5.rejections.listen(rejections.add);
+
+    await p5.pickTeam(Team.b);
+    await settle();
+    expect(p5.mySeat, isNull);
+    expect(rejections, [IntentRejection.teamFull]);
+
+    await p3.leave();
+    await settle();
+    await p5.pickTeam(Team.b);
+    await settle();
+    expect(p5.mySeat!.index, 1);
+    expect(host.snapshot!.left, isEmpty);
+    now = now.add(const Duration(seconds: 20));
+    await p5.addPoints(Team.b, 3);
+    await settle();
+    expect(host.snapshot!.state.scoreOf(Team.b), 3);
+  });
+
   test('snapshot JSON round trip', () async {
     await fullTable();
     await host.setGroup(const RoomGroup(id: 'g1', name: 'Bar'));

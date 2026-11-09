@@ -43,6 +43,8 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     IntentRejection.matchFinished: 'A partida já terminou.',
     IntentRejection.invalidDelta: 'Valor inválido.',
     IntentRejection.nothingToUndo: 'Não há nada para desfazer.',
+    IntentRejection.teamFull:
+        'Essa dupla já está completa. Tente a outra, ou espere alguém sair.',
   };
 
   Future<void> _leave() async {
@@ -501,12 +503,60 @@ class _Game extends StatelessWidget {
             highlightTeam: room.mySeat?.team,
           ),
         ),
+        if (room.mySeat == null && !state.isFinished)
+          _JoinGameBar(room: room, snap: snap),
         if (state.isFinished)
           _FinishedCard(room: room, snap: snap, onClose: onClose),
         if (!room.isConnected) const _ConnectionLost(),
       ],
     );
   }
+}
+
+/// For someone who opened a room with a game already going: pick a team to
+/// play (a free seat, or the place of a guest or of someone who left).
+class _JoinGameBar extends StatelessWidget {
+  const _JoinGameBar({required this.room, required this.snap});
+
+  final OnlineRoom room;
+  final RoomSnapshot snap;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.bottomCenter,
+    child: SafeArea(
+      child: Card(
+        margin: const EdgeInsets.all(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'A partida já começou. Você está só assistindo. '
+                'Para jogar, entre numa dupla:',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  for (final t in Team.values) ...[
+                    Expanded(
+                      child: AppButton(
+                        label: snap.teamNames[t]!,
+                        onPressed: () => room.pickTeam(t),
+                      ),
+                    ),
+                    if (t != Team.values.last) const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 /// Shown while this device is out of touch with the room.

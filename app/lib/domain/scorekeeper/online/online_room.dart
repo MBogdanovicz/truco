@@ -468,6 +468,9 @@ class OnlineRoom {
     String name,
     Team team,
   ) async {
+    if (snap.phase == RoomPhase.playing) {
+      return _pickDuringGame(snap, userId, name, team);
+    }
     if (snap.phase != RoomPhase.lobby) return _broadcast();
     final current = snap.seatOfUser(userId);
     if (current?.team == team) return _broadcast();
@@ -480,6 +483,45 @@ class OnlineRoom {
           ...others,
           Seat(index: index, team: team, name: name.trim(), userId: userId),
         ],
+      ),
+    );
+  }
+
+  /// Someone joins a game already in progress: they take a free seat of
+  /// [team], or replace a guest, a player who left, or one who lost signal.
+  /// Players already seated can't switch teams mid-game.
+  Future<void> _pickDuringGame(
+    RoomSnapshot snap,
+    String userId,
+    String name,
+    Team team,
+  ) async {
+    if (snap.seatOfUser(userId) != null) return _broadcast();
+    Seat newcomer(int index) =>
+        Seat(index: index, team: team, name: name.trim(), userId: userId);
+    final free = snap.freeSeatOf(team);
+    if (free != null) {
+      await _update(snap.copyWith(seats: [...snap.seats, newcomer(free)]));
+      return;
+    }
+    final replaceable = snap
+        .seatsOf(team)
+        .where(
+          (s) =>
+              s.userId != snap.hostUserId &&
+              (s.userId == null ||
+                  snap.left.contains(s.userId) ||
+                  _isAway(s.userId!)),
+        );
+    final seat = replaceable.firstOrNull;
+    if (seat == null) return _reject(userId, IntentRejection.teamFull);
+    await _update(
+      snap.copyWith(
+        seats: [
+          for (final s in snap.seats)
+            s.index == seat.index ? newcomer(seat.index) : s,
+        ],
+        left: {...snap.left}..remove(seat.userId),
       ),
     );
   }

@@ -19,6 +19,9 @@ enum IntentRejection {
 
   /// There is no score event left to undo for this team.
   nothingToUndo,
+
+  /// Joining mid-game: every seat of that team has an active player.
+  teamFull,
 }
 
 sealed class IntentResult {
