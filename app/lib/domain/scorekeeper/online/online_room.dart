@@ -79,15 +79,26 @@ class OnlineRoom {
       _trackScores(_snapshot!);
       await _broadcast();
     } else {
-      await _channel.send({
-        'type': 'hello',
-        'userId': me.userId,
-        'name': me.name,
+      await _sendHello();
+      // Keep asking until the host answers (it may have been in the
+      // background, or the first message may have been lost).
+      _helloRetry = Timer.periodic(const Duration(seconds: 3), (_) {
+        if (_snapshot == null) {
+          _sendHello();
+        } else {
+          _helloRetry?.cancel();
+        }
       });
     }
   }
 
+  Timer? _helloRetry;
+
+  Future<void> _sendHello() =>
+      _channel.send({'type': 'hello', 'userId': me.userId, 'name': me.name});
+
   Future<void> dispose() async {
+    _helloRetry?.cancel();
     await _sub?.cancel();
     await _channel.close();
     await _changes.close();

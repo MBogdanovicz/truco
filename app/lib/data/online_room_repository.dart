@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'dart:async';
 import 'dart:math';
 
@@ -121,12 +123,16 @@ class SupabaseMatchChannel implements MatchChannel {
   }
 
   void _onPayload(Map<String, dynamic> payload) {
-    // Depending on the client version the callback gets the whole broadcast
-    // envelope or just its payload.
-    final inner = payload['type'] == 'broadcast' && payload['payload'] is Map
-        ? (payload['payload'] as Map).cast<String, Object?>()
-        : payload.cast<String, Object?>();
-    if (!_messages.isClosed) _messages.add(inner);
+    final message = unwrapBroadcast(payload);
+    if (message != null && !_messages.isClosed) _messages.add(message);
+  }
+
+  /// Extracts our message from a received broadcast envelope
+  /// (`{type: broadcast, event: msg, payload: {...}}`).
+  @visibleForTesting
+  static Map<String, Object?>? unwrapBroadcast(Map<String, dynamic> envelope) {
+    final inner = envelope['payload'];
+    return inner is Map ? Map<String, Object?>.from(inner) : null;
   }
 
   @override
@@ -134,9 +140,12 @@ class SupabaseMatchChannel implements MatchChannel {
 
   @override
   Future<void> send(Map<String, Object?> message) async {
+    // The client writes its own `type`/`event` keys into the map it is
+    // given, which would clobber our message `type`; nest our message under
+    // `payload`, the standard broadcast envelope field.
     await _channel.sendBroadcastMessage(
       event: _event,
-      payload: message.cast<String, dynamic>(),
+      payload: {'payload': Map<String, dynamic>.from(message)},
     );
   }
 
