@@ -30,6 +30,14 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build web --release --no-web-resources-cdn --dart-define-from-file=config/supabase.json
+      - name: Version the entry scripts so browsers never mix cached builds
+        working-directory: app/build/web
+        run: |
+          v="${GITHUB_SHA::8}"
+          sed -i "s|\"flutter_bootstrap.js\"|\"flutter_bootstrap.js?v=$v\"|" index.html
+          sed -i "s|\"main.dart.js\"|\"main.dart.js?v=$v\"|g" flutter_bootstrap.js
+          grep -q "flutter_bootstrap.js?v=$v" index.html
+          grep -q "main.dart.js?v=$v" flutter_bootstrap.js
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
