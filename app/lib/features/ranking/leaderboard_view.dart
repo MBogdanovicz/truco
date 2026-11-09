@@ -76,6 +76,11 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
                 selected: _showProvisional,
                 onSelected: (v) => setState(() => _showProvisional = v),
               ),
+              ActionChip(
+                avatar: const Icon(Icons.info_outline, size: 18),
+                label: const Text('Como funciona?'),
+                onPressed: () => showEloHelp(context),
+              ),
             ],
           ),
         ],
@@ -205,3 +210,29 @@ class _Row extends StatelessWidget {
     );
   }
 }
+
+/// Plain-language explanation of the Elo rating.
+Future<void> showEloHelp(BuildContext context) => showAppDialog<void>(
+  context,
+  title: 'Como funciona a pontuação',
+  content: const SingleChildScrollView(
+    child: Text(
+      'Todo mundo começa com 1000 pontos de Elo. A cada partida rankeada, '
+      'quem ganha sobe e quem perde desce.\n\n'
+      'Quanto vale cada partida depende da força dos adversários. A força de '
+      'uma dupla é a média do Elo dos dois jogadores. Ganhar de quem tem mais '
+      'pontos que você vale bastante, e ganhar de quem tem bem menos vale '
+      'pouco. Perder para alguém mais forte tira poucos pontos, e perder para '
+      'alguém mais fraco tira muitos.\n\n'
+      'Nas primeiras 20 partidas, cada jogo mexe mais na pontuação (até 40 '
+      'pontos), para achar logo o seu nível. Depois, até 24 pontos por jogo.\n\n'
+      'Quem tem menos de 5 jogos aparece como "provisório". Ainda é cedo para '
+      'a pontuação dizer muito.\n\n'
+      'As duplas têm um Elo próprio, que conta só as partidas em que os dois '
+      'jogaram juntos. O ranking do grupo conta só as partidas daquele grupo.',
+    ),
+  ),
+  actions: const [
+    AppDialogAction(label: 'Entendi', value: null, isPrimary: true),
+  ],
+);
