@@ -29,11 +29,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // Fixed key for test builds, committed on purpose so every CI/local
+        // build can update the previous install. NOT for Play Store releases:
+        // those will use a private upload key kept in CI secrets.
+        create("test") {
+            storeFile = file("test-signing.keystore")
+            storePassword = "trucotest"
+            keyAlias = "truco-test"
+            keyPassword = "trucotest"
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("test")
         }
     }
 }
