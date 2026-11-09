@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/entitlements.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
@@ -360,6 +361,16 @@ Future<void> pickScoreboardSkin(BuildContext context, WidgetRef ref) async {
         ),
     ],
   );
+  if (picked != null && picked != ScoreboardSkin.felt) {
+    final allowed = (await ref.read(entitlementsProvider.future))
+        .canChooseScoreboardLook;
+    if (!allowed) {
+      if (context.mounted) {
+        showAppToast(context, 'Os outros visuais são do Truco Premium.');
+      }
+      return;
+    }
+  }
   if (picked != null) {
     await ref.read(scoreboardSkinProvider.notifier).choose(picked);
   }
