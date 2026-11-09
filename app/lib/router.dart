@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'data/auth_repository.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
+import 'features/groups/group_detail_screen.dart';
+import 'features/groups/groups_screen.dart';
+import 'features/groups/join_group_screen.dart';
 import 'features/history/history_screen.dart';
+import 'features/ranking/ranking_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/scorekeeper/join_room_screen.dart';
 import 'features/scorekeeper/mode_screen.dart';
@@ -93,6 +97,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, _) => const ScoreboardScreen(),
           ),
           GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
+          GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
+          GoRoute(path: 'grupos', builder: (_, _) => const GroupsScreen()),
+          GoRoute(
+            path: 'grupos/entrar',
+            builder: (_, state) => JoinGroupScreen(
+              initialCode: state.uri.queryParameters['codigo'],
+            ),
+          ),
+          GoRoute(
+            path: 'grupos/:id',
+            builder: (_, state) =>
+                GroupDetailScreen(groupId: state.pathParameters['id']!),
+          ),
         ],
       ),
       GoRoute(path: '/entrar', builder: (_, _) => const LoginScreen()),

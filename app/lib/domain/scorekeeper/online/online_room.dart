@@ -9,6 +9,14 @@ import '../team.dart';
 import 'match_channel.dart';
 import 'room_snapshot.dart';
 
+/// A finished game with the room settings it was played under.
+class CompletedGame {
+  const CompletedGame({required this.record, required this.ranked, this.group});
+  final MatchRecord record;
+  final bool ranked;
+  final RoomGroup? group;
+}
+
 /// The person using this device.
 class RoomMember {
   const RoomMember({required this.userId, required this.name});
@@ -58,7 +66,7 @@ class OnlineRoom {
   StreamSubscription<Map<String, Object?>>? _sub;
   final _changes = StreamController<RoomSnapshot>.broadcast();
   final _rejections = StreamController<IntentRejection>.broadcast();
-  final _completed = StreamController<MatchRecord>.broadcast();
+  final _completed = StreamController<CompletedGame>.broadcast();
   final _lastScoreSeenAt = <Team, (String, DateTime)>{};
 
   /// Latest known state; null until a client hears from the host.
@@ -69,7 +77,7 @@ class OnlineRoom {
   Stream<IntentRejection> get rejections => _rejections.stream;
 
   /// Games that ended (by rematch or by closing the room), once each.
-  Stream<MatchRecord> get completedGames => _completed.stream;
+  Stream<CompletedGame> get completedGames => _completed.stream;
 
   Seat? get mySeat => _snapshot?.seatOfUser(me.userId);
 
@@ -147,6 +155,24 @@ class OnlineRoom {
     if (seat == null || seat.userId == snap.hostUserId) return;
     await _update(
       snap.copyWith(seats: snap.seats.where((s) => s.index != index).toList()),
+    );
+  }
+
+  /// Host only: ranked or friendly games (lobby only).
+  Future<void> setRanked(bool ranked) async {
+    final snap = _requireHost();
+    if (snap.phase != RoomPhase.lobby) return;
+    await _update(snap.copyWith(ranked: ranked));
+  }
+
+  /// Host only: also count games for a group's leaderboard (lobby only).
+  Future<void> setGroup(RoomGroup? group) async {
+    final snap = _requireHost();
+    if (snap.phase != RoomPhase.lobby) return;
+    await _update(
+      group == null
+          ? snap.copyWith(clearGroup: true)
+          : snap.copyWith(group: group),
     );
   }
 
@@ -354,7 +380,15 @@ class OnlineRoom {
       final rematched = next.series.gamesPlayed > previous.series.gamesPlayed;
       final closed =
           next.phase == RoomPhase.closed && previous.phase != RoomPhase.closed;
-      if (rematched || closed) _completed.add(previous.toRecord(_clock()));
+      if (rematched || closed) {
+        _completed.add(
+          CompletedGame(
+            record: previous.toRecord(_clock()),
+            ranked: previous.ranked,
+            group: previous.group,
+          ),
+        );
+      }
     }
     _trackScores(next);
     _changes.add(next);

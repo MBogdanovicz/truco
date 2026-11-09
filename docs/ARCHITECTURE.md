@@ -132,7 +132,9 @@ ratings(scope_type enum('global','group'), scope_id uuid null,
         PK(scope_type, scope_id, subject_type, subject_key))
 ```
 
-Leaderboards are plain `SELECT … FROM ratings ORDER BY …` (by Elo or by win %), so the "simple stats" view and the Elo
+Ratings are updated incrementally by `finish_match` (global scope always, group scope when all four players are
+members). Global rows use the nil UUID as `scope_id`. Leaderboards read the `leaderboard` view (ratings + display
+names) with `ORDER BY elo` or by win rate (by Elo or by win %), so the "simple stats" view and the Elo
 view come from the same table.
 
 Writes to `matches` (final result), `match_events` and `ratings` happen only through a `finish_match` RPC

@@ -20,4 +20,7 @@ abstract final class Env {
 
   static String roomInviteLink(String code) =>
       '$webAppUrl/#/marcador/entrar?codigo=$code';
+
+  static String groupInviteLink(String code) =>
+      '$webAppUrl/#/grupos/entrar?codigo=$code';
 }

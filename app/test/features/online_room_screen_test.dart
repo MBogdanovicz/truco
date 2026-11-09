@@ -80,6 +80,12 @@ void main() {
       );
       await tester.pump();
       expect(find.text('K7Q2ZP'), findsOneWidget);
+      expect(find.text('Partida rankeada'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Esperando as duas duplas'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Esperando as duas duplas'), findsOneWidget);
 
       await tester.runAsync(() => host.addGuest(Team.b, 'Vô'));

@@ -6,6 +6,18 @@ import '../team.dart';
 
 enum RoomPhase { lobby, playing, closed }
 
+/// Group whose leaderboard the room's games also count for.
+class RoomGroup {
+  const RoomGroup({required this.id, required this.name});
+  final String id;
+  final String name;
+
+  Map<String, Object?> toJson() => {'id': id, 'name': name};
+
+  factory RoomGroup.fromJson(Map<String, Object?> json) =>
+      RoomGroup(id: json['id']! as String, name: json['name']! as String);
+}
+
 /// Full state of an online room, broadcast by the host after every change.
 ///
 /// Snapshots are small (a game has a few dozen events), so sending the whole
@@ -25,6 +37,8 @@ class RoomSnapshot {
     this.rematchVotes = const {},
     this.cooldownSeconds = 15,
     this.revision = 0,
+    this.ranked = true,
+    this.group,
   });
 
   final String roomId;
@@ -48,6 +62,11 @@ class RoomSnapshot {
 
   /// Increases with every host change, so clients can ignore stale copies.
   final int revision;
+
+  /// Ranked games update the leaderboards (when all four players have
+  /// accounts); friendly games are only kept in history.
+  final bool ranked;
+  final RoomGroup? group;
 
   static const seatsPerTeam = 2;
 
@@ -90,6 +109,9 @@ class RoomSnapshot {
     SeriesTally? series,
     DateTime? gameStartedAt,
     Map<Team, bool>? rematchVotes,
+    bool? ranked,
+    RoomGroup? group,
+    bool clearGroup = false,
   }) => RoomSnapshot(
     roomId: roomId,
     code: code,
@@ -104,6 +126,8 @@ class RoomSnapshot {
     rematchVotes: rematchVotes ?? this.rematchVotes,
     cooldownSeconds: cooldownSeconds,
     revision: revision + 1,
+    ranked: ranked ?? this.ranked,
+    group: clearGroup ? null : (group ?? this.group),
   );
 
   /// History record of the current game, once it has a winner.
@@ -134,6 +158,8 @@ class RoomSnapshot {
     'rematchVotes': {for (final e in rematchVotes.entries) e.key.name: e.value},
     'cooldownSeconds': cooldownSeconds,
     'revision': revision,
+    'ranked': ranked,
+    'group': group?.toJson(),
   };
 
   factory RoomSnapshot.fromJson(Map<String, Object?> json) {
@@ -160,6 +186,10 @@ class RoomSnapshot {
       },
       cooldownSeconds: json['cooldownSeconds']! as int,
       revision: json['revision']! as int,
+      ranked: json['ranked'] as bool? ?? true,
+      group: json['group'] == null
+          ? null
+          : RoomGroup.fromJson(map(json['group'])),
     );
   }
 }

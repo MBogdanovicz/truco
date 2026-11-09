@@ -66,11 +66,23 @@ class HomeScreen extends ConsumerWidget {
             subtitle: 'Partidas salvas neste aparelho.',
             onTap: () => context.go('/historico'),
           ),
-          const _HomeCard(
+          _HomeCard(
             icon: Icons.groups,
-            color: Colors.grey,
-            title: 'Grupos e ranking',
-            subtitle: 'Em breve.',
+            color: user == null ? Colors.grey : AppColors.teamA,
+            title: 'Grupos',
+            subtitle: user == null
+                ? 'Entre com sua conta para usar.'
+                : 'Ranking só entre os seus amigos.',
+            onTap: user == null ? null : () => context.go('/grupos'),
+          ),
+          _HomeCard(
+            icon: Icons.leaderboard,
+            color: user == null ? Colors.grey : AppColors.red,
+            title: 'Ranking geral',
+            subtitle: user == null
+                ? 'Entre com sua conta para usar.'
+                : 'Os melhores jogadores e duplas.',
+            onTap: user == null ? null : () => context.go('/ranking'),
           ),
           const _HomeCard(
             icon: Icons.style,

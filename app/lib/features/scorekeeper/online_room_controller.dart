@@ -114,7 +114,8 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     await room.start();
   }
 
-  Future<void> _onCompleted(OnlineRoom room, MatchRecord record) async {
+  Future<void> _onCompleted(OnlineRoom room, CompletedGame game) async {
+    final record = game.record;
     await ref.read(matchHistoryRepositoryProvider).add(record);
     ref.invalidate(matchHistoryProvider);
     if (room.isHost) {
@@ -124,6 +125,8 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
             record,
             transport: MatchTransportKind.online,
             roomId: room.roomId,
+            ranked: game.ranked,
+            groupId: game.group?.id,
           );
     }
   }

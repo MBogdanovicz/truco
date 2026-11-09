@@ -22,6 +22,8 @@ class ResultUploader {
     MatchRecord record, {
     required MatchTransportKind transport,
     String? roomId,
+    bool ranked = true,
+    String? groupId,
   }) async {
     if (_repo == null || !_isSignedIn()) return;
     final pending = await _load();
@@ -29,6 +31,8 @@ class ResultUploader {
       'record': record.toJson(),
       'transport': transport.name,
       'roomId': roomId,
+      'ranked': ranked,
+      'groupId': groupId,
     });
     await _save(pending);
     await flush();
@@ -51,6 +55,8 @@ class ResultUploader {
             item['transport']! as String,
           ),
           roomId: item['roomId'] as String?,
+          ranked: item['ranked'] as bool? ?? true,
+          groupId: item['groupId'] as String?,
         );
       } on Object catch (e) {
         debugPrint('Result upload failed, will retry: $e');

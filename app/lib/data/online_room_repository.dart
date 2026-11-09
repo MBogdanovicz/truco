@@ -78,12 +78,16 @@ class OnlineRoomRepository {
     MatchRecord record, {
     required MatchTransportKind transport,
     String? roomId,
+    bool ranked = true,
+    String? groupId,
   }) => _client.rpc(
     'finish_match',
     params: {
       'p_record': record.toJson(),
       'p_transport': transport.dbName,
       'p_room_id': roomId,
+      'p_mode': ranked ? 'ranked' : 'friendly',
+      'p_group_id': groupId,
     },
   );
 }

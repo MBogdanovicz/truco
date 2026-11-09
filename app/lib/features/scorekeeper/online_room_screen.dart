@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
+import '../../data/groups_repository.dart';
 import '../../domain/scorekeeper/match_engine.dart';
 import '../../domain/scorekeeper/match_record.dart';
 import '../../domain/scorekeeper/online/online_room.dart';
@@ -252,6 +253,7 @@ class _Lobby extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+        _RoomSettings(room: room, snap: snap),
         for (final team in Team.values)
           _TeamSeats(room: room, snap: snap, team: team, onAddGuest: _addGuest),
         const SizedBox(height: 16),
@@ -520,6 +522,67 @@ class _FinishedCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Ranked/friendly and group choice. Editable by the host, read-only for others.
+class _RoomSettings extends ConsumerWidget {
+  const _RoomSettings({required this.room, required this.snap});
+
+  final OnlineRoom room;
+  final RoomSnapshot snap;
+
+  Future<void> _pickGroup(BuildContext context, WidgetRef ref) async {
+    final groups = await ref.read(myGroupsProvider.future);
+    if (!context.mounted) return;
+    if (groups.isEmpty) {
+      showAppToast(context, 'Você ainda não participa de nenhum grupo.');
+      return;
+    }
+    final picked = await showAppDialog<RoomGroup?>(
+      context,
+      title: 'Contar para o ranking de qual grupo?',
+      message:
+          'A partida só conta para o grupo se os 4 jogadores forem membros dele. '
+          'Ela sempre conta para o ranking geral.',
+      actions: [
+        const AppDialogAction(label: 'Nenhum grupo', value: null),
+        for (final g in groups)
+          AppDialogAction(
+            label: g.name,
+            value: RoomGroup(id: g.id, name: g.name),
+          ),
+      ],
+    );
+    if (picked != snap.group) await room.setGroup(picked);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final host = room.isHost;
+    return Card(
+      child: Column(
+        children: [
+          SwitchListTile.adaptive(
+            title: const Text('Partida rankeada'),
+            subtitle: Text(
+              snap.ranked
+                  ? 'Conta para o ranking quando os 4 jogadores têm conta.'
+                  : 'Amistosa: fica só no histórico.',
+            ),
+            value: snap.ranked,
+            onChanged: host ? room.setRanked : null,
+          ),
+          if (snap.ranked)
+            ListTile(
+              title: const Text('Grupo'),
+              subtitle: Text(snap.group?.name ?? 'Só o ranking geral'),
+              trailing: host ? const Icon(Icons.chevron_right) : null,
+              onTap: host ? () => _pickGroup(context, ref) : null,
+            ),
+        ],
       ),
     );
   }

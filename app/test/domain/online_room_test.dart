@@ -119,7 +119,7 @@ void main() {
 
   test('rematch needs both teams and reports the finished game once', () async {
     final [p2, p3, _] = await fullTable();
-    final hostDone = <MatchRecord>[], p3Done = <MatchRecord>[];
+    final hostDone = <CompletedGame>[], p3Done = <CompletedGame>[];
     host.completedGames.listen(hostDone.add);
     p3.completedGames.listen(p3Done.add);
     await p2.addPoints(Team.a, 12);
@@ -133,8 +133,9 @@ void main() {
     expect(p3.snapshot!.gameId, 'game1');
     expect(p3.snapshot!.state.scoreOf(Team.a), 0);
     expect(p3.snapshot!.series.winsA, 1);
-    expect(hostDone.single.winner, Team.a);
-    expect(p3Done.single.id, 'game0');
+    expect(hostDone.single.record.winner, Team.a);
+    expect(hostDone.single.ranked, isTrue);
+    expect(p3Done.single.record.id, 'game0');
   });
 
   test('host marks for a team made only of guests', () async {
@@ -162,8 +163,23 @@ void main() {
     expect(late.snapshot!.state.scoreOf(Team.a), 6);
   });
 
+  test('host settings sync to everyone in the lobby', () async {
+    final p2 = joiner('p2', 'Bia');
+    await p2.start();
+    await settle();
+    await host.setRanked(false);
+    await host.setGroup(const RoomGroup(id: 'g1', name: 'Bar'));
+    await settle();
+    expect(p2.snapshot!.ranked, isFalse);
+    expect(p2.snapshot!.group!.name, 'Bar');
+    await host.setGroup(null);
+    await settle();
+    expect(p2.snapshot!.group, isNull);
+  });
+
   test('snapshot JSON round trip', () async {
     await fullTable();
+    await host.setGroup(const RoomGroup(id: 'g1', name: 'Bar'));
     await host.addPoints(Team.a, 3);
     final json = host.snapshot!.toJson();
     final back = RoomSnapshot.fromJson(json);
