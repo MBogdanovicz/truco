@@ -33,6 +33,7 @@ Release web builds use `--no-web-resources-cdn` so the PWA works offline.
 ### Supabase setup
 
 1. Apply the migrations in `supabase/migrations` (Supabase CLI `supabase db push` or the SQL editor).
-2. Auth → Providers → Email: enable email sign-in. In the "Magic Link" email template, include `{{ .Token }}`
-   so users receive the 6-digit code.
+2. Auth → Providers → Email: enable email sign-in. In both the "Confirm signup" (first login) and "Magic Link"
+   (later logins) email templates, include `{{ .Token }}` so users receive the 6-digit code. Custom SMTP is required
+   to edit templates (we use Resend).
 3. Add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub repository secrets for the keep-alive workflow.
