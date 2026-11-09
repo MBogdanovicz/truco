@@ -1,13 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/env.dart';
 import '../../data/auth_repository.dart';
 import '../../data/last_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../../ui/android_download_card.dart';
 import '../../ui/theme/app_theme.dart';
 import '../scorekeeper/online_room_controller.dart';
 import '../scorekeeper/scorekeeper_controller.dart';
@@ -78,21 +77,7 @@ class HomeScreen extends ConsumerWidget {
               subtitle: 'Saiu sem querer? Toque para entrar de novo.',
               onTap: () => context.go('/marcador/entrar?codigo=$lastRoom'),
             ),
-          // On the website opened from an Android phone, offer the app: it
-          // also has the offline "nearby" mode.
-          if (kIsWeb && defaultTargetPlatform == TargetPlatform.android)
-            _HomeCard(
-              icon: Icons.android,
-              color: AppColors.felt,
-              title: 'Baixe o app para Android',
-              subtitle:
-                  'Funciona melhor e marca partidas até sem internet. '
-                  'Depois de baixar, abra o arquivo para instalar.',
-              onTap: () => launchUrl(
-                Uri.parse(Env.androidApkUrl),
-                mode: LaunchMode.externalApplication,
-              ),
-            ),
+          const AndroidDownloadCard(),
           _HomeCard(
             icon: Icons.scoreboard,
             color: AppColors.felt,

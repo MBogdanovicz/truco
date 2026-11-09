@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/auth_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../../ui/android_download_card.dart';
 
 /// Email + 6-digit code login. The account is created on first sign-in.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -143,6 +144,10 @@ class _LoginState extends ConsumerState<LoginScreen> {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
+          if (!_codeSent && AndroidDownloadCard.isShown) ...[
+            const AndroidDownloadCard(),
+            const SizedBox(height: 16),
+          ],
           Text(
             _codeSent ? 'Confira seu e-mail' : 'Bem-vindo ao Truco!',
             style: theme.textTheme.headlineSmall,
