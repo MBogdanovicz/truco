@@ -71,6 +71,30 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     if (mounted) context.go('/');
   }
 
+  /// Lets someone join a game already in progress.
+  Future<void> _showCode(String code) async {
+    final copy = await showAppDialog<bool>(
+      context,
+      title: 'Sala $code',
+      message:
+          'Quem quiser entrar toca em "Entrar com código" e digita $code. '
+          'No iPhone, pelo site ${Env.webAppUrl.replaceFirst('https://', '')}.',
+      actions: const [
+        AppDialogAction(label: 'Fechar', value: false),
+        AppDialogAction(label: 'Copiar convite', value: true, isPrimary: true),
+      ],
+    );
+    if (copy != true) return;
+    await Clipboard.setData(
+      ClipboardData(
+        text:
+            'Entre na minha sala do Truco: ${Env.roomInviteLink(code)}\n'
+            'Código: $code',
+      ),
+    );
+    if (mounted) showAppToast(context, 'Convite copiado');
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(onlineRoomControllerProvider.select((v) => v?.lastRejection), (
@@ -123,6 +147,13 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
           backgroundColor: dark ? AppColors.feltDark : null,
           barColor: dark ? AppColors.feltDark : null,
           actions: [
+            if (dark && snap != null && !(view?.nearby ?? true))
+              IconButton(
+                tooltip: 'Código da sala',
+                color: Colors.white,
+                icon: const Icon(Icons.vpn_key_outlined),
+                onPressed: () => _showCode(snap.code),
+              ),
             if (dark)
               IconButton(
                 tooltip: 'Virar placar de cima',

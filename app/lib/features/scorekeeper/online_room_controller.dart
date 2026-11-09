@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/auth_repository.dart';
 import '../../data/ids.dart';
+import '../../data/last_room_repository.dart';
 import '../../data/match_history_repository.dart';
 import '../../data/nearby/nearby_link.dart';
 import '../../data/nearby/nearby_match_channel.dart';
@@ -174,6 +175,13 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
       await view.room.closeRoom();
     } else if (view.room.isHost) {
       await view.room.closeRoom();
+      _rememberedCode = null;
+      unawaited(
+        ref
+            .read(lastRoomRepositoryProvider)
+            .clear()
+            .then((_) => ref.invalidate(lastRoomCodeProvider)),
+      );
       unawaited(_repo.closeRoom(view.room.roomId).catchError((_) {}));
     }
     await _teardown();
@@ -184,7 +192,12 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     _room = room;
     state = OnlineRoomView(room: room, snapshot: room.snapshot, nearby: nearby);
     _subs
-      ..add(room.changes.listen((s) => state = state?.copyWith(snapshot: s)))
+      ..add(
+        room.changes.listen((s) {
+          state = state?.copyWith(snapshot: s);
+          if (!nearby) _rememberRoom(s);
+        }),
+      )
       ..add(
         room.rejections.listen(
           (r) => state = state?.copyWith(lastRejection: (r, DateTime.now())),
@@ -201,6 +214,23 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
         ),
       );
     await room.start();
+  }
+
+  String? _rememberedCode;
+
+  /// Keeps the room code for "Voltar para a sala" on the home screen.
+  void _rememberRoom(RoomSnapshot s) {
+    final repo = ref.read(lastRoomRepositoryProvider);
+    if (s.phase == RoomPhase.closed) {
+      if (_rememberedCode == null) return;
+      _rememberedCode = null;
+      unawaited(repo.clear().then((_) => ref.invalidate(lastRoomCodeProvider)));
+    } else if (_rememberedCode != s.code) {
+      _rememberedCode = s.code;
+      unawaited(
+        repo.save(s.code).then((_) => ref.invalidate(lastRoomCodeProvider)),
+      );
+    }
   }
 
   Future<void> _onCompleted(

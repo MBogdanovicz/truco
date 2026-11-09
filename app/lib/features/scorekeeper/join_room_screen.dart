@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/last_room_repository.dart';
 import '../../data/online_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import 'online_room_controller.dart';
@@ -53,6 +54,11 @@ class _JoinState extends ConsumerState<JoinRoomScreen> {
       if (mounted) context.go('/marcador/sala');
     } on RoomNotFound {
       setState(() => _error = 'Nenhuma sala aberta com esse código.');
+      final last = ref.read(lastRoomRepositoryProvider);
+      if (await last.load() == code) {
+        await last.clear();
+        ref.invalidate(lastRoomCodeProvider);
+      }
     } on Object catch (e) {
       debugPrint('Join failed: $e');
       setState(

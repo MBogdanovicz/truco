@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
 import '../../data/auth_repository.dart';
+import '../../data/last_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
 import '../scorekeeper/online_room_controller.dart';
@@ -18,6 +19,7 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider).value ?? auth.currentUser;
     final ongoing = ref.watch(scorekeeperControllerProvider);
     final room = ref.watch(onlineRoomControllerProvider);
+    final lastRoom = ref.watch(lastRoomCodeProvider).value;
     final theme = Theme.of(context);
 
     return AppScaffold(
@@ -50,6 +52,14 @@ class HomeScreen extends ConsumerWidget {
                   ? 'Conectando…'
                   : 'Sala ${room.snapshot!.code}',
               onTap: () => context.go('/marcador/sala'),
+            )
+          else if (lastRoom != null && user != null)
+            _HomeCard(
+              icon: Icons.wifi_tethering,
+              color: AppColors.red,
+              title: 'Voltar para a sala $lastRoom',
+              subtitle: 'Saiu sem querer? Toque para entrar de novo.',
+              onTap: () => context.go('/marcador/entrar?codigo=$lastRoom'),
             ),
           _HomeCard(
             icon: Icons.scoreboard,
