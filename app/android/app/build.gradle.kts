@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -29,21 +31,37 @@ android {
         versionName = flutter.versionName
     }
 
+    // Play Store builds (TRUCO_PLAY_SIGNING=1) are signed with the private
+    // upload key described by android/key.properties (never committed).
+    val keyProps = Properties().apply {
+        val f = rootProject.file("key.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    val playSigning = System.getenv("TRUCO_PLAY_SIGNING") == "1"
+
     signingConfigs {
         // Fixed key for test builds, committed on purpose so every CI/local
-        // build can update the previous install. NOT for Play Store releases:
-        // those will use a private upload key kept in CI secrets.
+        // build can update the previous install. NOT for Play Store releases.
         create("test") {
             storeFile = file("test-signing.keystore")
             storePassword = "trucotest"
             keyAlias = "truco-test"
             keyPassword = "trucotest"
         }
+        if (playSigning) {
+            check(keyProps.isNotEmpty()) { "android/key.properties is missing" }
+            create("upload") {
+                storeFile = file(keyProps.getProperty("storeFile"))
+                storePassword = keyProps.getProperty("storePassword")
+                keyAlias = keyProps.getProperty("keyAlias")
+                keyPassword = keyProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("test")
+            signingConfig = signingConfigs.getByName(if (playSigning) "upload" else "test")
         }
     }
 }

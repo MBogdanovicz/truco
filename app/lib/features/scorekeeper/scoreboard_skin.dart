@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/entitlements.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
 
 /// How the 12 tentos of a team are drawn.
@@ -366,7 +367,7 @@ Future<void> pickScoreboardSkin(BuildContext context, WidgetRef ref) async {
         .canChooseScoreboardLook;
     if (!allowed) {
       if (context.mounted) {
-        showAppToast(context, 'Os outros visuais são do Truco Premium.');
+        await showPremiumRequired(context, 'Escolher o visual do placar');
       }
       return;
     }

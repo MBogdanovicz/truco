@@ -8,6 +8,7 @@ import '../../data/entitlements.dart';
 import '../../data/last_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
+import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
 import '../scorekeeper/online_room_controller.dart';
 import '../scorekeeper/scorekeeper_controller.dart';
@@ -140,7 +141,15 @@ class HomeScreen extends ConsumerWidget {
                 IconButton(
                   tooltip: 'Mudar meu nome',
                   icon: Icon(context.icon(AppIcon.edit), size: 20),
-                  onPressed: () => _rename(context, ref, user.displayName!),
+                  onPressed: () async {
+                    final ent = await ref.read(entitlementsProvider.future);
+                    if (!context.mounted) return;
+                    if (!ent.canRename) {
+                      showPremiumRequired(context, 'Mudar o nome');
+                      return;
+                    }
+                    await _rename(context, ref, user.displayName!);
+                  },
                 ),
               ],
             ),

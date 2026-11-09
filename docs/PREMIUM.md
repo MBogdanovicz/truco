@@ -35,8 +35,20 @@ is enforced by the server as soon as the migration runs.
 ## Setup checklist
 
 1. Run `supabase/migrations/20261109080000_premium.sql` in the SQL editor.
-2. Release signing: create an upload keystore and sign release builds with
-   it (Play App Signing keeps the app signing key).
+2. Release signing: the upload keystore lives on Marcelo's Mac
+   (`~/.truco-signing/`, back it up), described by the git-ignored
+   `app/android/key.properties`. Build the Play bundle with:
+
+   ```sh
+   cd app && TRUCO_PLAY_SIGNING=1 flutter build appbundle --release \
+     --dart-define-from-file=config/supabase.json \
+     --dart-define=APP_COMMIT=$(git rev-parse --short=7 HEAD) \
+     --build-number=$(git rev-list --count HEAD)
+   ```
+
+   Sideloaded test APKs keep the committed test key, so the test phones can
+   still update in place (a phone with the Play version must uninstall it
+   first, the signatures differ).
 3. Play Console: create the app `com.mbogdanovicz.truco`, upload an AAB to
    the internal testing track, set up the payments profile, and create the
    two one-time products above.

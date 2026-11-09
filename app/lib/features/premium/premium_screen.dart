@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../data/auth_repository.dart';
@@ -30,6 +31,12 @@ class PremiumScreen extends ConsumerWidget {
       'Visuais do placar',
       'Madeira, palitos de fósforo e outros que vierem.',
     ),
+    (
+      AppIcon.online,
+      'Salas "cada um no seu celular"',
+      'Crie salas online. Para entrar na sala de alguém não precisa.',
+    ),
+    (AppIcon.edit, 'Mudar seu nome', 'Troque o nome quando quiser.'),
     (
       AppIcon.people,
       'Convide 3 amigos',
@@ -269,4 +276,20 @@ class _Invites extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Tells a free user that [feature] is premium and offers to see the offer.
+Future<void> showPremiumRequired(BuildContext context, String feature) async {
+  final see = await showAppDialog<bool>(
+    context,
+    title: 'Truco Premium',
+    message:
+        '$feature faz parte do Truco Premium: uma compra só, sem '
+        'assinatura.',
+    actions: const [
+      AppDialogAction(label: 'Agora não', value: false),
+      AppDialogAction(label: 'Ver o Premium', value: true, isPrimary: true),
+    ],
+  );
+  if (see == true && context.mounted) context.go('/premium');
 }

@@ -24,6 +24,12 @@ class Entitlements {
   /// Choosing a scoreboard look other than the default felt.
   bool get canChooseScoreboardLook => _unlocked;
 
+  /// Changing the display name after the first one (onboarding is free).
+  bool get canRename => _unlocked;
+
+  /// Creating "cada um no seu celular" online rooms (joining stays free).
+  bool get canHostOnline => _unlocked;
+
   /// Playing without an ad before each game.
   bool get adFree => _unlocked;
 }
