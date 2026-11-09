@@ -99,8 +99,8 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     } else if (snap == null) {
       body = const _Message(text: 'Conectando à sala…', progress: true);
     } else if (snap.phase == RoomPhase.lobby) {
-      title = 'Sala ${snap.code}';
-      body = _Lobby(room: view.room, snap: snap);
+      title = view.nearby ? 'Sala por perto' : 'Sala ${snap.code}';
+      body = _Lobby(room: view.room, snap: snap, nearby: view.nearby);
     } else {
       title = 'Marcador';
       dark = true;
@@ -168,10 +168,11 @@ class _Message extends StatelessWidget {
 }
 
 class _Lobby extends StatelessWidget {
-  const _Lobby({required this.room, required this.snap});
+  const _Lobby({required this.room, required this.snap, this.nearby = false});
 
   final OnlineRoom room;
   final RoomSnapshot snap;
+  final bool nearby;
 
   Future<void> _addGuest(BuildContext context, Team team) async {
     final name = TextEditingController();
@@ -209,64 +210,83 @@ class _Lobby extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Card(
-          color: AppColors.felt,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Text(
-                  'Código da sala',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: Colors.white70,
-                  ),
+        if (nearby)
+          Card(
+            color: AppColors.felt,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                room.isHost
+                    ? 'Sala aberta sem internet. Nos outros celulares, toque em '
+                          '"Novo marcador" > "Por perto, sem internet" e escolha '
+                          'esta sala. Deixe o app aberto.'
+                    : 'Conectado sem internet ao celular de quem criou a sala.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SelectableText(
-                        snap.code,
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 6,
+              ),
+            ),
+          )
+        else
+          Card(
+            color: AppColors.felt,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(
+                    'Código da sala',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SelectableText(
+                          snap.code,
+                          style: theme.textTheme.displaySmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 6,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'Copiar convite',
-                        color: Colors.white,
-                        icon: const Icon(Icons.copy),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(
-                              text:
-                                  'Entre na minha sala do Truco: '
-                                  '${Env.roomInviteLink(snap.code)}\n'
-                                  'Código: ${snap.code}',
-                            ),
-                          );
-                          showAppToast(context, 'Convite copiado');
-                        },
-                      ),
-                    ],
+                        IconButton(
+                          tooltip: 'Copiar convite',
+                          color: Colors.white,
+                          icon: const Icon(Icons.copy),
+                          onPressed: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text:
+                                    'Entre na minha sala do Truco: '
+                                    '${Env.roomInviteLink(snap.code)}\n'
+                                    'Código: ${snap.code}',
+                              ),
+                            );
+                            showAppToast(context, 'Convite copiado');
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  'No app, toque em "Entrar com código". No iPhone, abra '
-                  '${Env.webAppUrl.replaceFirst('https://', '')}. '
-                  'Ou copie o convite com o link e mande no grupo.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white70,
+                  Text(
+                    'No app, toque em "Entrar com código". No iPhone, abra '
+                    '${Env.webAppUrl.replaceFirst('https://', '')}. '
+                    'Ou copie o convite com o link e mande no grupo.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white70,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
         const SizedBox(height: 12),
         _RoomSettings(room: room, snap: snap),
         for (final team in Team.values)

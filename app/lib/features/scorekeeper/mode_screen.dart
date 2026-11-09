@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +40,7 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
   @override
   Widget build(BuildContext context) {
     final online = ref.watch(authRepositoryProvider).currentUser != null;
+    final android = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     return AppScaffold(
       title: 'Novo marcador',
       body: _busy
@@ -60,6 +62,15 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
                       : 'Entre com sua conta para usar.',
                   onTap: online ? _createRoom : null,
                 ),
+                if (android)
+                  _ModeCard(
+                    icon: Icons.bluetooth,
+                    title: 'Por perto, sem internet',
+                    subtitle: online
+                        ? 'Cada um no seu celular Android, na mesma mesa, sem precisar de internet.'
+                        : 'Entre com sua conta para usar.',
+                    onTap: online ? () => context.go('/marcador/perto') : null,
+                  ),
                 _ModeCard(
                   icon: Icons.login,
                   title: 'Entrar com código',

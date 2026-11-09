@@ -38,7 +38,7 @@ The app UI is in Brazilian Portuguese. All documentation and code comments are i
 | Navigation | go_router | Deep links (group invites, match join links) on both Android and Web. |
 | Backend | **Supabase** (Postgres, Auth, Realtime, Edge Functions) | Email OTP auth out of the box, realtime channels for live scores, SQL for leaderboards. |
 | Local storage | drift (SQLite) on Android, IndexedDB-backed drift on Web | Offline matches are stored locally and uploaded later. |
-| Local multiplayer | Android **Nearby Connections** (`nearby_connections` plugin) | Device-to-device without internet or a shared Wi-Fi network (§5.3). |
+| Local multiplayer | Android **Nearby Connections** (own Kotlin bridge, `NearbyBridge.kt`, over `play-services-nearby`) | Device-to-device without internet or a shared Wi-Fi network (§5.3). |
 | Ads | AdMob on Android (later phase) | Interstitial before each match on the free tier. |
 | Payments | Google Play Billing on Android; web payments for the PWA (later phase) | See §9. |
 | CI | GitHub Actions: analyze, test, build APK and web | Plus a Supabase keep-alive job (§8). |
@@ -234,7 +234,10 @@ has not heard the host for 10 s shows "Sem conexão" and cannot mark; the host i
 link is down. So with two devices, the one left behind takes over after 15 s and keeps marking alone. Non-host
 devices ping the host every 5 s; when every app user of a team has been quiet for 10 s, the host may mark for that team
 (as it does for a team of guests) until one of them is back. In
-`nearby` mode the match pauses until the host reconnects.
+`nearby` mode the match pauses until the host reconnects. Nearby rooms reuse `OnlineRoom` with `handOff: false`: the host's `NearbyHostChannel` is a
+star hub that relays each player's message to the others, and a `NearbyClientChannel` rediscovers the same room id
+and reconnects after a drop. Rooms are advertised as `T1|<roomId>|<hostName>` and are not stored in the database;
+finished games go through the offline upload queue with `transport = nearby`.
 
 Finished games are uploaded by the host through the `finish_match` RPC (idempotent, recomputes the score from the event
 log). Uploads are queued on the device while offline and retried on the next app start. Every device also keeps the game

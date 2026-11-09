@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/auth_repository.dart';
 import '../../data/ids.dart';
 import '../../data/match_history_repository.dart';
+import '../../data/nearby/nearby_link.dart';
+import '../../data/nearby/nearby_match_channel.dart';
 import '../../data/online_room_repository.dart';
 import '../../data/result_uploader.dart';
 import '../../domain/scorekeeper/match_engine.dart';
@@ -17,12 +19,16 @@ import '../../domain/scorekeeper/team.dart';
 class OnlineRoomView {
   const OnlineRoomView({
     required this.room,
+    this.nearby = false,
     this.snapshot,
     this.lastRejection,
     this.lastNotice,
   });
 
   final OnlineRoom room;
+
+  /// Played over Nearby Connections (no internet) instead of Supabase.
+  final bool nearby;
 
   /// Null while a joining device waits for the host's first snapshot.
   final RoomSnapshot? snapshot;
@@ -39,6 +45,7 @@ class OnlineRoomView {
     (RoomNotice, DateTime)? lastNotice,
   }) => OnlineRoomView(
     room: room,
+    nearby: nearby,
     snapshot: snapshot ?? this.snapshot,
     lastRejection: lastRejection ?? this.lastRejection,
     lastNotice: lastNotice ?? this.lastNotice,
@@ -74,18 +81,7 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
       channel: channel,
       me: me,
       newId: newUuid,
-      initial: RoomSnapshot(
-        roomId: created.id,
-        code: created.code,
-        hostUserId: me.userId,
-        gameId: newUuid(),
-        phase: RoomPhase.lobby,
-        teamNames: const {Team.a: 'Dupla 1', Team.b: 'Dupla 2'},
-        seats: [Seat(index: 0, team: Team.a, name: me.name, userId: me.userId)],
-        events: const [],
-        series: SeriesTally(id: created.id),
-        gameStartedAt: DateTime.now(),
-      ),
+      initial: _initial(me: me, roomId: created.id, code: created.code),
     );
     await _attach(room);
   }
@@ -95,19 +91,82 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     await leave();
     final roomId = await _repo.findOpenRoom(code);
     final channel = await _repo.connect(roomId);
-    await _attach(OnlineRoom.join(
+    await _attach(
+      OnlineRoom.join(
         channel: channel,
         me: _me(),
         roomId: roomId,
         newId: newUuid,
-      ),);
+      ),
+    );
+  }
+
+  RoomSnapshot _initial({
+    required RoomMember me,
+    required String roomId,
+    required String code,
+  }) => RoomSnapshot(
+    roomId: roomId,
+    code: code,
+    hostUserId: me.userId,
+    gameId: newUuid(),
+    phase: RoomPhase.lobby,
+    teamNames: const {Team.a: 'Dupla 1', Team.b: 'Dupla 2'},
+    seats: [Seat(index: 0, team: Team.a, name: me.name, userId: me.userId)],
+    events: const [],
+    series: SeriesTally(id: roomId),
+    gameStartedAt: DateTime.now(),
+  );
+
+  /// Opens a room for phones at the same table, without internet.
+  Future<void> createNearby() async {
+    await leave();
+    final me = _me();
+    final roomId = newUuid();
+    final channel = await NearbyHostChannel.open(
+      ref.read(nearbyLinkProvider),
+      roomId: roomId,
+      hostName: me.name,
+    );
+    final room = OnlineRoom.host(
+      channel: channel,
+      me: me,
+      newId: newUuid,
+      handOff: false,
+      initial: _initial(me: me, roomId: roomId, code: 'PERTO'),
+    );
+    await _attach(room, nearby: true);
+  }
+
+  /// Joins a room found nearby. Throws a TimeoutException if it can't
+  /// connect.
+  Future<void> joinNearby(NearbyRoomAd ad) async {
+    await leave();
+    final me = _me();
+    final channel = await NearbyClientChannel.open(
+      ref.read(nearbyLinkProvider),
+      room: ad,
+      myName: me.name,
+    );
+    await _attach(
+      OnlineRoom.join(
+        channel: channel,
+        me: me,
+        roomId: ad.roomId,
+        newId: newUuid,
+        handOff: false,
+      ),
+      nearby: true,
+    );
   }
 
   /// Leaves the room. The host closes it for everyone.
   Future<void> leave() async {
     final view = state;
     if (view == null) return;
-    if (view.room.isHost) {
+    if (view.room.isHost && view.nearby) {
+      await view.room.closeRoom();
+    } else if (view.room.isHost) {
       await view.room.closeRoom();
       unawaited(_repo.closeRoom(view.room.roomId).catchError((_) {}));
     }
@@ -115,9 +174,9 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     state = null;
   }
 
-  Future<void> _attach(OnlineRoom room) async {
+  Future<void> _attach(OnlineRoom room, {bool nearby = false}) async {
     _room = room;
-    state = OnlineRoomView(room: room, snapshot: room.snapshot);
+    state = OnlineRoomView(room: room, snapshot: room.snapshot, nearby: nearby);
     _subs
       ..add(room.changes.listen((s) => state = state?.copyWith(snapshot: s)))
       ..add(
@@ -130,11 +189,19 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
           (n) => state = state?.copyWith(lastNotice: (n, DateTime.now())),
         ),
       )
-      ..add(room.completedGames.listen((record) => _onCompleted(room, record)));
+      ..add(
+        room.completedGames.listen(
+          (record) => _onCompleted(room, record, nearby: nearby),
+        ),
+      );
     await room.start();
   }
 
-  Future<void> _onCompleted(OnlineRoom room, CompletedGame game) async {
+  Future<void> _onCompleted(
+    OnlineRoom room,
+    CompletedGame game, {
+    required bool nearby,
+  }) async {
     final record = game.record;
     await ref.read(matchHistoryRepositoryProvider).add(record);
     ref.invalidate(matchHistoryProvider);
@@ -143,8 +210,11 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
           .read(resultUploaderProvider)
           .submit(
             record,
-            transport: MatchTransportKind.online,
-            roomId: room.roomId,
+            // Nearby rooms are not registered in the database.
+            transport: nearby
+                ? MatchTransportKind.nearby
+                : MatchTransportKind.online,
+            roomId: nearby ? null : room.roomId,
             ranked: game.ranked,
             groupId: game.group?.id,
           );
@@ -161,6 +231,9 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     await room?.dispose();
   }
 }
+
+/// The device's Nearby Connections link (Android only).
+final nearbyLinkProvider = Provider<NearbyLink>((ref) => PlatformNearbyLink());
 
 final onlineRoomControllerProvider =
     NotifierProvider<OnlineRoomController, OnlineRoomView?>(

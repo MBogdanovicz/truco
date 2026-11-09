@@ -60,6 +60,7 @@ class OnlineRoom {
     required RoomSnapshot initial,
     required String Function() newId,
     DateTime Function()? clock,
+    this.handOff = true,
   }) : _isHost = true,
        roomId = initial.roomId,
        _channel = channel,
@@ -73,6 +74,7 @@ class OnlineRoom {
     required this.roomId,
     String Function()? newId,
     DateTime Function()? clock,
+    this.handOff = true,
   }) : _isHost = false,
        _channel = channel,
        _newId = newId ?? _noIds,
@@ -81,6 +83,11 @@ class OnlineRoom {
   static String _noIds() => throw StateError('Only the host creates ids');
 
   final RoomMember me;
+
+  /// Whether another device may take over when the host goes silent. Off
+  /// for Nearby rooms: the host is the hub every message goes through, so
+  /// the room waits for it to come back instead.
+  final bool handOff;
   bool _isHost;
 
   /// Whether this device runs the room now (it can change by hand-off).
@@ -174,6 +181,7 @@ class OnlineRoom {
       _pingedAt = now;
       await _channel.send({'type': 'ping', 'userId': me.userId});
     }
+    if (!handOff) return;
     final rank = _successorRank(snap);
     if (rank == null) return;
     final silent = now.difference(_heardFromHostAt ?? now);

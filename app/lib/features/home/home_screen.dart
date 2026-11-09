@@ -105,9 +105,7 @@ class HomeScreen extends ConsumerWidget {
             child: Text(
               'Versão ${Env.commit}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withValues(
-                  alpha: 0.6,
-                ),
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               ),
               textAlign: TextAlign.center,
             ),

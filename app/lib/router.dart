@@ -12,6 +12,7 @@ import 'features/ranking/ranking_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/scorekeeper/join_room_screen.dart';
 import 'features/scorekeeper/mode_screen.dart';
+import 'features/scorekeeper/nearby_screen.dart';
 import 'features/scorekeeper/online_room_screen.dart';
 import 'features/scorekeeper/scoreboard_screen.dart';
 import 'features/scorekeeper/setup_screen.dart';
@@ -87,6 +88,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => JoinRoomScreen(
               initialCode: state.uri.queryParameters['codigo'],
             ),
+          ),
+          GoRoute(
+            path: 'marcador/perto',
+            builder: (_, _) => const NearbyScreen(),
           ),
           GoRoute(
             path: 'marcador/sala',
