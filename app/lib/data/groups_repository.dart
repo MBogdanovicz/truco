@@ -237,6 +237,7 @@ class GroupsRepository {
       );
     } on PostgrestException catch (e) {
       if (e.message.contains('group_not_found')) throw GroupNotFound();
+      if (e.message.contains('group_limit_reached')) throw GroupLimitReached();
       rethrow;
     }
   }

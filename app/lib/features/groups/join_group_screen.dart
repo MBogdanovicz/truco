@@ -52,6 +52,10 @@ class _JoinGroupState extends ConsumerState<JoinGroupScreen> {
       if (mounted) context.go('/grupos/${group.id}');
     } on GroupNotFound {
       setState(() => _error = 'Nenhum grupo com esse código.');
+    } on GroupLimitReached {
+      setState(
+        () => _error = 'Na versão grátis você pode estar em até 2 grupos. Com o Premium, sem limite.',
+      );
     } on Object {
       setState(
         () => _error = 'Não foi possível entrar. Verifique sua internet.',

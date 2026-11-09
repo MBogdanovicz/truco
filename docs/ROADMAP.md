@@ -18,7 +18,7 @@ M2 is built first because it is useful on its own and exercises the domain layer
 
 ## Later
 
-* Premium tier: Play Billing, entitlements, limits, AdMob interstitials. Choosing the scoreboard look (felt, wood, matches, colors) becomes premium-only; free keeps the felt look.
+* Premium tier: in progress, see docs/PREMIUM.md (one-time purchase R$ 7,99, invites R$ 1,99). Remaining: Play Console setup, AdMob ads for free users.
 * PWA payments.
 * Phase 2: the truco game (engine, online/local play, ranked/friendly, championships).
 

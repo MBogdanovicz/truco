@@ -13,7 +13,8 @@ class Entitlements {
   /// until then every feature stays open (and testable).
   static const gatesEnabled = false;
 
-  /// Groups a free account may own (also enforced by `create_group`).
+  /// Groups a free account may be in, created or joined (enforced by the
+  /// server in `create_group` and `join_group`).
   static const freeGroupLimit = 2;
 
   final bool isPremium;

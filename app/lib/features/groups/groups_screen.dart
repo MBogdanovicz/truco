@@ -106,7 +106,10 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
       if (mounted) context.go('/grupos/${group.id}');
     } on GroupLimitReached {
       if (mounted) {
-        showAppToast(context, 'Na versão grátis você pode criar até 2 grupos.');
+        showAppToast(
+          context,
+          'Na versão grátis você pode estar em até 2 grupos. Com o Premium, sem limite.',
+        );
       }
     } on Object {
       if (mounted) showAppToast(context, 'Não foi possível criar o grupo.');

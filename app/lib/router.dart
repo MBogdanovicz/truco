@@ -8,6 +8,7 @@ import 'features/groups/group_detail_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/groups/join_group_screen.dart';
 import 'features/history/history_screen.dart';
+import 'features/premium/premium_screen.dart';
 import 'features/ranking/ranking_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/scorekeeper/join_room_screen.dart';
@@ -105,6 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
           GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
+          GoRoute(path: 'premium', builder: (_, _) => const PremiumScreen()),
           // Nested so the back button of a group goes to the group list.
           GoRoute(
             path: 'grupos',

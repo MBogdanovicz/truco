@@ -34,7 +34,17 @@ class GroupDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _join(BuildContext context, WidgetRef ref, Group group) async {
-    await ref.read(groupsRepositoryProvider)!.join(groupId: group.id);
+    try {
+      await ref.read(groupsRepositoryProvider)!.join(groupId: group.id);
+    } on GroupLimitReached {
+      if (context.mounted) {
+        showAppToast(
+          context,
+          'Na versão grátis você pode estar em até 2 grupos. Com o Premium, sem limite.',
+        );
+      }
+      return;
+    }
     ref
       ..invalidate(myGroupsProvider)
       ..invalidate(groupProvider(group.id))

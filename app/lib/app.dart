@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/premium_repository.dart';
 import 'router.dart';
 import 'ui/adaptive/platform_style.dart';
 import 'ui/theme/app_theme.dart';
@@ -14,6 +15,8 @@ class TrucoApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keeps the Play purchase listener alive for the whole session.
+    ref.listen(premiumStoreProvider, (_, _) {});
     final effective = style ?? defaultPlatformStyle;
     final cupertino = effective == AppPlatformStyle.cupertino;
     return PlatformStyleScope(

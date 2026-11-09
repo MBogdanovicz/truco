@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
 import '../../data/auth_repository.dart';
+import '../../data/entitlements.dart';
 import '../../data/last_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
@@ -22,6 +23,7 @@ class HomeScreen extends ConsumerWidget {
     final room = ref.watch(onlineRoomControllerProvider);
     final lastRoom = ref.watch(lastRoomCodeProvider).value;
     final hasAccount = user != null && !user.isGuest;
+    final premium = ref.watch(entitlementsProvider).value?.isPremium ?? false;
     final theme = Theme.of(context);
 
     final menu = <_MenuItem>[
@@ -85,6 +87,16 @@ class HomeScreen extends ConsumerWidget {
             : 'Os melhores jogadores e duplas.',
         onTap: user == null ? null : () => context.go('/ranking'),
       ),
+      if (hasAccount)
+        _MenuItem(
+          icon: AppIcon.trophy,
+          color: AppColors.gold,
+          title: premium ? 'Premium ativo' : 'Truco Premium',
+          subtitle: premium
+              ? 'Obrigado! Convide seus amigos com desconto.'
+              : 'Sem anúncios, grupos sem limite e visuais do placar.',
+          onTap: () => context.go('/premium'),
+        ),
       const _MenuItem(
         icon: AppIcon.cards,
         color: AppColors.purple,
