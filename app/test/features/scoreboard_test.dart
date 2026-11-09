@@ -43,6 +43,8 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(find.text('Começar partida'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Começar partida'));
       await tester.pumpAndSettle();
 

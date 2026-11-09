@@ -24,121 +24,156 @@ class HomeScreen extends ConsumerWidget {
     final hasAccount = user != null && !user.isGuest;
     final theme = Theme.of(context);
 
+    final menu = <_MenuItem>[
+      if (room != null)
+        _MenuItem(
+          icon: AppIcon.online,
+          color: AppColors.red,
+          title: 'Voltar para a sala',
+          subtitle: room.snapshot == null
+              ? 'Conectando…'
+              : 'Sala ${room.snapshot!.code}',
+          onTap: () => context.go('/marcador/sala'),
+        )
+      else if (lastRoom != null && user != null)
+        _MenuItem(
+          icon: AppIcon.online,
+          color: AppColors.red,
+          title: 'Voltar para a sala $lastRoom',
+          subtitle: 'Saiu sem querer? Toque para entrar de novo.',
+          onTap: () => context.go('/marcador/entrar?codigo=$lastRoom'),
+        ),
+      if (AndroidDownloadCard.isShown)
+        _MenuItem(
+          icon: AppIcon.download,
+          color: AppColors.felt,
+          title: 'Baixe o app para Android',
+          subtitle: AndroidDownloadCard.subtitle,
+          onTap: AndroidDownloadCard.open,
+        ),
+      _MenuItem(
+        icon: AppIcon.scoreboard,
+        color: AppColors.felt,
+        title: ongoing == null ? 'Novo marcador' : 'Continuar partida',
+        subtitle: 'Marque os tentos de uma partida com baralho de verdade.',
+        onTap: () => context.go(
+          ongoing == null ? '/marcador/novo' : '/marcador/partida',
+        ),
+      ),
+      _MenuItem(
+        icon: AppIcon.history,
+        color: AppColors.orange,
+        title: 'Histórico',
+        subtitle: 'Partidas salvas neste aparelho.',
+        onTap: () => context.go('/historico'),
+      ),
+      _MenuItem(
+        icon: AppIcon.groups,
+        color: AppColors.blue,
+        title: 'Grupos',
+        subtitle: hasAccount
+            ? 'Ranking só entre os seus amigos.'
+            : 'Entre com seu e-mail para usar.',
+        onTap: hasAccount ? () => context.go('/grupos') : null,
+      ),
+      _MenuItem(
+        icon: AppIcon.leaderboard,
+        color: AppColors.gold,
+        title: 'Ranking geral',
+        subtitle: user == null
+            ? 'Entre com sua conta para usar.'
+            : 'Os melhores jogadores e duplas.',
+        onTap: user == null ? null : () => context.go('/ranking'),
+      ),
+      const _MenuItem(
+        icon: AppIcon.cards,
+        color: AppColors.purple,
+        title: 'Jogar truco',
+        subtitle: 'Em breve.',
+      ),
+    ];
+    final muted = theme.textTheme.bodySmall?.copyWith(
+      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+    );
+
     return AppScaffold(
       title: 'Truco',
+      largeTitle: true,
+      maxWidth: 1040,
       actions: [
         if (user != null)
           IconButton(
             tooltip: user.isGuest
                 ? 'Sair (e entrar com e-mail)'
                 : 'Sair da conta',
-            icon: const Icon(Icons.logout),
+            icon: Icon(context.icon(AppIcon.logout)),
             onPressed: () => auth.signOut(),
           ),
       ],
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (user?.displayName != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Olá, ${user!.displayName}!',
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.headlineSmall,
+      children: [
+        if (user?.displayName != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    'Olá, ${user!.displayName}!',
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  IconButton(
-                    tooltip: 'Mudar meu nome',
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _rename(context, ref, user.displayName!),
-                  ),
-                ],
-              ),
-            ),
-          if (room != null)
-            _HomeCard(
-              icon: Icons.wifi_tethering,
-              color: AppColors.red,
-              title: 'Voltar para a sala',
-              subtitle: room.snapshot == null
-                  ? 'Conectando…'
-                  : 'Sala ${room.snapshot!.code}',
-              onTap: () => context.go('/marcador/sala'),
-            )
-          else if (lastRoom != null && user != null)
-            _HomeCard(
-              icon: Icons.wifi_tethering,
-              color: AppColors.red,
-              title: 'Voltar para a sala $lastRoom',
-              subtitle: 'Saiu sem querer? Toque para entrar de novo.',
-              onTap: () => context.go('/marcador/entrar?codigo=$lastRoom'),
-            ),
-          const AndroidDownloadCard(),
-          _HomeCard(
-            icon: Icons.scoreboard,
-            color: AppColors.felt,
-            title: ongoing == null ? 'Novo marcador' : 'Continuar partida',
-            subtitle: 'Marque os tentos de uma partida com baralho de verdade.',
-            onTap: () => context.go(
-              ongoing == null ? '/marcador/novo' : '/marcador/partida',
+                ),
+                IconButton(
+                  tooltip: 'Mudar meu nome',
+                  icon: Icon(context.icon(AppIcon.edit), size: 20),
+                  onPressed: () => _rename(context, ref, user.displayName!),
+                ),
+              ],
             ),
           ),
-          _HomeCard(
-            icon: Icons.history,
-            color: AppColors.gold,
-            title: 'Histórico',
-            subtitle: 'Partidas salvas neste aparelho.',
-            onTap: () => context.go('/historico'),
-          ),
-          _HomeCard(
-            icon: Icons.groups,
-            color: hasAccount ? AppColors.teamA : Colors.grey,
-            title: 'Grupos',
-            subtitle: hasAccount
-                ? 'Ranking só entre os seus amigos.'
-                : 'Entre com seu e-mail para usar.',
-            onTap: hasAccount ? () => context.go('/grupos') : null,
-          ),
-          _HomeCard(
-            icon: Icons.leaderboard,
-            color: user == null ? Colors.grey : AppColors.red,
-            title: 'Ranking geral',
-            subtitle: user == null
-                ? 'Entre com sua conta para usar.'
-                : 'Os melhores jogadores e duplas.',
-            onTap: user == null ? null : () => context.go('/ranking'),
-          ),
-          const _HomeCard(
-            icon: Icons.style,
-            color: Colors.grey,
-            title: 'Jogar truco',
-            subtitle: 'Em breve.',
-          ),
-          if (!auth.isAvailable)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Text(
-                'Modo offline: login, grupos e ranking ainda não estão configurados nesta versão.',
-                style: theme.textTheme.bodySmall,
-                textAlign: TextAlign.center,
-              ),
-            ),
+        LayoutBuilder(
+          builder: (context, constraints) =>
+              constraints.maxWidth >= AppBreakpoints.medium
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _MenuGrid(items: menu, width: constraints.maxWidth),
+                )
+              : AppSection(
+                  children: [
+                    for (final m in menu)
+                      AppTile(
+                        leading: AppTileIcon(
+                          m.icon,
+                          color: m.onTap == null ? Colors.grey : m.color,
+                        ),
+                        title: m.title,
+                        subtitle: m.subtitle,
+                        enabled: m.onTap != null,
+                        onTap: m.onTap,
+                      ),
+                  ],
+                ),
+        ),
+        if (!auth.isAvailable)
           Padding(
-            padding: const EdgeInsets.only(top: 24),
+            padding: const EdgeInsets.only(top: 16),
             child: Text(
-              'Versão ${Env.commit}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-              ),
+              'Modo offline: login, grupos e ranking ainda não estão configurados nesta versão.',
+              style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
           ),
-        ],
-      ),
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Text(
+            'Versão ${Env.commit}',
+            style: muted,
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -185,8 +220,8 @@ Future<void> _rename(
   }
 }
 
-class _HomeCard extends StatelessWidget {
-  const _HomeCard({
+class _MenuItem {
+  const _MenuItem({
     required this.icon,
     required this.color,
     required this.title,
@@ -194,27 +229,78 @@ class _HomeCard extends StatelessWidget {
     this.onTap,
   });
 
-  final IconData icon;
+  final AppIcon icon;
   final Color color;
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
+}
+
+/// Tablet and desktop home: the menu as a grid of cards.
+class _MenuGrid extends StatelessWidget {
+  const _MenuGrid({required this.items, required this.width});
+
+  final List<_MenuItem> items;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        enabled: onTap != null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: color,
-          child: Icon(icon, color: Colors.white),
+    const gap = 16.0;
+    final columns = width >= AppBreakpoints.expanded ? 3 : 2;
+    final tileWidth = (width - gap * (columns - 1)) / columns;
+    return Wrap(
+      spacing: gap,
+      runSpacing: gap,
+      children: [
+        for (final m in items)
+          SizedBox(
+            width: tileWidth,
+            height: 168,
+            child: _MenuCard(item: m),
+          ),
+      ],
+    );
+  }
+}
+
+class _MenuCard extends StatelessWidget {
+  const _MenuCard({required this.item});
+
+  final _MenuItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final enabled = item.onTap != null;
+    return AppCard(
+      onTap: item.onTap,
+      padding: const EdgeInsets.all(20),
+      child: Opacity(
+        opacity: enabled ? 1 : 0.45,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppTileIcon(item.icon, color: enabled ? item.color : Colors.grey),
+            const Spacer(),
+            Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              item.subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: onTap == null ? null : const Icon(Icons.chevron_right),
-        onTap: onTap,
       ),
     );
   }

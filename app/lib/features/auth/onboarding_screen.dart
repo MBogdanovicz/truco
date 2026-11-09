@@ -48,37 +48,33 @@ class _OnboardingState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Seu nome',
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
+      maxWidth: 480,
+      children: [
+        Text(
+          'Como você quer ser chamado?',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        const Text('Esse nome aparece para os outros jogadores e no ranking.'),
+        const SizedBox(height: 24),
+        AppTextField(
+          controller: _name,
+          label: 'Nome',
+          autofocus: true,
+          maxLength: 24,
+          textCapitalization: TextCapitalization.words,
+          onSubmitted: (_) => _save(),
+        ),
+        if (_error != null)
           Text(
-            'Como você quer ser chamado?',
-            style: Theme.of(context).textTheme.headlineSmall,
+            _error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Esse nome aparece para os outros jogadores e no ranking.',
-          ),
-          const SizedBox(height: 24),
-          AppTextField(
-            controller: _name,
-            label: 'Nome',
-            autofocus: true,
-            maxLength: 24,
-            textCapitalization: TextCapitalization.words,
-            onSubmitted: (_) => _save(),
-          ),
-          if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          const SizedBox(height: 24),
-          _busy
-              ? const Center(child: AppProgress())
-              : AppButton(label: 'Continuar', onPressed: _save),
-        ],
-      ),
+        const SizedBox(height: 24),
+        _busy
+            ? const Center(child: AppProgress())
+            : AppButton(label: 'Continuar', onPressed: _save),
+      ],
     );
   }
 }

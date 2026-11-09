@@ -120,17 +120,18 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
           title: 'Marcador',
           backgroundColor: AppColors.feltDark,
           barColor: AppColors.feltDark,
+          maxWidth: null,
           actions: [
             IconButton(
               tooltip: 'Virar placar de cima',
               color: Colors.white,
-              icon: const Icon(Icons.screen_rotation_alt),
+              icon: Icon(context.icon(AppIcon.flip)),
               onPressed: () => setState(() => _flipTop = !_flipTop),
             ),
             IconButton(
               tooltip: 'Sair',
               color: Colors.white,
-              icon: const Icon(Icons.close),
+              icon: Icon(context.icon(AppIcon.close)),
               onPressed: _confirmLeave,
             ),
           ],

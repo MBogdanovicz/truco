@@ -44,79 +44,71 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
     // Guests (no e-mail) can join rooms but not open them.
     final canHost = me != null && !me.isGuest;
     final android = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    if (_busy) {
+      return const AppScaffold(
+        title: 'Novo marcador',
+        body: Center(child: AppProgress()),
+      );
+    }
+    final login = 'Entre com sua conta para usar.';
     return AppScaffold(
       title: 'Novo marcador',
-      body: _busy
-          ? const Center(child: AppProgress())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _ModeCard(
-                  icon: Icons.phone_android,
-                  title: 'Um aparelho só',
-                  subtitle: 'Um celular na mesa marca os pontos das duas duplas. Funciona sem internet.',
-                  onTap: () => context.go('/marcador/novo/local'),
-                ),
-                _ModeCard(
-                  icon: Icons.wifi_tethering,
-                  title: 'Cada um no seu celular',
-                  subtitle: canHost
-                      ? 'Crie uma sala e passe o código. Cada dupla marca os seus tentos. Precisa de internet.'
-                      : online
-                      ? 'Para criar salas, entre com seu e-mail.'
-                      : 'Entre com sua conta para usar.',
-                  onTap: canHost ? _createRoom : null,
-                ),
-                if (android)
-                  _ModeCard(
-                    icon: Icons.bluetooth,
-                    title: 'Por perto, sem internet',
-                    subtitle: online
-                        ? 'Cada um no seu celular Android, na mesma mesa, sem precisar de internet.'
-                        : 'Entre com sua conta para usar.',
-                    onTap: online ? () => context.go('/marcador/perto') : null,
-                  ),
-                _ModeCard(
-                  icon: Icons.login,
-                  title: 'Entrar com código',
-                  subtitle: online
-                      ? 'Alguém já criou a sala? Digite o código.'
-                      : 'Entre com sua conta para usar.',
-                  onTap: online ? () => context.go('/marcador/entrar') : null,
-                ),
-              ],
+      children: [
+        AppSection(
+          header: 'Como vocês vão marcar?',
+          children: [
+            AppTile(
+              leading: const AppTileIcon(AppIcon.phone, color: AppColors.felt),
+              title: 'Um aparelho só',
+              subtitle: 'Um celular na mesa marca os pontos das duas duplas. Funciona sem internet.',
+              onTap: () => context.go('/marcador/novo/local'),
             ),
+            AppTile(
+              leading: AppTileIcon(
+                AppIcon.online,
+                color: canHost ? AppColors.blue : Colors.grey,
+              ),
+              title: 'Cada um no seu celular',
+              subtitle: canHost
+                  ? 'Crie uma sala e passe o código. Cada dupla marca os seus tentos. Precisa de internet.'
+                  : online
+                  ? 'Para criar salas, entre com seu e-mail.'
+                  : login,
+              enabled: canHost,
+              onTap: _createRoom,
+            ),
+            if (android)
+              AppTile(
+                leading: AppTileIcon(
+                  AppIcon.bluetooth,
+                  color: online ? AppColors.purple : Colors.grey,
+                ),
+                title: 'Por perto, sem internet',
+                subtitle: online
+                    ? 'Cada um no seu celular Android, na mesma mesa, sem precisar de internet.'
+                    : login,
+                enabled: online,
+                onTap: () => context.go('/marcador/perto'),
+              ),
+          ],
+        ),
+        AppSection(
+          children: [
+            AppTile(
+              leading: AppTileIcon(
+                AppIcon.login,
+                color: online ? AppColors.orange : Colors.grey,
+              ),
+              title: 'Entrar com código',
+              subtitle: online
+                  ? 'Alguém já criou a sala? Digite o código.'
+                  : login,
+              enabled: online,
+              onTap: () => context.go('/marcador/entrar'),
+            ),
+          ],
+        ),
+      ],
     );
   }
-}
-
-class _ModeCard extends StatelessWidget {
-  const _ModeCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
-    child: ListTile(
-      enabled: onTap != null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
-        backgroundColor: onTap == null ? Colors.grey : AppColors.felt,
-        child: Icon(icon, color: Colors.white),
-      ),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: onTap == null ? null : const Icon(Icons.chevron_right),
-      onTap: onTap,
-    ),
-  );
 }

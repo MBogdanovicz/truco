@@ -10,13 +10,10 @@ enum LeaderboardSort { elo, winRate }
 
 /// Players or duos of one scope, sortable by Elo or win rate.
 class LeaderboardView extends ConsumerStatefulWidget {
-  const LeaderboardView({super.key, this.groupId, this.shrinkWrap = false});
+  const LeaderboardView({super.key, this.groupId});
 
-  /// Null for the global leaderboard.
+  /// Null for the global leaderboard. Lives inside the page's scroll view.
   final String? groupId;
-
-  /// For use inside another scroll view.
-  final bool shrinkWrap;
 
   @override
   ConsumerState<LeaderboardView> createState() => _LeaderboardViewState();
@@ -33,58 +30,45 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
     final me = ref.watch(authRepositoryProvider).currentUser?.id;
     final theme = Theme.of(context);
 
-    final header = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SegmentedButton<LeaderboardSubject>(
-            segments: const [
-              ButtonSegment(
-                value: LeaderboardSubject.player,
-                label: Text('Jogadores'),
-                icon: Icon(Icons.person),
-              ),
-              ButtonSegment(
-                value: LeaderboardSubject.duo,
-                label: Text('Duplas'),
-                icon: Icon(Icons.people),
-              ),
-            ],
-            selected: {_subject},
-            onSelectionChanged: (s) => setState(() => _subject = s.first),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ChoiceChip(
-                label: const Text('Pontuação Elo'),
-                selected: _sort == LeaderboardSort.elo,
-                onSelected: (_) => setState(() => _sort = LeaderboardSort.elo),
-              ),
-              ChoiceChip(
-                label: const Text('% de vitórias'),
-                selected: _sort == LeaderboardSort.winRate,
-                onSelected: (_) =>
-                    setState(() => _sort = LeaderboardSort.winRate),
-              ),
-              FilterChip(
-                label: const Text('Incluir quem tem menos de 5 jogos'),
-                selected: _showProvisional,
-                onSelected: (v) => setState(() => _showProvisional = v),
-              ),
-              ActionChip(
-                avatar: const Icon(Icons.info_outline, size: 18),
-                label: const Text('Como funciona?'),
-                onPressed: () => showEloHelp(context),
-              ),
-            ],
-          ),
-        ],
-      ),
+    final header = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSegmented<LeaderboardSubject>(
+          segments: const {
+            LeaderboardSubject.player: 'Jogadores',
+            LeaderboardSubject.duo: 'Duplas',
+          },
+          value: _subject,
+          onChanged: (v) => setState(() => _subject = v),
+        ),
+        const SizedBox(height: 10),
+        AppSegmented<LeaderboardSort>(
+          segments: const {
+            LeaderboardSort.elo: 'Pontuação Elo',
+            LeaderboardSort.winRate: '% de vitórias',
+          },
+          value: _sort,
+          onChanged: (v) => setState(() => _sort = v),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            AppToggleChip(
+              label: 'Incluir quem tem menos de 5 jogos',
+              selected: _showProvisional,
+              onChanged: (v) => setState(() => _showProvisional = v),
+            ),
+            AppTextButton(
+              label: 'Como funciona?',
+              onPressed: () => showEloHelp(context),
+            ),
+          ],
+        ),
+      ],
     );
 
     final Widget content = data.when(
@@ -132,7 +116,7 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
           for (final e in idsByName.entries)
             if (e.value.length > 1) e.key,
         };
-        return Column(
+        return AppSection(
           children: [
             for (var i = 0; i < list.length; i++)
               _Row(
@@ -146,12 +130,9 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
       },
     );
 
-    final children = [header, const SizedBox(height: 8), content];
-    if (widget.shrinkWrap) return Column(children: children);
-    return RefreshIndicator.adaptive(
-      onRefresh: () =>
-          ref.refresh(leaderboardProvider((widget.groupId, _subject)).future),
-      child: ListView(children: children),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [header, const SizedBox(height: 12), content],
     );
   }
 }
@@ -187,25 +168,26 @@ class _Row extends StatelessWidget {
       3 => Colors.brown,
       _ => null,
     };
-    return ListTile(
-      tileColor: isMe
-          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.4)
-          : null,
+    return AppTile(
+      highlighted: isMe,
       leading: CircleAvatar(
+        radius: 16,
         backgroundColor: medal ?? theme.colorScheme.surfaceContainerHighest,
         foregroundColor: medal == null
             ? theme.colorScheme.onSurface
             : Colors.white,
-        child: Text('$position'),
+        child: Text('$position', style: const TextStyle(fontSize: 14)),
       ),
-      title: Text(_title, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        '${entry.games} jogos · ${entry.wins}V ${entry.losses}D · '
-        '${(entry.winRate * 100).round()}%${entry.isProvisional ? ' · provisório' : ''}',
-      ),
+      title: _title,
+      subtitle:
+          '${entry.games} jogos · ${entry.wins}V ${entry.losses}D · '
+          '${(entry.winRate * 100).round()}%${entry.isProvisional ? ' · provisório' : ''}',
       trailing: Text(
         entry.elo.round().toString(),
-        style: theme.textTheme.titleMedium,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ),
     );
   }

@@ -81,66 +81,82 @@ class _SetupState extends ConsumerState<ScorekeeperSetupScreen> {
     TextEditingController team,
     List<int> seats,
   ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.circle, color: color, size: 14),
-                const SizedBox(width: 8),
-                Text(label, style: Theme.of(context).textTheme.titleMedium),
-              ],
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              controller: team,
-              label: 'Nome da dupla',
-              maxLength: 20,
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: 8),
-            for (final s in seats) ...[
+    return AppSection(
+      header: label,
+      headerLeading: Icon(Icons.circle, color: color, size: 12),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               AppTextField(
-                controller: _players[s],
-                label: 'Jogador ${s ~/ 2 + 1} (opcional)',
-                maxLength: 24,
+                controller: team,
+                label: 'Nome da dupla',
+                maxLength: 20,
                 textCapitalization: TextCapitalization.words,
               ),
-              const SizedBox(height: 8),
+              for (final s in seats) ...[
+                const SizedBox(height: 10),
+                AppTextField(
+                  controller: _players[s],
+                  label: 'Jogador ${s ~/ 2 + 1} (opcional)',
+                  maxLength: 24,
+                  textCapitalization: TextCapitalization.words,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final teams = [
+      _teamCard('Dupla 1', AppColors.teamA, _teamA, const [0, 2]),
+      _teamCard('Dupla 2', AppColors.teamB, _teamB, const [1, 3]),
+    ];
     return AppScaffold(
       title: 'Novo marcador',
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
+      maxWidth: 920,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 20),
+          child: Text(
             'Um aparelho marca os pontos das duas duplas. '
             'Jogadores sem conta entram como convidados e a partida não conta para o ranking.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(height: 16),
-          _teamCard('Dupla 1', AppColors.teamA, _teamA, const [0, 2]),
-          const SizedBox(height: 12),
-          _teamCard('Dupla 2', AppColors.teamB, _teamB, const [1, 3]),
-          const SizedBox(height: 24),
-          AppButton(
-            label: 'Começar partida',
-            icon: Icons.play_arrow,
-            onPressed: _start,
+        ),
+        LayoutBuilder(
+          builder: (context, constraints) =>
+              constraints.maxWidth >= AppBreakpoints.medium
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: teams[0]),
+                    const SizedBox(width: 16),
+                    Expanded(child: teams[1]),
+                  ],
+                )
+              : Column(children: teams),
+        ),
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: SizedBox(
+              width: double.infinity,
+              child: AppButton(
+                label: 'Começar partida',
+                icon: context.icon(AppIcon.play),
+                onPressed: _start,
+              ),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

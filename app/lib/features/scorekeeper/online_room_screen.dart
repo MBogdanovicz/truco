@@ -186,25 +186,26 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
           title: title,
           backgroundColor: dark ? AppColors.feltDark : null,
           barColor: dark ? AppColors.feltDark : null,
+          maxWidth: dark ? null : 960,
           actions: [
             if (dark && snap != null && !(view?.nearby ?? true))
               IconButton(
                 tooltip: 'Código da sala',
                 color: Colors.white,
-                icon: const Icon(Icons.vpn_key_outlined),
+                icon: Icon(context.icon(AppIcon.key)),
                 onPressed: () => _showCode(snap.code),
               ),
             if (dark)
               IconButton(
                 tooltip: 'Virar placar de cima',
                 color: Colors.white,
-                icon: const Icon(Icons.screen_rotation_alt),
+                icon: Icon(context.icon(AppIcon.flip)),
                 onPressed: () => setState(() => _flipTop = !_flipTop),
               ),
             IconButton(
               tooltip: 'Sair',
               color: dark ? Colors.white : null,
-              icon: const Icon(Icons.close),
+              icon: Icon(context.icon(AppIcon.close)),
               onPressed: _leave,
             ),
           ],
@@ -276,98 +277,110 @@ class _Lobby extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mine = room.mySeat;
+    final white70 = theme.textTheme.bodySmall?.copyWith(color: Colors.white70);
+    final teams = [
+      for (final team in Team.values)
+        _TeamSeats(room: room, snap: snap, team: team, onAddGuest: _addGuest),
+    ];
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (nearby)
-          Card(
-            color: AppColors.felt,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                room.isHost
-                    ? 'Sala aberta sem internet. Nos outros celulares, toque em '
-                          '"Novo marcador" > "Por perto, sem internet" e escolha '
-                          'esta sala. Deixe o app aberto.'
-                    : 'Conectado sem internet ao celular de quem criou a sala.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.white,
+        AppCard(
+          color: AppColors.felt,
+          padding: const EdgeInsets.all(20),
+          child: nearby
+              ? Text(
+                  room.isHost
+                      ? 'Sala aberta sem internet. Nos outros celulares, toque em '
+                            '"Novo marcador" > "Por perto, sem internet" e escolha '
+                            'esta sala. Deixe o app aberto.'
+                      : 'Conectado sem internet ao celular de quem criou a sala.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                  ),
+                )
+              : Column(
+                  children: [
+                    Text(
+                      'Código da sala',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SelectableText(
+                            snap.code,
+                            style: theme.textTheme.displaySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 6,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Copiar convite',
+                            color: Colors.white,
+                            icon: Icon(context.icon(AppIcon.copy)),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      'Entre na minha sala do Truco: '
+                                      '${Env.roomInviteLink(snap.code)}\n'
+                                      'Código: ${snap.code}',
+                                ),
+                              );
+                              showAppToast(context, 'Convite copiado');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      'No app, toque em "Entrar com código". No iPhone, abra '
+                      '${Env.webAppUrl.replaceFirst('https://', '')}. '
+                      'Ou copie o convite com o link e mande no grupo.',
+                      textAlign: TextAlign.center,
+                      style: white70,
+                    ),
+                  ],
+                ),
+        ),
+        const SizedBox(height: 24),
+        _RoomSettings(room: room, snap: snap),
+        LayoutBuilder(
+          builder: (context, constraints) =>
+              constraints.maxWidth >= AppBreakpoints.medium
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: teams[0]),
+                    const SizedBox(width: 16),
+                    Expanded(child: teams[1]),
+                  ],
+                )
+              : Column(children: teams),
+        ),
+        if (room.isHost)
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: SizedBox(
+                width: double.infinity,
+                child: AppButton(
+                  label: snap.canStart
+                      ? 'Começar partida'
+                      : 'Esperando as duas duplas',
+                  icon: context.icon(AppIcon.play),
+                  onPressed: snap.canStart ? room.startGame : null,
                 ),
               ),
             ),
-          )
-        else
-          Card(
-            color: AppColors.felt,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text(
-                    'Código da sala',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SelectableText(
-                          snap.code,
-                          style: theme.textTheme.displaySmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 6,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Copiar convite',
-                          color: Colors.white,
-                          icon: const Icon(Icons.copy),
-                          onPressed: () {
-                            Clipboard.setData(
-                              ClipboardData(
-                                text:
-                                    'Entre na minha sala do Truco: '
-                                    '${Env.roomInviteLink(snap.code)}\n'
-                                    'Código: ${snap.code}',
-                              ),
-                            );
-                            showAppToast(context, 'Convite copiado');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    'No app, toque em "Entrar com código". No iPhone, abra '
-                    '${Env.webAppUrl.replaceFirst('https://', '')}. '
-                    'Ou copie o convite com o link e mande no grupo.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        const SizedBox(height: 12),
-        _RoomSettings(room: room, snap: snap),
-        for (final team in Team.values)
-          _TeamSeats(room: room, snap: snap, team: team, onAddGuest: _addGuest),
-        const SizedBox(height: 16),
-        if (room.isHost)
-          AppButton(
-            label: snap.canStart
-                ? 'Começar partida'
-                : 'Esperando as duas duplas',
-            icon: Icons.play_arrow,
-            onPressed: snap.canStart ? room.startGame : null,
           )
         else
           Text(
@@ -399,108 +412,67 @@ class _TeamSeats extends StatelessWidget {
     final seats = {for (final s in snap.seatsOf(team)) s.index: s};
     final mine = room.mySeat;
     final hasRoom = snap.freeSeatOf(team) != null;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.circle,
-                  size: 14,
-                  color: team == Team.a ? AppColors.teamA : AppColors.teamB,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    snap.teamNames[team]!,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-            for (final index in RoomSnapshot.seatIndexesOf(team))
-              _SeatRow(
-                seat: seats[index],
-                isMe: seats[index]?.userId == room.me.userId,
-                isHostSeat: seats[index]?.userId == snap.hostUserId,
-                canRemove:
-                    room.isHost &&
-                    seats[index] != null &&
-                    seats[index]!.userId != snap.hostUserId,
-                onRemove: () => room.removeSeat(index),
-                onAddGuest: room.isHost && seats[index] == null
-                    ? () => onAddGuest(context, team)
-                    : null,
-              ),
-            if (mine?.team != team && hasRoom)
-              Align(
-                alignment: Alignment.centerRight,
-                child: AppTextButton(
-                  label: mine == null
-                      ? 'Entrar nesta dupla'
-                      : 'Trocar para esta dupla',
-                  onPressed: () => room.pickTeam(team),
-                ),
-              ),
-          ],
-        ),
+    return AppSection(
+      header: snap.teamNames[team]!,
+      headerLeading: Icon(
+        Icons.circle,
+        size: 12,
+        color: team == Team.a ? AppColors.teamA : AppColors.teamB,
       ),
+      children: [
+        for (final index in RoomSnapshot.seatIndexesOf(team))
+          _seatTile(context, index, seats[index]),
+        if (mine?.team != team && hasRoom)
+          AppTile(
+            leading: AppTileIcon(
+              AppIcon.login,
+              color: team == Team.a ? AppColors.teamA : AppColors.teamB,
+            ),
+            title: mine == null
+                ? 'Entrar nesta dupla'
+                : 'Trocar para esta dupla',
+            onTap: () => room.pickTeam(team),
+          ),
+      ],
     );
   }
-}
 
-class _SeatRow extends StatelessWidget {
-  const _SeatRow({
-    required this.seat,
-    required this.isMe,
-    required this.isHostSeat,
-    required this.canRemove,
-    required this.onRemove,
-    this.onAddGuest,
-  });
-
-  final Seat? seat;
-  final bool isMe;
-  final bool isHostSeat;
-  final bool canRemove;
-  final VoidCallback onRemove;
-  final VoidCallback? onAddGuest;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = seat;
+  Widget _seatTile(BuildContext context, int index, Seat? s) {
+    final grey = Colors.grey.shade500;
     if (s == null) {
-      return ListTile(
-        dense: true,
-        leading: const Icon(Icons.event_seat_outlined),
-        title: const Text('Lugar livre', style: TextStyle(color: Colors.grey)),
-        trailing: onAddGuest == null
-            ? null
-            : IconButton(
+      return AppTile(
+        leading: Icon(context.icon(AppIcon.seat), color: grey),
+        title: 'Lugar livre',
+        trailing: room.isHost
+            ? IconButton(
                 tooltip: 'Adicionar convidado',
-                icon: const Icon(Icons.person_add_alt),
-                onPressed: onAddGuest,
-              ),
+                icon: Icon(context.icon(AppIcon.personAdd)),
+                onPressed: () => onAddGuest(context, team),
+              )
+            : null,
       );
     }
+    final isMe = s.userId == room.me.userId;
+    final isHostSeat = s.userId == snap.hostUserId;
+    final canRemove = room.isHost && s.userId != snap.hostUserId;
     final tags = [
       if (isMe) 'você',
       if (isHostSeat) 'criou a sala',
       if (s.isGuest) 'convidado, sem app',
     ];
-    return ListTile(
-      dense: true,
-      leading: Icon(s.isGuest ? Icons.person_outline : Icons.person),
-      title: Text(s.name.isEmpty ? 'Jogador' : s.name),
-      subtitle: tags.isEmpty ? null : Text(tags.join(' · ')),
+    return AppTile(
+      leading: Icon(
+        context.icon(s.isGuest ? AppIcon.personOutline : AppIcon.person),
+        color: team == Team.a ? AppColors.teamA : AppColors.teamB,
+      ),
+      title: s.name.isEmpty ? 'Jogador' : s.name,
+      subtitle: tags.isEmpty ? null : tags.join(' · '),
+      highlighted: isMe,
       trailing: canRemove
           ? IconButton(
               tooltip: 'Remover',
-              icon: const Icon(Icons.close),
-              onPressed: onRemove,
+              icon: Icon(context.icon(AppIcon.close)),
+              onPressed: () => room.removeSeat(index),
             )
           : null,
     );
@@ -579,33 +551,35 @@ class _JoinGameBar extends StatelessWidget {
   Widget build(BuildContext context) => Align(
     alignment: Alignment.bottomCenter,
     child: SafeArea(
-      child: Card(
-        margin: const EdgeInsets.all(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'A partida já começou. Quer jogar numa dupla ou só assistir?',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  for (final t in teams) ...[
-                    Expanded(
-                      child: AppButton(
-                        label: 'Jogar na ${snap.teamNames[t]}',
-                        onPressed: () => room.pickTeam(t),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: AppCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'A partida já começou. Quer jogar numa dupla ou só assistir?',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (final t in teams) ...[
+                      Expanded(
+                        child: AppButton(
+                          label: 'Jogar na ${snap.teamNames[t]}',
+                          onPressed: () => room.pickTeam(t),
+                        ),
                       ),
-                    ),
-                    if (t != teams.last) const SizedBox(width: 8),
+                      if (t != teams.last) const SizedBox(width: 8),
+                    ],
                   ],
-                ],
-              ),
-              AppTextButton(label: 'Só assistir', onPressed: onWatch),
-            ],
+                ),
+                AppTextButton(label: 'Só assistir', onPressed: onWatch),
+              ],
+            ),
           ),
         ),
       ),
@@ -673,8 +647,9 @@ class _FinishedCard extends StatelessWidget {
       color: Colors.black54,
       alignment: Alignment.center,
       padding: const EdgeInsets.all(24),
-      child: Card(
-        child: Padding(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: AppCard(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -697,8 +672,8 @@ class _FinishedCard extends StatelessWidget {
                   children: [
                     Icon(
                       (snap.rematchVotes[t] ?? false)
-                          ? Icons.check_circle
-                          : Icons.hourglass_empty,
+                          ? context.icon(AppIcon.check)
+                          : context.icon(AppIcon.waiting),
                       size: 18,
                       color: (snap.rematchVotes[t] ?? false)
                           ? AppColors.felt
@@ -792,28 +767,26 @@ class _RoomSettings extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final host = room.isHost;
-    return Card(
-      child: Column(
-        children: [
-          SwitchListTile.adaptive(
-            title: const Text('Partida rankeada'),
-            subtitle: Text(
-              snap.ranked
-                  ? 'Conta para o ranking quando os 4 jogadores têm conta.'
-                  : 'Amistosa: fica só no histórico.',
-            ),
+    return AppSection(
+      header: 'Partida',
+      children: [
+        AppTile(
+          title: 'Partida rankeada',
+          subtitle: snap.ranked
+              ? 'Conta para o ranking quando os 4 jogadores têm conta.'
+              : 'Amistosa: fica só no histórico.',
+          trailing: AppSwitch(
             value: snap.ranked,
             onChanged: host ? room.setRanked : null,
           ),
-          if (snap.ranked)
-            ListTile(
-              title: const Text('Grupo'),
-              subtitle: Text(snap.group?.name ?? 'Só o ranking geral'),
-              trailing: host ? const Icon(Icons.chevron_right) : null,
-              onTap: host ? () => _pickGroup(context, ref) : null,
-            ),
-        ],
-      ),
+        ),
+        if (snap.ranked)
+          AppTile(
+            title: 'Grupo',
+            subtitle: snap.group?.name ?? 'Só o ranking geral',
+            onTap: host ? () => _pickGroup(context, ref) : null,
+          ),
+      ],
     );
   }
 }

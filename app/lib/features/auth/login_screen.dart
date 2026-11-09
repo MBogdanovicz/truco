@@ -141,81 +141,79 @@ class _LoginState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
     return AppScaffold(
       title: 'Entrar',
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          if (!_codeSent && AndroidDownloadCard.isShown) ...[
-            const AndroidDownloadCard(),
-            const SizedBox(height: 16),
-          ],
-          Text(
-            _codeSent ? 'Confira seu e-mail' : 'Bem-vindo ao Truco!',
-            style: theme.textTheme.headlineSmall,
+      maxWidth: 480,
+      children: [
+        if (!_codeSent && AndroidDownloadCard.isShown) ...[
+          const AndroidDownloadCard(),
+          const SizedBox(height: 16),
+        ],
+        Text(
+          _codeSent ? 'Confira seu e-mail' : 'Bem-vindo ao Truco!',
+          style: theme.textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _codeSent
+              ? 'Enviamos um código para ${_email.text.trim()}. Digite-o abaixo.'
+              : 'Digite seu e-mail. Vamos enviar um código para você entrar, sem senha.',
+        ),
+        const SizedBox(height: 24),
+        if (!_codeSent)
+          AppTextField(
+            key: const ValueKey('email'),
+            controller: _email,
+            label: 'E-mail',
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+            onSubmitted: (_) => _sendCode(),
+          )
+        else
+          AppTextField(
+            // A distinct key makes Flutter build a new field, so the
+            // keyboard switches from the e-mail layout to digits.
+            key: const ValueKey('code'),
+            controller: _code,
+            label: 'Código',
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            autofillHints: const [AutofillHints.oneTimeCode],
+            autofocus: true,
+            maxLength: 8,
+            onSubmitted: (_) => _verify(),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _codeSent
-                ? 'Enviamos um código para ${_email.text.trim()}. Digite-o abaixo.'
-                : 'Digite seu e-mail. Vamos enviar um código para você entrar, sem senha.',
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+        ],
+        const SizedBox(height: 24),
+        if (_busy)
+          const Center(child: AppProgress())
+        else ...[
+          AppButton(
+            label: _codeSent ? 'Entrar' : 'Enviar código',
+            onPressed: _codeSent ? _verify : _sendCode,
           ),
-          const SizedBox(height: 24),
-          if (!_codeSent)
-            AppTextField(
-              key: const ValueKey('email'),
-              controller: _email,
-              label: 'E-mail',
-              keyboardType: TextInputType.emailAddress,
-              autofocus: true,
-              onSubmitted: (_) => _sendCode(),
-            )
-          else
-            AppTextField(
-              // A distinct key makes Flutter build a new field, so the
-              // keyboard switches from the e-mail layout to digits.
-              key: const ValueKey('code'),
-              controller: _code,
-              label: 'Código',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              autofillHints: const [AutofillHints.oneTimeCode],
-              autofocus: true,
-              maxLength: 8,
-              onSubmitted: (_) => _verify(),
+          if (!_codeSent) ...[
+            const SizedBox(height: 8),
+            AppTextButton(
+              label: 'Entrar sem conta, só para marcar',
+              onPressed: _guest,
             ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
           ],
-          const SizedBox(height: 24),
-          if (_busy)
-            const Center(child: AppProgress())
-          else ...[
-            AppButton(
-              label: _codeSent ? 'Entrar' : 'Enviar código',
-              onPressed: _codeSent ? _verify : _sendCode,
+          if (_codeSent) ...[
+            const SizedBox(height: 8),
+            AppTextButton(label: 'Reenviar código', onPressed: _sendCode),
+            AppTextButton(
+              label: 'Usar outro e-mail',
+              onPressed: () => setState(() {
+                _codeSent = false;
+                _code.clear();
+                _error = null;
+              }),
             ),
-            if (!_codeSent) ...[
-              const SizedBox(height: 8),
-              AppTextButton(
-                label: 'Entrar sem conta, só para marcar',
-                onPressed: _guest,
-              ),
-            ],
-            if (_codeSent) ...[
-              const SizedBox(height: 8),
-              AppTextButton(label: 'Reenviar código', onPressed: _sendCode),
-              AppTextButton(
-                label: 'Usar outro e-mail',
-                onPressed: () => setState(() {
-                  _codeSent = false;
-                  _code.clear();
-                  _error = null;
-                }),
-              ),
-            ],
           ],
         ],
-      ),
+      ],
     );
   }
 }

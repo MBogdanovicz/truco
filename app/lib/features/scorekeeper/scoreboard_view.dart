@@ -81,19 +81,49 @@ class _ScoreboardViewState extends State<ScoreboardView> {
     _cooldownShown = Team.values.any(
       (t) => m.cooldownRemaining(t) > Duration.zero,
     );
-    return Column(
-      children: [
-        Expanded(
-          child: RotatedBox(
-            quarterTurns: widget.flipTop ? 2 : 0,
-            child: _TeamPanel(team: Team.a, model: m),
-          ),
-        ),
-        _CenterStrip(model: m),
-        Expanded(
-          child: _TeamPanel(team: Team.b, model: m),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Landscape tablets and desktops show the teams side by side. Flipping
+        // the top panel is for a device lying flat between the teams, so it
+        // keeps them stacked (one team on each long edge).
+        final sideBySide =
+            !widget.flipTop &&
+            constraints.maxWidth >= 640 &&
+            constraints.maxWidth > constraints.maxHeight;
+        if (sideBySide) {
+          return Column(
+            children: [
+              _CenterStrip(model: m),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _TeamPanel(team: Team.a, model: m),
+                    ),
+                    Expanded(
+                      child: _TeamPanel(team: Team.b, model: m),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
+        return Column(
+          children: [
+            Expanded(
+              child: RotatedBox(
+                quarterTurns: widget.flipTop ? 2 : 0,
+                child: _TeamPanel(team: Team.a, model: m),
+              ),
+            ),
+            _CenterStrip(model: m),
+            Expanded(
+              child: _TeamPanel(team: Team.b, model: m),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -194,126 +224,132 @@ class _TeamPanel extends StatelessWidget {
     return Container(
       color: color,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxHeight < 260;
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                model.teamNames[team]!,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: onColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            if (model.highlightTeam == team) ...[
-                              const SizedBox(width: 8),
-                              const _Chip(label: 'você'),
-                            ],
-                          ],
-                        ),
-                        if (players.isNotEmpty)
-                          Text(
-                            players.join(' e '),
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: onColor.withValues(alpha: 0.8),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (canMark)
-                    IconButton(
-                      tooltip: 'Desfazer',
-                      color: onColor,
-                      disabledColor: onColor.withValues(alpha: 0.3),
-                      icon: const Icon(Icons.undo),
-                      onPressed: canUndo ? () => model.onUndo(team) : null,
-                    ),
-                ],
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FittedBox(
-                        child: Text(
-                          '$score',
-                          key: ValueKey('score-${team.name}'),
-                          style: const TextStyle(
-                            color: onColor,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 120,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (canMark) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: _AddButton(
-                          key: ValueKey('add-${team.name}-1'),
-                          label: cooldown > Duration.zero
-                              ? '${(cooldown.inMilliseconds / 1000).ceil()}s'
-                              : onEleven
-                              ? 'Vitória'
-                              : '+1',
-                          caption: cooldown > Duration.zero
-                              ? 'Aguarde'
-                              : onEleven
-                              ? 'Ganhou a mão'
-                              : facingEleven
-                              ? 'Correram'
-                              : null,
-                          big: true,
-                          onPressed: scoringEnabled ? () => add(1) : null,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              _TentoPips(score: score, target: state.rules.targetScore),
-              if (canMark && extraDeltas.isNotEmpty) ...[
-                SizedBox(height: compact ? 6 : 10),
+      alignment: Alignment.center,
+      // On big screens the controls keep a comfortable size instead of
+      // stretching to fill the panel.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560, maxHeight: 560),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 260;
+            return Column(
+              children: [
                 Row(
                   children: [
-                    for (final d in extraDeltas) ...[
-                      Expanded(
-                        child: _AddButton(
-                          key: ValueKey('add-${team.name}-$d'),
-                          label: '+$d',
-                          caption: compact
-                              ? null
-                              : facingEleven
-                              ? 'Ganhou a mão'
-                              : _labels[d],
-                          onPressed: scoringEnabled ? () => add(d) : null,
-                        ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  model.teamNames[team]!,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    color: onColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              if (model.highlightTeam == team) ...[
+                                const SizedBox(width: 8),
+                                const _Chip(label: 'você'),
+                              ],
+                            ],
+                          ),
+                          if (players.isNotEmpty)
+                            Text(
+                              players.join(' e '),
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: onColor.withValues(alpha: 0.8),
+                              ),
+                            ),
+                        ],
                       ),
-                      if (d != extraDeltas.last) const SizedBox(width: 8),
-                    ],
+                    ),
+                    if (canMark)
+                      IconButton(
+                        tooltip: 'Desfazer',
+                        color: onColor,
+                        disabledColor: onColor.withValues(alpha: 0.3),
+                        icon: const Icon(Icons.undo),
+                        onPressed: canUndo ? () => model.onUndo(team) : null,
+                      ),
                   ],
                 ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FittedBox(
+                          child: Text(
+                            '$score',
+                            key: ValueKey('score-${team.name}'),
+                            style: const TextStyle(
+                              color: onColor,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 120,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (canMark) ...[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: _AddButton(
+                            key: ValueKey('add-${team.name}-1'),
+                            label: cooldown > Duration.zero
+                                ? '${(cooldown.inMilliseconds / 1000).ceil()}s'
+                                : onEleven
+                                ? 'Vitória'
+                                : '+1',
+                            caption: cooldown > Duration.zero
+                                ? 'Aguarde'
+                                : onEleven
+                                ? 'Ganhou a mão'
+                                : facingEleven
+                                ? 'Correram'
+                                : null,
+                            big: true,
+                            onPressed: scoringEnabled ? () => add(1) : null,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _TentoPips(score: score, target: state.rules.targetScore),
+                if (canMark && extraDeltas.isNotEmpty) ...[
+                  SizedBox(height: compact ? 6 : 10),
+                  Row(
+                    children: [
+                      for (final d in extraDeltas) ...[
+                        Expanded(
+                          child: _AddButton(
+                            key: ValueKey('add-${team.name}-$d'),
+                            label: '+$d',
+                            caption: compact
+                                ? null
+                                : facingEleven
+                                ? 'Ganhou a mão'
+                                : _labels[d],
+                            onPressed: scoringEnabled ? () => add(d) : null,
+                          ),
+                        ),
+                        if (d != extraDeltas.last) const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                ],
               ],
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

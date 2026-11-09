@@ -13,20 +13,26 @@ class HistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(matchHistoryProvider);
+    final records = history.value;
+    if (records == null || records.isEmpty) {
+      return AppScaffold(
+        title: 'Histórico',
+        body: Center(
+          child: history.hasError
+              ? Text('Não foi possível carregar o histórico.\n${history.error}')
+              : records == null
+              ? const AppProgress()
+              : const Text('Nenhuma partida ainda.'),
+        ),
+      );
+    }
     return AppScaffold(
       title: 'Histórico',
-      body: history.when(
-        loading: () => const Center(child: AppProgress()),
-        error: (e, _) =>
-            Center(child: Text('Não foi possível carregar o histórico.\n$e')),
-        data: (records) => records.isEmpty
-            ? const Center(child: Text('Nenhuma partida ainda.'))
-            : ListView.separated(
-                itemCount: records.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (_, i) => _HistoryTile(record: records[i]),
-              ),
-      ),
+      children: [
+        AppSection(
+          children: [for (final r in records) _HistoryTile(record: r)],
+        ),
+      ],
     );
   }
 }
@@ -57,29 +63,25 @@ class _HistoryTile extends StatelessWidget {
     }
 
     final series = record.series;
-    return ListTile(
+    return AppTile(
       leading: Icon(
-        Icons.emoji_events,
+        context.icon(AppIcon.trophy),
         color: winner == Team.a ? AppColors.teamA : AppColors.teamB,
       ),
-      title: Text(
-        '${record.teamNames[Team.a]} ${state.scoreOf(Team.a)} × '
-        '${state.scoreOf(Team.b)} ${record.teamNames[Team.b]}',
-      ),
-      subtitle: Text(
+      title:
+          '${record.teamNames[Team.a]} ${state.scoreOf(Team.a)} × '
+          '${state.scoreOf(Team.b)} ${record.teamNames[Team.b]}',
+      subtitle: [
+        '${side(Team.a)} vs ${side(Team.b)}',
         [
-          '${side(Team.a)} vs ${side(Team.b)}',
-          [
-            _date(record.finishedAt),
-            if (record.ranked != null)
-              record.countsForRanking
-                  ? 'Rankeada${record.groupName == null ? '' : ' · ${record.groupName}'}'
-                  : 'Amistosa',
-          ].join(' · '),
-          if (series.gamesPlayed > 1) 'Série ${series.winsA} × ${series.winsB}',
-        ].join('\n'),
-      ),
-      isThreeLine: true,
+          _date(record.finishedAt),
+          if (record.ranked != null)
+            record.countsForRanking
+                ? 'Rankeada${record.groupName == null ? '' : ' · ${record.groupName}'}'
+                : 'Amistosa',
+        ].join(' · '),
+        if (series.gamesPlayed > 1) 'Série ${series.winsA} × ${series.winsB}',
+      ].join('\n'),
     );
   }
 }

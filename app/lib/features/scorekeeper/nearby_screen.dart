@@ -149,31 +149,29 @@ class _NearbyState extends ConsumerState<NearbyScreen> {
               onPressed: _create,
             ),
           const SizedBox(height: 24),
-          Text('Salas por perto', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          if (_rooms.isEmpty)
-            const ListTile(
-              leading: SizedBox.square(
-                dimension: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              title: Text('Procurando…'),
-              subtitle: Text(
-                'Peça para quem criou a sala deixar o app aberto.',
-              ),
-            ),
-          for (final ad in _rooms.values)
-            Card(
-              child: ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: AppColors.felt,
-                  child: Icon(Icons.groups, color: Colors.white),
+          AppSection(
+            header: 'Salas por perto',
+            children: [
+              if (_rooms.isEmpty)
+                const AppTile(
+                  leading: SizedBox.square(
+                    dimension: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  title: 'Procurando…',
+                  subtitle: 'Peça para quem criou a sala deixar o app aberto.',
                 ),
-                title: Text('Sala de ${ad.hostName}'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _join(ad),
-              ),
-            ),
+              for (final ad in _rooms.values)
+                AppTile(
+                  leading: const AppTileIcon(
+                    AppIcon.groups,
+                    color: AppColors.felt,
+                  ),
+                  title: 'Sala de ${ad.hostName}',
+                  onTap: () => _join(ad),
+                ),
+            ],
+          ),
         ],
       );
     }

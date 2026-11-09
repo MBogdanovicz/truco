@@ -62,127 +62,145 @@ class GroupDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final group = ref.watch(groupProvider(groupId));
-    return AppScaffold(
-      title: group.value?.name ?? 'Grupo',
-      body: group.when(
-        loading: () => const Center(child: AppProgress()),
-        error: (e, _) => Center(
-          child: Text(
-            e is GroupNotFound ? 'Grupo não encontrado.' : 'Erro: $e',
-          ),
+    final g = group.value;
+    if (g == null) {
+      return AppScaffold(
+        title: 'Grupo',
+        body: Center(
+          child: group.hasError
+              ? Text(
+                  group.error is GroupNotFound
+                      ? 'Grupo não encontrado.'
+                      : 'Erro: ${group.error}',
+                )
+              : const AppProgress(),
         ),
-        data: (g) => _body(context, ref, g),
-      ),
-    );
-  }
-
-  Widget _body(BuildContext context, WidgetRef ref, Group g) {
+      );
+    }
     final theme = Theme.of(context);
     final members = ref.watch(groupMembersProvider(g.id));
     final me = ref.watch(authRepositoryProvider).currentUser?.id;
     final isMember = g.myRole != null;
 
-    return RefreshIndicator.adaptive(
+    return AppScaffold(
+      title: g.name,
       onRefresh: () async {
         ref
           ..invalidate(groupProvider(g.id))
           ..invalidate(groupMembersProvider(g.id))
           ..invalidate(leaderboardProvider);
       },
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          if (g.description.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Text(g.description),
-            ),
-          if (isMember)
-            Card(
-              margin: const EdgeInsets.all(16),
+      children: [
+        if (g.description.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
+            child: Text(g.description),
+          ),
+        if (isMember)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: AppCard(
               color: AppColors.felt,
-              child: ListTile(
-                textColor: Colors.white,
-                iconColor: Colors.white,
-                title: const Text('Código do grupo'),
-                subtitle: Text(
-                  g.joinCode,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    letterSpacing: 4,
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Código do grupo',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: Colors.white70,
+                          ),
+                        ),
+                        SelectableText(
+                          g.joinCode,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 4,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                trailing: IconButton(
-                  tooltip: 'Copiar convite',
-                  icon: const Icon(Icons.copy),
-                  onPressed: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text:
-                            'Entre no grupo "${g.name}" do Truco: ${Env.groupInviteLink(g.joinCode)}\n'
-                            'Código: ${g.joinCode}',
-                      ),
-                    );
-                    showAppToast(context, 'Convite copiado');
-                  },
-                ),
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: AppButton(
-                label: 'Entrar no grupo',
-                icon: Icons.group_add,
-                onPressed: () => _join(context, ref, g),
+                  IconButton(
+                    tooltip: 'Copiar convite',
+                    color: Colors.white,
+                    icon: Icon(context.icon(AppIcon.copy)),
+                    onPressed: () {
+                      Clipboard.setData(
+                        ClipboardData(
+                          text:
+                              'Entre no grupo "${g.name}" do Truco: ${Env.groupInviteLink(g.joinCode)}\n'
+                              'Código: ${g.joinCode}',
+                        ),
+                      );
+                      showAppToast(context, 'Convite copiado');
+                    },
+                  ),
+                ],
               ),
             ),
+          )
+        else
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Text('Ranking do grupo', style: theme.textTheme.titleMedium),
+            padding: const EdgeInsets.only(bottom: 24),
+            child: AppButton(
+              label: 'Entrar no grupo',
+              icon: context.icon(AppIcon.groupAdd),
+              onPressed: () => _join(context, ref, g),
+            ),
           ),
-          LeaderboardView(groupId: g.id, shrinkWrap: true),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-            child: Text('Membros', style: theme.textTheme.titleMedium),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+          child: Text(
+            'Ranking do grupo',
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          ...members.when(
-            loading: () => const [
-              Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: AppProgress()),
-              ),
-            ],
-            error: (e, _) => [ListTile(title: Text('Erro: $e'))],
-            data: (list) => [
+        ),
+        LeaderboardView(groupId: g.id),
+        members.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: AppProgress()),
+          ),
+          error: (e, _) => Text('Erro: $e'),
+          data: (list) => AppSection(
+            header: 'Membros (${list.length})',
+            children: [
               for (final m in list)
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: Text(m.userId == me ? '${m.name} (você)' : m.name),
+                AppTile(
+                  leading: Icon(
+                    context.icon(AppIcon.person),
+                    color: AppColors.felt,
+                  ),
+                  title: m.userId == me ? '${m.name} (você)' : m.name,
                   subtitle: m.role == GroupRole.member
                       ? null
-                      : Text(m.role == GroupRole.owner ? 'dono' : 'admin'),
+                      : (m.role == GroupRole.owner ? 'dono' : 'admin'),
                   trailing:
                       g.canManage && m.role != GroupRole.owner && m.userId != me
                       ? IconButton(
                           tooltip: 'Remover',
-                          icon: const Icon(Icons.person_remove_outlined),
+                          icon: Icon(context.icon(AppIcon.personRemove)),
                           onPressed: () => _remove(context, ref, m),
                         )
                       : null,
                 ),
             ],
           ),
-          if (isMember)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: AppTextButton(
-                label: 'Sair do grupo',
-                onPressed: () => _leave(context, ref, g),
-              ),
-            ),
-        ],
-      ),
+        ),
+        if (isMember)
+          AppTextButton(
+            label: 'Sair do grupo',
+            destructive: true,
+            onPressed: () => _leave(context, ref, g),
+          ),
+      ],
     );
   }
 }

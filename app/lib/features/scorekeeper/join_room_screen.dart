@@ -73,34 +73,32 @@ class _JoinState extends ConsumerState<JoinRoomScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Entrar na sala',
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text(
-            'Digite o código que aparece no celular de quem criou a sala.',
+      maxWidth: 480,
+      children: [
+        const Text(
+          'Digite o código que aparece no celular de quem criou a sala.',
+        ),
+        const SizedBox(height: 24),
+        AppTextField(
+          controller: _code,
+          label: 'Código',
+          autofocus: true,
+          maxLength: 6,
+          textCapitalization: TextCapitalization.characters,
+          onSubmitted: (_) => _join(),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
-          const SizedBox(height: 24),
-          AppTextField(
-            controller: _code,
-            label: 'Código',
-            autofocus: true,
-            maxLength: 6,
-            textCapitalization: TextCapitalization.characters,
-            onSubmitted: (_) => _join(),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-          const SizedBox(height: 24),
-          _busy
-              ? const Center(child: AppProgress())
-              : AppButton(label: 'Entrar', onPressed: _join),
         ],
-      ),
+        const SizedBox(height: 24),
+        _busy
+            ? const Center(child: AppProgress())
+            : AppButton(label: 'Entrar', onPressed: _join),
+      ],
     );
   }
 }
