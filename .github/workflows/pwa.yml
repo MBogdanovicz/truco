@@ -29,7 +29,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter build web --release --no-web-resources-cdn --no-tree-shake-icons --dart-define-from-file=config/supabase.json
+      - run: flutter build web --release --no-web-resources-cdn --no-tree-shake-icons --dart-define-from-file=config/supabase.json --dart-define=APP_COMMIT=${GITHUB_SHA::7}
       # Full icon font: its URL never changes, so a cached copy from an older
       # build must still have every icon.
       - name: Version the entry scripts so browsers never mix cached builds

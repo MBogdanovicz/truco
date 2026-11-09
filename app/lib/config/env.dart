@@ -9,6 +9,13 @@ abstract final class Env {
     'SUPABASE_PUBLISHABLE_KEY',
   );
 
+  /// Short commit hash of this build, shown on the home screen so testers
+  /// know which version they run. "dev" for local debug builds.
+  static const commit = String.fromEnvironment(
+    'APP_COMMIT',
+    defaultValue: 'dev',
+  );
+
   static bool get hasSupabase =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 

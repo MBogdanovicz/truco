@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../config/env.dart';
 import '../../data/auth_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
@@ -99,6 +100,18 @@ class HomeScreen extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: Text(
+              'Versão ${Env.commit}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.textTheme.bodySmall?.color?.withValues(
+                  alpha: 0.6,
+                ),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );
