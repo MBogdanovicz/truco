@@ -75,10 +75,15 @@ class LeaderboardEntry {
     required this.losses,
     required this.pointsFor,
     required this.pointsAgainst,
+    this.hints = const [],
   });
 
   final String key;
   final List<String> names;
+
+  /// Masked e-mails, parallel to [names] (null when unknown), shown when
+  /// two players share a name.
+  final List<String?> hints;
   final List<String> playerIds;
   final double elo;
   final int games;
@@ -109,6 +114,10 @@ class LeaderboardEntry {
         losses: row['losses'] as int,
         pointsFor: row['points_for'] as int,
         pointsAgainst: row['points_against'] as int,
+        hints: [
+          row['hint_a'] as String?,
+          if (row['player_b'] != null) row['hint_b'] as String?,
+        ],
       );
 }
 

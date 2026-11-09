@@ -116,6 +116,17 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
             ),
           );
         }
+        // Names used by more than one player get the masked e-mail.
+        final idsByName = <String, Set<String>>{};
+        for (final e in list) {
+          for (var p = 0; p < e.names.length; p++) {
+            (idsByName[e.names[p]] ??= {}).add(e.playerIds[p]);
+          }
+        }
+        final ambiguous = {
+          for (final e in idsByName.entries)
+            if (e.value.length > 1) e.key,
+        };
         return Column(
           children: [
             for (var i = 0; i < list.length; i++)
@@ -123,6 +134,7 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
                 position: i + 1,
                 entry: list[i],
                 isMe: list[i].playerIds.contains(me),
+                ambiguous: ambiguous,
               ),
           ],
         );
@@ -140,11 +152,26 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.position, required this.entry, required this.isMe});
+  const _Row({
+    required this.position,
+    required this.entry,
+    required this.isMe,
+    this.ambiguous = const {},
+  });
 
   final int position;
   final LeaderboardEntry entry;
   final bool isMe;
+  final Set<String> ambiguous;
+
+  String get _title => [
+    for (var p = 0; p < entry.names.length; p++)
+      ambiguous.contains(entry.names[p]) &&
+              p < entry.hints.length &&
+              entry.hints[p] != null
+          ? '${entry.names[p]} (${entry.hints[p]})'
+          : entry.names[p],
+  ].join(' e ');
 
   @override
   Widget build(BuildContext context) {
@@ -166,7 +193,7 @@ class _Row extends StatelessWidget {
             : Colors.white,
         child: Text('$position'),
       ),
-      title: Text(entry.names.join(' e '), overflow: TextOverflow.ellipsis),
+      title: Text(_title, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         '${entry.games} jogos · ${entry.wins}V ${entry.losses}D · '
         '${(entry.winRate * 100).round()}%${entry.isProvisional ? ' · provisório' : ''}',
