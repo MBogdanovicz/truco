@@ -10,6 +10,7 @@ import '../../domain/scorekeeper/online/online_room.dart';
 import '../../domain/scorekeeper/online/room_snapshot.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
 import 'online_room_controller.dart';
 import 'scoreboard_view.dart';
@@ -95,31 +96,33 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
       );
     }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _leave();
-      },
-      child: AppScaffold(
-        title: title,
-        backgroundColor: dark ? AppColors.feltDark : null,
-        barColor: dark ? AppColors.feltDark : null,
-        actions: [
-          if (dark)
+    return KeepScreenOn(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _leave();
+        },
+        child: AppScaffold(
+          title: title,
+          backgroundColor: dark ? AppColors.feltDark : null,
+          barColor: dark ? AppColors.feltDark : null,
+          actions: [
+            if (dark)
+              IconButton(
+                tooltip: 'Virar placar de cima',
+                color: Colors.white,
+                icon: const Icon(Icons.screen_rotation_alt),
+                onPressed: () => setState(() => _flipTop = !_flipTop),
+              ),
             IconButton(
-              tooltip: 'Virar placar de cima',
-              color: Colors.white,
-              icon: const Icon(Icons.screen_rotation_alt),
-              onPressed: () => setState(() => _flipTop = !_flipTop),
+              tooltip: 'Sair',
+              color: dark ? Colors.white : null,
+              icon: const Icon(Icons.close),
+              onPressed: _leave,
             ),
-          IconButton(
-            tooltip: 'Sair',
-            color: dark ? Colors.white : null,
-            icon: const Icon(Icons.close),
-            onPressed: _leave,
-          ),
-        ],
-        body: body,
+          ],
+          body: body,
+        ),
       ),
     );
   }

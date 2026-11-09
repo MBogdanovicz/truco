@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
 import 'scoreboard_view.dart';
 import 'scorekeeper_controller.dart';
@@ -109,40 +110,42 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
       );
     }
     final controller = ref.read(scorekeeperControllerProvider.notifier);
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmLeave();
-      },
-      child: AppScaffold(
-        title: 'Marcador',
-        backgroundColor: AppColors.feltDark,
-        barColor: AppColors.feltDark,
-        actions: [
-          IconButton(
-            tooltip: 'Virar placar de cima',
-            color: Colors.white,
-            icon: const Icon(Icons.screen_rotation_alt),
-            onPressed: () => setState(() => _flipTop = !_flipTop),
-          ),
-          IconButton(
-            tooltip: 'Sair',
-            color: Colors.white,
-            icon: const Icon(Icons.close),
-            onPressed: _confirmLeave,
-          ),
-        ],
-        body: ScoreboardView(
-          flipTop: _flipTop,
-          model: ScoreboardModel(
-            teamNames: session.setup.teamNames,
-            seats: session.setup.seats,
-            state: session.state,
-            series: session.series,
-            canMark: (_) => true,
-            cooldownRemaining: (_) => Duration.zero,
-            onAdd: controller.addPoints,
-            onUndo: controller.undo,
+    return KeepScreenOn(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _confirmLeave();
+        },
+        child: AppScaffold(
+          title: 'Marcador',
+          backgroundColor: AppColors.feltDark,
+          barColor: AppColors.feltDark,
+          actions: [
+            IconButton(
+              tooltip: 'Virar placar de cima',
+              color: Colors.white,
+              icon: const Icon(Icons.screen_rotation_alt),
+              onPressed: () => setState(() => _flipTop = !_flipTop),
+            ),
+            IconButton(
+              tooltip: 'Sair',
+              color: Colors.white,
+              icon: const Icon(Icons.close),
+              onPressed: _confirmLeave,
+            ),
+          ],
+          body: ScoreboardView(
+            flipTop: _flipTop,
+            model: ScoreboardModel(
+              teamNames: session.setup.teamNames,
+              seats: session.setup.seats,
+              state: session.state,
+              series: session.series,
+              canMark: (_) => true,
+              cooldownRemaining: (_) => Duration.zero,
+              onAdd: controller.addPoints,
+              onUndo: controller.undo,
+            ),
           ),
         ),
       ),
