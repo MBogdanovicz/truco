@@ -102,6 +102,7 @@ class RoomSnapshot {
   bool get canStart => Team.values.every((t) => seatsOf(t).isNotEmpty);
 
   RoomSnapshot copyWith({
+    String? hostUserId,
     String? gameId,
     RoomPhase? phase,
     List<Seat>? seats,
@@ -115,7 +116,7 @@ class RoomSnapshot {
   }) => RoomSnapshot(
     roomId: roomId,
     code: code,
-    hostUserId: hostUserId,
+    hostUserId: hostUserId ?? this.hostUserId,
     gameId: gameId ?? this.gameId,
     phase: phase ?? this.phase,
     teamNames: teamNames,

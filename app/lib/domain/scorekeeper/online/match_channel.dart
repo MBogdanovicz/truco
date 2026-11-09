@@ -22,6 +22,11 @@ class InMemoryChannelHub {
   /// Drops a device without it closing cleanly (simulates losing signal).
   void disconnect(MatchChannel channel) => _members.remove(channel);
 
+  /// Brings back a device dropped by [disconnect].
+  void reconnect(MatchChannel channel) {
+    if (!_members.contains(channel)) _members.add(channel as _InMemoryChannel);
+  }
+
   void _deliver(_InMemoryChannel from, Map<String, Object?> message) {
     for (final m in List.of(_members)) {
       if (!identical(m, from)) {

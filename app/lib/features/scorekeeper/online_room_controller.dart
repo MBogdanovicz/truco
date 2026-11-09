@@ -85,7 +85,12 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     await leave();
     final roomId = await _repo.findOpenRoom(code);
     final channel = await _repo.connect(roomId);
-    await _attach(OnlineRoom.join(channel: channel, me: _me(), roomId: roomId));
+    await _attach(OnlineRoom.join(
+        channel: channel,
+        me: _me(),
+        roomId: roomId,
+        newId: newUuid,
+      ),);
   }
 
   /// Leaves the room. The host closes it for everyone.

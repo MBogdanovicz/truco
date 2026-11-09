@@ -29,14 +29,22 @@ class RoomMember {
 /// The host owns the authoritative [RoomSnapshot]: it validates every action
 /// with a [MatchEngine] and broadcasts the new snapshot. Other devices send
 /// requests and render whatever snapshot the host sends back.
+///
+/// The host also re-sends its snapshot every [heartbeat]. When a seated
+/// player has not heard from the host for [hostTimeout], the next app user
+/// in seat order takes over as host (the one after waits twice as long, and
+/// so on), so the game goes on if the host's phone dies or loses signal.
 class OnlineRoom {
+  static const heartbeat = Duration(seconds: 5);
+  static const hostTimeout = Duration(seconds: 15);
+
   OnlineRoom.host({
     required MatchChannel channel,
     required this.me,
     required RoomSnapshot initial,
     required String Function() newId,
     DateTime Function()? clock,
-  }) : isHost = true,
+  }) : _isHost = true,
        roomId = initial.roomId,
        _channel = channel,
        _newId = newId,
@@ -47,16 +55,20 @@ class OnlineRoom {
     required MatchChannel channel,
     required this.me,
     required this.roomId,
+    String Function()? newId,
     DateTime Function()? clock,
-  }) : isHost = false,
+  }) : _isHost = false,
        _channel = channel,
-       _newId = _noIds,
+       _newId = newId ?? _noIds,
        _clock = clock ?? DateTime.now;
 
   static String _noIds() => throw StateError('Only the host creates ids');
 
   final RoomMember me;
-  final bool isHost;
+  bool _isHost;
+
+  /// Whether this device runs the room now (it can change by hand-off).
+  bool get isHost => _isHost;
   final String roomId;
   final MatchChannel _channel;
   final String Function() _newId;
@@ -83,6 +95,8 @@ class OnlineRoom {
 
   Future<void> start() async {
     _sub = _channel.messages.listen(_onMessage);
+    _heardFromHostAt = _clock();
+    _watchdog = Timer.periodic(const Duration(seconds: 1), (_) => tick());
     if (isHost) {
       _trackScores(_snapshot!);
       await _broadcast();
@@ -101,12 +115,53 @@ class OnlineRoom {
   }
 
   Timer? _helloRetry;
+  Timer? _watchdog;
+  DateTime? _heardFromHostAt;
+  DateTime? _broadcastAt;
+
+  /// Periodic upkeep: the host's heartbeat, and the hand-off check on the
+  /// other devices. Called every second; public so tests can drive it.
+  Future<void> tick() async {
+    final snap = _snapshot;
+    if (snap == null) return;
+    final now = _clock();
+    if (_isHost) {
+      final last = _broadcastAt;
+      if (snap.phase != RoomPhase.closed &&
+          (last == null || now.difference(last) >= heartbeat)) {
+        await _broadcast();
+      }
+      return;
+    }
+    if (snap.phase == RoomPhase.closed) return;
+    final rank = _successorRank(snap);
+    if (rank == null) return;
+    final silent = now.difference(_heardFromHostAt ?? now);
+    if (silent >= hostTimeout * (rank + 1)) await _takeOver(snap);
+  }
+
+  /// This device's place in the line of successors, or null if it has none.
+  int? _successorRank(RoomSnapshot snap) {
+    final line = [
+      for (final s in [...snap.seats]..sort((a, b) => a.index - b.index))
+        if (s.userId != null && s.userId != snap.hostUserId) s.userId,
+    ];
+    final i = line.indexOf(me.userId);
+    return i < 0 ? null : i;
+  }
+
+  Future<void> _takeOver(RoomSnapshot snap) async {
+    _isHost = true;
+    _helloRetry?.cancel();
+    await _update(snap.copyWith(hostUserId: me.userId));
+  }
 
   Future<void> _sendHello() =>
       _channel.send({'type': 'hello', 'userId': me.userId, 'name': me.name});
 
   Future<void> dispose() async {
     _helloRetry?.cancel();
+    _watchdog?.cancel();
     await _sub?.cancel();
     await _channel.close();
     await _changes.close();
@@ -224,16 +279,27 @@ class OnlineRoom {
   }
 
   void _onMessage(Map<String, Object?> message) {
-    if (isHost) {
-      _handle(message);
-    } else if (message['type'] == 'snapshot') {
+    if (message['type'] == 'snapshot') {
       final snap = RoomSnapshot.fromJson(
         (message['snapshot']! as Map).cast<String, Object?>(),
       );
       if (snap.roomId != roomId) return;
+      if (snap.hostUserId == me.userId) return;
       final current = _snapshot;
-      if (current != null && snap.revision <= current.revision) return;
+      if (current != null && snap.revision <= current.revision) {
+        // Same revision: a heartbeat, so the host is still there. Older
+        // snapshots (from a host that was replaced) are ignored.
+        if (!_isHost && snap.hostUserId == current.hostUserId) {
+          _heardFromHostAt = _clock();
+        }
+        return;
+      }
+      // Someone else runs the room now (this device was away too long).
+      _isHost = false;
+      _heardFromHostAt = _clock();
       _setSnapshot(snap);
+    } else if (_isHost) {
+      _handle(message);
     } else if (message['type'] == 'rejected' && message['to'] == me.userId) {
       _rejections.add(
         IntentRejection.values.byName(message['reason']! as String),
@@ -370,8 +436,10 @@ class OnlineRoom {
     await _broadcast();
   }
 
-  Future<void> _broadcast() =>
-      _channel.send({'type': 'snapshot', 'snapshot': _snapshot!.toJson()});
+  Future<void> _broadcast() {
+    _broadcastAt = _clock();
+    return _channel.send({'type': 'snapshot', 'snapshot': _snapshot!.toJson()});
+  }
 
   void _setSnapshot(RoomSnapshot next) {
     final previous = _snapshot;

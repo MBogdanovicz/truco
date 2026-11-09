@@ -225,9 +225,11 @@ ranked independently, so "best of 3/5" is up to the players.
 5. Host calls `finish_match` (immediately if online, or later from the local queue) → results and ratings are saved.
 6. Rematch prompt (§5.5).
 
-**Implemented so far (M3):** if the host leaves, the room closes; finished games were already saved. Host hand-off
-(the next registered player by seat takes over, since every device has the full snapshot) is planned. In `nearby`
-mode the match pauses until the host reconnects.
+**Host hand-off (online):** a host that leaves on purpose closes the room; finished games were already saved. A host
+that goes silent (dead phone, no signal) is replaced: the host re-sends its snapshot every 5 s, and when a seated app
+user has heard nothing for 15 s × (their place in seat order), they take over with the snapshot they already hold and
+broadcast it under their id. A former host that comes back sees a newer snapshot from someone else and steps down. In
+`nearby` mode the match pauses until the host reconnects.
 
 Finished games are uploaded by the host through the `finish_match` RPC (idempotent, recomputes the score from the event
 log). Uploads are queued on the device while offline and retried on the next app start. Every device also keeps the game

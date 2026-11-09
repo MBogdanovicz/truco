@@ -10,6 +10,7 @@ void main() {
   late InMemoryChannelHub hub;
   late DateTime now;
   late OnlineRoom host;
+  late MatchChannel hostChannel;
   var ids = 0;
 
   DateTime clock() => now;
@@ -26,8 +27,9 @@ void main() {
     hub = InMemoryChannelHub();
     now = DateTime.utc(2026, 1, 1, 20);
     ids = 0;
+    hostChannel = hub.connect();
     host = OnlineRoom.host(
-      channel: hub.connect(),
+      channel: hostChannel,
       me: const RoomMember(userId: 'h', name: 'Host'),
       newId: () => 'game${++ids}',
       clock: clock,
@@ -175,6 +177,49 @@ void main() {
     await host.setGroup(null);
     await settle();
     expect(p2.snapshot!.group, isNull);
+  });
+
+  test('the next player takes over when the host goes silent', () async {
+    final [p2, p3, p4] = await fullTable();
+    await host.addPoints(Team.a, 3);
+    await settle();
+
+    // The host keeps a heartbeat while it is there.
+    now = now.add(OnlineRoom.hostTimeout);
+    await host.tick();
+    await settle();
+    for (final p in [p2, p3, p4]) {
+      await p.tick();
+    }
+    expect([p2, p3, p4].any((p) => p.isHost), isFalse);
+
+    // Then its phone loses signal.
+    hub.disconnect(hostChannel);
+    now = now.add(OnlineRoom.hostTimeout);
+    for (final p in [p2, p3, p4]) {
+      await p.tick();
+      await settle();
+    }
+    expect(p3.isHost, isTrue, reason: 'seat 1 is first in line');
+    expect(p2.isHost || p4.isHost, isFalse);
+    for (final p in [p2, p3, p4]) {
+      expect(p.snapshot!.hostUserId, 'p3');
+      expect(p.snapshot!.state.scoreOf(Team.a), 3);
+    }
+
+    // The game goes on under the new host.
+    now = now.add(const Duration(seconds: 20));
+    await p4.addPoints(Team.b, 1);
+    await settle();
+    expect(p2.snapshot!.state.scoreOf(Team.b), 1);
+
+    // The old host comes back and steps down.
+    hub.reconnect(hostChannel);
+    now = now.add(const Duration(seconds: 6));
+    await p3.tick();
+    await settle();
+    expect(host.isHost, isFalse);
+    expect(host.snapshot!.hostUserId, 'p3');
   });
 
   test('snapshot JSON round trip', () async {

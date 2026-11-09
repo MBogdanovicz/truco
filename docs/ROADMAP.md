@@ -34,4 +34,4 @@ M2 is built first because it is useful on its own and exercises the domain layer
   PWA at https://truco.mytrophies.app.
 * M4 in testing: groups (public/private, join codes, free limit of 2 owned groups), global and group leaderboards for
   players and duos (Elo + win rate), ranked/friendly toggle and group choice in the online lobby.
-* Pending in M3: host hand-off when the host leaves.
+* Host hand-off: if the host goes silent for 15 s, the next app user in seat order takes over the room.
