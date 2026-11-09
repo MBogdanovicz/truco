@@ -1,38 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <radialGradient id="felt" cx="50%" cy="38%" r="75%">
-      <stop offset="0" stop-color="#2f8a57"/>
-      <stop offset="1" stop-color="#0f4a2c"/>
-    </radialGradient>
-    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".38"/>
-    </filter>
-    <g id="card">
-      <rect x="-82" y="-118" width="164" height="236" rx="18" fill="#fffdf6"/>
-      <rect x="-82" y="-118" width="164" height="236" rx="18" fill="none" stroke="#d9d2bf" stroke-width="3"/>
-    </g>
-  </defs>
-  <g id="bg"><rect width="512" height="512" fill="url(#felt)"/></g>
-  <g id="fg" font-family="Georgia, 'DejaVu Serif', serif" font-weight="700" text-anchor="middle">
-    <g transform="translate(256 262)">
-      <g transform="rotate(-22 0 190)" filter="url(#sh)">
-        <use href="#card"/>
-        <text x="-52" y="-72" font-size="44" fill="#c62828">7</text>
-        <text x="-52" y="-34" font-size="36" fill="#c62828">♥</text>
-        <text x="0" y="40" font-size="110" fill="#c62828">♥</text>
-      </g>
-      <g transform="translate(0 -6)" filter="url(#sh)">
-        <use href="#card"/>
-        <text x="-52" y="-72" font-size="44" fill="#1b1b1b">A</text>
-        <text x="-52" y="-34" font-size="36" fill="#1b1b1b">♠</text>
-        <text x="0" y="40" font-size="110" fill="#1b1b1b">♠</text>
-      </g>
-      <g transform="rotate(22 0 190)" filter="url(#sh)">
-        <use href="#card"/>
-        <text x="-52" y="-72" font-size="44" fill="#1b1b1b">4</text>
-        <text x="-52" y="-34" font-size="36" fill="#1b1b1b">♣</text>
-        <text x="0" y="40" font-size="110" fill="#1b1b1b">♣</text>
-      </g>
-    </g>
-  </g>
-</svg>
+<style>@font-face{font-family:Inter;src:url(file:///home/user/truco/app/assets/fonts/Inter-ExtraBold.ttf);font-weight:800}</style>
+<defs><radialGradient id="felt" cx="45%" cy="35%" r="80%"><stop offset="0" stop-color="#2f8a57"/><stop offset="1" stop-color="#0d4429"/></radialGradient>
+<radialGradient id="wood" cx="45%" cy="35%" r="80%"><stop offset="0" stop-color="#3a2a20"/><stop offset="1" stop-color="#1a110b"/></radialGradient>
+<filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".45"/></filter>
+<pattern id="lat" width="22" height="22" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="22" height="22" fill="#b3261e"/><rect x="0" y="0" width="22" height="4" fill="#fbe9e7"/><rect x="0" y="0" width="4" height="22" fill="#fbe9e7"/></pattern></defs><g id="bg"><rect width="512" height="512" fill="url(#felt)"/></g><g id="fg" transform="translate(256 236) scale(0.86) translate(-256 -256)"><g filter="url(#sh)" transform="rotate(-6 256 256)">
+  <rect x="122" y="40" width="268" height="380" rx="24" fill="#fffdf6"/>
+  <text x="168" y="118" font-family="Inter" font-weight="800" font-size="66" fill="#141414" text-anchor="middle" letter-spacing="-4">10</text>
+  <g transform="translate(168 160)" fill="#141414"><circle cx="0" cy="-12.76" r="13.92"/><circle cx="-13.92" cy="6.96" r="13.92"/><circle cx="13.92" cy="6.96" r="13.92"/><rect x="-5.800000000000001" y="-2.9000000000000004" width="11.600000000000001" height="11.600000000000001"/><path d="M-3.48 5.800000000000001 L-11.600000000000001 29.0 L11.600000000000001 29.0 L3.48 5.800000000000001z"/></g>
+  <rect x="214" y="92" width="150" height="300" rx="6" fill="#fbf3cf" stroke="#e2b400" stroke-width="5"/>
+  <g transform="translate(254 140)" fill="#141414"><circle cx="0" cy="-13.64" r="14.879999999999999"/><circle cx="-14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><circle cx="14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><rect x="-6.2" y="-3.1" width="12.4" height="12.4"/><path d="M-3.7199999999999998 6.2 L-12.4 31.0 L12.4 31.0 L3.7199999999999998 6.2z"/></g><g transform="translate(326 140)" fill="#141414"><circle cx="0" cy="-13.64" r="14.879999999999999"/><circle cx="-14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><circle cx="14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><rect x="-6.2" y="-3.1" width="12.4" height="12.4"/><path d="M-3.7199999999999998 6.2 L-12.4 31.0 L12.4 31.0 L3.7199999999999998 6.2z"/></g><g transform="translate(290 205)" fill="#141414"><circle cx="0" cy="-13.64" r="14.879999999999999"/><circle cx="-14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><circle cx="14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><rect x="-6.2" y="-3.1" width="12.4" height="12.4"/><path d="M-3.7199999999999998 6.2 L-12.4 31.0 L12.4 31.0 L3.7199999999999998 6.2z"/></g><g transform="translate(254 270)" fill="#141414"><circle cx="0" cy="-13.64" r="14.879999999999999"/><circle cx="-14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><circle cx="14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><rect x="-6.2" y="-3.1" width="12.4" height="12.4"/><path d="M-3.7199999999999998 6.2 L-12.4 31.0 L12.4 31.0 L3.7199999999999998 6.2z"/></g><g transform="translate(326 270)" fill="#141414"><circle cx="0" cy="-13.64" r="14.879999999999999"/><circle cx="-14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><circle cx="14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><rect x="-6.2" y="-3.1" width="12.4" height="12.4"/><path d="M-3.7199999999999998 6.2 L-12.4 31.0 L12.4 31.0 L3.7199999999999998 6.2z"/></g>
+  <g transform="translate(290 335)" fill="#141414"><circle cx="0" cy="-13.64" r="14.879999999999999"/><circle cx="-14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><circle cx="14.879999999999999" cy="7.4399999999999995" r="14.879999999999999"/><rect x="-6.2" y="-3.1" width="12.4" height="12.4"/><path d="M-3.7199999999999998 6.2 L-12.4 31.0 L12.4 31.0 L3.7199999999999998 6.2z"/></g>
+</g><g filter="url(#sh)" transform="rotate(-20 256 256) translate(10 250)">
+  <rect x="40" y="70" width="400" height="280" rx="24" fill="#fffdf6"/>
+  <rect x="66" y="96" width="348" height="228" rx="10" fill="url(#lat)"/>
+  <rect x="66" y="96" width="348" height="228" rx="10" fill="none" stroke="#b3261e" stroke-width="6"/>
+</g></g></svg>
