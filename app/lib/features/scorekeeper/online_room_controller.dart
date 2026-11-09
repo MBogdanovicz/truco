@@ -241,7 +241,9 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     final record = game.record;
     await ref.read(matchHistoryRepositoryProvider).add(record);
     ref.invalidate(matchHistoryProvider);
-    if (room.isHost) {
+    // A guest (no e-mail account) can't save games: it has no profile.
+    final guest = ref.read(authRepositoryProvider).currentUser?.isGuest ?? true;
+    if (room.isHost && !guest) {
       await ref
           .read(resultUploaderProvider)
           .submit(

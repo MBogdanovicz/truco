@@ -82,6 +82,7 @@ final resultUploaderProvider = Provider<ResultUploader>((ref) {
   return ResultUploader(
     ref.watch(onlineRoomRepositoryProvider),
     SharedPreferencesAsync(),
-    () => auth.currentUser != null,
+    // Guests have no profile, so the server can't store their games.
+    () => auth.currentUser != null && !auth.currentUser!.isGuest,
   );
 });

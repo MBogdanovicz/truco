@@ -8,13 +8,23 @@ import '../config/env.dart';
 
 /// Signed-in user as the app sees it.
 class AppUser {
-  const AppUser({required this.id, required this.email, this.displayName});
+  const AppUser({
+    required this.id,
+    required this.email,
+    this.displayName,
+    this.isGuest = false,
+  });
 
   final String id;
   final String? email;
 
   /// Null until the user finishes onboarding.
   final String? displayName;
+
+  /// Signed in without e-mail (Supabase anonymous user): can play in rooms,
+  /// but has no profile, so games with guests never count for rankings and
+  /// groups are unavailable.
+  final bool isGuest;
 
   bool get needsOnboarding =>
       displayName == null || displayName!.trim().isEmpty;
@@ -39,6 +49,11 @@ class AuthRepository {
     return client.auth.onAuthStateChange
         .map((s) => _toAppUser(s.session?.user))
         .distinct((a, b) => a?.id == b?.id && a?.displayName == b?.displayName);
+  }
+
+  /// Signs in without e-mail, just to join a scorekeeper room.
+  Future<void> signInAsGuest(String name) async {
+    await _client!.auth.signInAnonymously(data: {'display_name': name.trim()});
   }
 
   Future<void> sendCode(String email) =>
@@ -76,6 +91,7 @@ class AuthRepository {
       id: user.id,
       email: user.email,
       displayName: user.userMetadata?['display_name'] as String?,
+      isGuest: user.isAnonymous,
     );
   }
 }

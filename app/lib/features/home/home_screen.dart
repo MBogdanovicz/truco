@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/env.dart';
 import '../../data/auth_repository.dart';
@@ -20,6 +22,7 @@ class HomeScreen extends ConsumerWidget {
     final ongoing = ref.watch(scorekeeperControllerProvider);
     final room = ref.watch(onlineRoomControllerProvider);
     final lastRoom = ref.watch(lastRoomCodeProvider).value;
+    final hasAccount = user != null && !user.isGuest;
     final theme = Theme.of(context);
 
     return AppScaffold(
@@ -27,7 +30,9 @@ class HomeScreen extends ConsumerWidget {
       actions: [
         if (user != null)
           IconButton(
-            tooltip: 'Sair da conta',
+            tooltip: user.isGuest
+                ? 'Sair (e entrar com e-mail)'
+                : 'Sair da conta',
             icon: const Icon(Icons.logout),
             onPressed: () => auth.signOut(),
           ),
@@ -38,9 +43,21 @@ class HomeScreen extends ConsumerWidget {
           if (user?.displayName != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                'Olá, ${user!.displayName}!',
-                style: theme.textTheme.headlineSmall,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Olá, ${user!.displayName}!',
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Mudar meu nome',
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () => _rename(context, ref, user.displayName!),
+                  ),
+                ],
               ),
             ),
           if (room != null)
@@ -61,6 +78,21 @@ class HomeScreen extends ConsumerWidget {
               subtitle: 'Saiu sem querer? Toque para entrar de novo.',
               onTap: () => context.go('/marcador/entrar?codigo=$lastRoom'),
             ),
+          // On the website opened from an Android phone, offer the app: it
+          // also has the offline "nearby" mode.
+          if (kIsWeb && defaultTargetPlatform == TargetPlatform.android)
+            _HomeCard(
+              icon: Icons.android,
+              color: AppColors.felt,
+              title: 'Baixe o app para Android',
+              subtitle:
+                  'Funciona melhor e marca partidas até sem internet. '
+                  'Depois de baixar, abra o arquivo para instalar.',
+              onTap: () => launchUrl(
+                Uri.parse(Env.androidApkUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+            ),
           _HomeCard(
             icon: Icons.scoreboard,
             color: AppColors.felt,
@@ -79,12 +111,12 @@ class HomeScreen extends ConsumerWidget {
           ),
           _HomeCard(
             icon: Icons.groups,
-            color: user == null ? Colors.grey : AppColors.teamA,
+            color: hasAccount ? AppColors.teamA : Colors.grey,
             title: 'Grupos',
-            subtitle: user == null
-                ? 'Entre com sua conta para usar.'
-                : 'Ranking só entre os seus amigos.',
-            onTap: user == null ? null : () => context.go('/grupos'),
+            subtitle: hasAccount
+                ? 'Ranking só entre os seus amigos.'
+                : 'Entre com seu e-mail para usar.',
+            onTap: hasAccount ? () => context.go('/grupos') : null,
           ),
           _HomeCard(
             icon: Icons.leaderboard,
@@ -123,6 +155,48 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Changes the name shown to other players and in the rankings.
+Future<void> _rename(
+  BuildContext context,
+  WidgetRef ref,
+  String current,
+) async {
+  final name = TextEditingController(text: current);
+  final ok = await showAppDialog<bool>(
+    context,
+    title: 'Seu nome',
+    content: Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: AppTextField(
+        controller: name,
+        label: 'Nome',
+        autofocus: true,
+        maxLength: 24,
+        textCapitalization: TextCapitalization.words,
+      ),
+    ),
+    actions: const [
+      AppDialogAction(label: 'Cancelar', value: false),
+      AppDialogAction(label: 'Salvar', value: true, isPrimary: true),
+    ],
+  );
+  final value = name.text.trim();
+  name.dispose();
+  if (ok != true || value == current || !context.mounted) return;
+  if (value.length < 2) {
+    showAppToast(context, 'O nome precisa ter pelo menos 2 letras.');
+    return;
+  }
+  try {
+    await ref.read(authRepositoryProvider).setDisplayName(value);
+    if (context.mounted) showAppToast(context, 'Nome atualizado');
+  } on Object {
+    if (context.mounted) {
+      showAppToast(context, 'Não foi possível mudar o nome. Tente de novo.');
+    }
   }
 }
 

@@ -39,7 +39,10 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final online = ref.watch(authRepositoryProvider).currentUser != null;
+    final me = ref.watch(authRepositoryProvider).currentUser;
+    final online = me != null;
+    // Guests (no e-mail) can join rooms but not open them.
+    final canHost = me != null && !me.isGuest;
     final android = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     return AppScaffold(
       title: 'Novo marcador',
@@ -57,10 +60,12 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
                 _ModeCard(
                   icon: Icons.wifi_tethering,
                   title: 'Cada um no seu celular',
-                  subtitle: online
+                  subtitle: canHost
                       ? 'Crie uma sala e passe o código. Cada dupla marca os seus tentos. Precisa de internet.'
+                      : online
+                      ? 'Para criar salas, entre com seu e-mail.'
                       : 'Entre com sua conta para usar.',
-                  onTap: online ? _createRoom : null,
+                  onTap: canHost ? _createRoom : null,
                 ),
                 if (android)
                   _ModeCard(

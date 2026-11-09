@@ -75,6 +75,48 @@ class _LoginState extends ConsumerState<LoginScreen> {
     });
   }
 
+  /// Joining someone's room doesn't need an account; the game just won't
+  /// count for the rankings.
+  Future<void> _guest() async {
+    final name = TextEditingController();
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Entrar sem conta',
+      content: Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Você pode entrar em salas e marcar os tentos, mas as partidas '
+              'não contam para o ranking e não dá para usar grupos.',
+            ),
+            const SizedBox(height: 12),
+            AppTextField(
+              controller: name,
+              label: 'Seu nome',
+              autofocus: true,
+              maxLength: 24,
+              textCapitalization: TextCapitalization.words,
+            ),
+          ],
+        ),
+      ),
+      actions: const [
+        AppDialogAction(label: 'Cancelar', value: false),
+        AppDialogAction(label: 'Entrar', value: true, isPrimary: true),
+      ],
+    );
+    final value = name.text.trim();
+    name.dispose();
+    if (ok != true) return;
+    if (value.length < 2) {
+      setState(() => _error = 'O nome precisa ter pelo menos 2 letras.');
+      return;
+    }
+    await _run(() => ref.read(authRepositoryProvider).signInAsGuest(value));
+  }
+
   Future<void> _verify() async {
     if (_code.text.trim().length < 6) {
       setState(() => _error = 'Digite o código recebido por e-mail.');
@@ -141,6 +183,13 @@ class _LoginState extends ConsumerState<LoginScreen> {
               label: _codeSent ? 'Entrar' : 'Enviar código',
               onPressed: _codeSent ? _verify : _sendCode,
             ),
+            if (!_codeSent) ...[
+              const SizedBox(height: 8),
+              AppTextButton(
+                label: 'Entrar sem conta, só para marcar',
+                onPressed: _guest,
+              ),
+            ],
             if (_codeSent) ...[
               const SizedBox(height: 8),
               AppTextButton(label: 'Reenviar código', onPressed: _sendCode),

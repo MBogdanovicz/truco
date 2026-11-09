@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/auth_repository.dart';
 import '../../data/nearby/nearby_link.dart';
 import '../../data/nearby/nearby_match_channel.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
@@ -135,11 +136,18 @@ class _NearbyState extends ConsumerState<NearbyScreen> {
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
-          AppButton(
-            label: 'Criar sala aqui',
-            icon: Icons.add,
-            onPressed: _create,
-          ),
+          if (ref.read(authRepositoryProvider).currentUser?.isGuest ?? false)
+            Text(
+              'Para criar salas, entre com seu e-mail. Sem conta você pode '
+              'entrar na sala de alguém.',
+              style: theme.textTheme.bodySmall,
+            )
+          else
+            AppButton(
+              label: 'Criar sala aqui',
+              icon: Icons.add,
+              onPressed: _create,
+            ),
           const SizedBox(height: 24),
           Text('Salas por perto', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),

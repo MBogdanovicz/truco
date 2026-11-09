@@ -37,3 +37,7 @@ Release web builds use `--no-web-resources-cdn` so the PWA works offline.
    (later logins) email templates, include `{{ .Token }}` so users receive the 6-digit code. Custom SMTP is required
    to edit templates (we use Resend).
 3. Add `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as GitHub repository secrets for the keep-alive workflow.
+
+### Guests
+
+Joining a room without an e-mail account uses Supabase anonymous sign-in: enable *Authentication > Sign In / Providers > Allow anonymous sign-ins*. Guests get no profile, so their games are never ranked.
