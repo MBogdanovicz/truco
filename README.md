@@ -21,11 +21,11 @@ flutter run -d chrome --dart-define=APP_STYLE=cupertino   # PWA look
 ```
 
 Without Supabase settings the app runs offline-only (single-device scorekeeper, local history).
-To enable login, pass the project settings at build time:
+To enable login, pass the project settings at build time. The publishable key is public by design (access is
+controlled by Row Level Security), so it is committed in `app/config/supabase.json`:
 
 ```bash
-flutter run --dart-define=SUPABASE_URL=https://<project>.supabase.co \
-            --dart-define=SUPABASE_PUBLISHABLE_KEY=<publishable key>
+flutter run --dart-define-from-file=config/supabase.json
 ```
 
 Release web builds use `--no-web-resources-cdn` so the PWA works offline.
