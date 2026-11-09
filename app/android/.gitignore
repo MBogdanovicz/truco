@@ -15,3 +15,4 @@ key.properties
 
 # Public test-signing key (see app/build.gradle.kts)
 !app/test-signing.keystore
+/app/google-services.json
