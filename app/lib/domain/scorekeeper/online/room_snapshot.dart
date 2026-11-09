@@ -117,6 +117,13 @@ class RoomSnapshot {
   bool teamHasAppUser(Team team) =>
       seats.any((s) => s.team == team && !s.isGuest);
 
+  /// Whether someone arriving mid-game could play for [team]: a free seat,
+  /// a guest's seat, or the seat of a player who left. (The host may also
+  /// hand over the seat of a player who lost signal.)
+  bool canJoinMidGame(Team team) =>
+      freeSeatOf(team) != null ||
+      seatsOf(team).any((s) => s.userId == null || left.contains(s.userId));
+
   int? freeSeatOf(Team team) {
     for (final i in seatIndexesOf(team)) {
       if (!seats.any((s) => s.index == i)) return i;

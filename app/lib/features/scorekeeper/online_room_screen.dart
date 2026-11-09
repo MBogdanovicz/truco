@@ -27,6 +27,36 @@ class OnlineRoomScreen extends ConsumerStatefulWidget {
 class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
   bool _flipTop = false;
 
+  /// Spectator chose to only watch, or was told both teams are full.
+  bool _watching = false;
+  bool _closing = false;
+
+  /// The room ended (host closed it, or a whole team left): say so and go
+  /// back to the home screen.
+  void _onClosed() {
+    if (_closing) return;
+    _closing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      showAppToast(context, 'A sala foi encerrada.');
+      await ref.read(onlineRoomControllerProvider.notifier).leave();
+      if (mounted) context.go('/');
+    });
+  }
+
+  /// A spectator who can't join any team is told once.
+  void _tellFull() {
+    _watching = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        showAppToast(
+          context,
+          'As duas duplas estão completas. Você vai só assistir.',
+        );
+      }
+    });
+  }
+
   static const _noticeText = {
     RoomNotice.youAreHost:
         'Quem controlava a sala ficou sem conexão. Agora você controla a sala.',
@@ -69,6 +99,7 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
       );
       if (ok != true) return;
     }
+    _closing = true; // leaving on purpose: no "room closed" toast
     await ref.read(onlineRoomControllerProvider.notifier).leave();
     if (mounted) context.go('/');
   }
@@ -118,10 +149,8 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     var title = 'Sala';
     var dark = false;
     if (view == null || snap?.phase == RoomPhase.closed) {
-      body = _Message(
-        text: 'A sala foi encerrada.',
-        action: AppButton(label: 'Voltar ao início', onPressed: _leave),
-      );
+      _onClosed();
+      body = const Center(child: AppProgress());
     } else if (snap == null) {
       body = const _Message(text: 'Conectando à sala…', progress: true);
     } else if (snap.phase == RoomPhase.lobby) {
@@ -130,11 +159,20 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     } else {
       title = 'Marcador';
       dark = true;
+      final spectator =
+          view.room.mySeat == null && !snap.state.isFinished && !_watching;
+      final joinable = [
+        for (final t in Team.values)
+          if (snap.canJoinMidGame(t)) t,
+      ];
+      if (spectator && joinable.isEmpty) _tellFull();
       body = _Game(
         room: view.room,
         snap: snap,
         flipTop: _flipTop,
         onClose: _leave,
+        joinTeams: spectator ? joinable : const [],
+        onWatch: () => setState(() => _watching = true),
       );
     }
 
@@ -178,10 +216,9 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
 }
 
 class _Message extends StatelessWidget {
-  const _Message({required this.text, this.action, this.progress = false});
+  const _Message({required this.text, this.progress = false});
 
   final String text;
-  final Widget? action;
   final bool progress;
 
   @override
@@ -193,7 +230,6 @@ class _Message extends StatelessWidget {
         children: [
           if (progress) ...[const AppProgress(), const SizedBox(height: 16)],
           Text(text, textAlign: TextAlign.center),
-          if (action != null) ...[const SizedBox(height: 16), action!],
         ],
       ),
     ),
@@ -477,12 +513,18 @@ class _Game extends StatelessWidget {
     required this.snap,
     required this.flipTop,
     required this.onClose,
+    this.joinTeams = const [],
+    this.onWatch,
   });
 
   final OnlineRoom room;
   final RoomSnapshot snap;
   final bool flipTop;
   final VoidCallback onClose;
+
+  /// Teams a spectator may join (empty when not offering).
+  final List<Team> joinTeams;
+  final VoidCallback? onWatch;
 
   @override
   Widget build(BuildContext context) {
@@ -503,8 +545,13 @@ class _Game extends StatelessWidget {
             highlightTeam: room.mySeat?.team,
           ),
         ),
-        if (room.mySeat == null && !state.isFinished)
-          _JoinGameBar(room: room, snap: snap),
+        if (joinTeams.isNotEmpty)
+          _JoinGameBar(
+            room: room,
+            snap: snap,
+            teams: joinTeams,
+            onWatch: onWatch ?? () {},
+          ),
         if (state.isFinished)
           _FinishedCard(room: room, snap: snap, onClose: onClose),
         if (!room.isConnected) const _ConnectionLost(),
@@ -516,10 +563,17 @@ class _Game extends StatelessWidget {
 /// For someone who opened a room with a game already going: pick a team to
 /// play (a free seat, or the place of a guest or of someone who left).
 class _JoinGameBar extends StatelessWidget {
-  const _JoinGameBar({required this.room, required this.snap});
+  const _JoinGameBar({
+    required this.room,
+    required this.snap,
+    required this.teams,
+    required this.onWatch,
+  });
 
   final OnlineRoom room;
   final RoomSnapshot snap;
+  final List<Team> teams;
+  final VoidCallback onWatch;
 
   @override
   Widget build(BuildContext context) => Align(
@@ -533,24 +587,24 @@ class _JoinGameBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'A partida já começou. Você está só assistindo. '
-                'Para jogar, entre numa dupla:',
+                'A partida já começou. Quer jogar numa dupla ou só assistir?',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Row(
                 children: [
-                  for (final t in Team.values) ...[
+                  for (final t in teams) ...[
                     Expanded(
                       child: AppButton(
-                        label: snap.teamNames[t]!,
+                        label: 'Jogar na ${snap.teamNames[t]}',
                         onPressed: () => room.pickTeam(t),
                       ),
                     ),
-                    if (t != Team.values.last) const SizedBox(width: 8),
+                    if (t != teams.last) const SizedBox(width: 8),
                   ],
                 ],
               ),
+              AppTextButton(label: 'Só assistir', onPressed: onWatch),
             ],
           ),
         ),
