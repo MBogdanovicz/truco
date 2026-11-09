@@ -39,7 +39,8 @@ class _LoginState extends ConsumerState<LoginScreen> {
       await action();
     } on AuthException catch (e) {
       setState(() => _error = _describe(e));
-    } on Object {
+    } on Object catch (e) {
+      debugPrint('Login failed: $e');
       setState(
         () => _error = 'Não foi possível conectar. Verifique sua internet.',
       );
@@ -61,7 +62,12 @@ class _LoginState extends ConsumerState<LoginScreen> {
       return 'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.';
     }
     debugPrint('Auth error: ${e.code} ${e.statusCode} ${e.message}');
-    return 'Não foi possível entrar agora. Tente de novo.';
+    if (code.contains('anonymous_provider_disabled')) {
+      return 'A entrada sem conta ainda não está ativada no servidor.';
+    }
+    // The code helps us find the cause when someone reports it.
+    return 'Não foi possível entrar agora. Tente de novo. '
+        '(${e.code ?? e.statusCode ?? 'erro'})';
   }
 
   Future<void> _sendCode() async {
