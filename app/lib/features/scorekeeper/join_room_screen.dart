@@ -7,14 +7,28 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import 'online_room_controller.dart';
 
 class JoinRoomScreen extends ConsumerStatefulWidget {
-  const JoinRoomScreen({super.key});
+  const JoinRoomScreen({super.key, this.initialCode});
+
+  /// Code from an invite link; the screen joins right away.
+  final String? initialCode;
 
   @override
   ConsumerState<JoinRoomScreen> createState() => _JoinState();
 }
 
 class _JoinState extends ConsumerState<JoinRoomScreen> {
-  final _code = TextEditingController();
+  late final _code = TextEditingController(
+    text: widget.initialCode?.toUpperCase() ?? '',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if ((widget.initialCode ?? '').length == 6) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _join());
+    }
+  }
+
   bool _busy = false;
   String? _error;
 

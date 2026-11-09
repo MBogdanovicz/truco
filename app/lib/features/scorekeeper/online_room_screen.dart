@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../config/env.dart';
 import '../../domain/scorekeeper/match_engine.dart';
 import '../../domain/scorekeeper/match_record.dart';
 import '../../domain/scorekeeper/online/online_room.dart';
@@ -216,19 +217,28 @@ class _Lobby extends StatelessWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Copiar código',
+                        tooltip: 'Copiar convite',
                         color: Colors.white,
                         icon: const Icon(Icons.copy),
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: snap.code));
-                          showAppToast(context, 'Código copiado');
+                          Clipboard.setData(
+                            ClipboardData(
+                              text:
+                                  'Entre na minha sala do Truco: '
+                                  '${Env.roomInviteLink(snap.code)}\n'
+                                  'Código: ${snap.code}',
+                            ),
+                          );
+                          showAppToast(context, 'Convite copiado');
                         },
                       ),
                     ],
                   ),
                 ),
                 Text(
-                  'Os outros jogadores tocam em "Entrar com código".',
+                  'No app, toque em "Entrar com código". No iPhone, abra '
+                  '${Env.webAppUrl.replaceFirst('https://', '')}. '
+                  'Ou copie o convite com o link e mande no grupo.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.white70,

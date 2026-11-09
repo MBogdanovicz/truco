@@ -20,15 +20,36 @@ String? authRedirect({
   required bool authAvailable,
   required AppUser? user,
   required String location,
+  String? uri,
 }) {
   if (!authAvailable) {
     return location.startsWith('/entrar') ? '/' : null;
   }
-  if (user == null) return location == '/entrar' ? null : '/entrar';
-  if (user.needsOnboarding) {
-    return location == '/entrar/nome' ? null : '/entrar/nome';
+  if (user == null) {
+    if (location == '/entrar') return null;
+    // Keep deep links (e.g. a room invite) across the login.
+    final target = uri ?? location;
+    return target == '/'
+        ? '/entrar'
+        : '/entrar?de=${Uri.encodeComponent(target)}';
   }
-  return location.startsWith('/entrar') ? '/' : null;
+  if (user.needsOnboarding) {
+    if (location == '/entrar/nome') return null;
+    final from = _fromParam(uri);
+    return from == null
+        ? '/entrar/nome'
+        : '/entrar/nome?de=${Uri.encodeComponent(from)}';
+  }
+  if (location.startsWith('/entrar')) return _fromParam(uri) ?? '/';
+  return null;
+}
+
+String? _fromParam(String? uri) {
+  if (uri == null) return null;
+  final from = Uri.tryParse(uri)?.queryParameters['de'];
+  return from != null && from.startsWith('/') && !from.startsWith('/entrar')
+      ? from
+      : null;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -42,6 +63,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       authAvailable: auth.isAvailable,
       user: auth.currentUser,
       location: state.matchedLocation,
+      uri: state.uri.toString(),
     ),
     routes: [
       GoRoute(
@@ -58,7 +80,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: 'marcador/entrar',
-            builder: (_, _) => const JoinRoomScreen(),
+            builder: (_, state) => JoinRoomScreen(
+              initialCode: state.uri.queryParameters['codigo'],
+            ),
           ),
           GoRoute(
             path: 'marcador/sala',

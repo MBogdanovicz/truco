@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:truco/app.dart';
+import 'package:truco/data/auth_repository.dart';
 import 'package:truco/data/match_history_repository.dart';
 import 'package:truco/router.dart';
 import 'package:truco/ui/adaptive/platform_style.dart';
@@ -94,6 +95,33 @@ void main() {
     expect(
       authRedirect(authAvailable: true, user: null, location: '/'),
       '/entrar',
+    );
+    const invite = '/marcador/entrar?codigo=ABC123';
+    final toLogin = authRedirect(
+      authAvailable: true,
+      user: null,
+      location: '/marcador/entrar',
+      uri: invite,
+    );
+    expect(toLogin, '/entrar?de=${Uri.encodeComponent(invite)}');
+    const me = AppUser(id: 'u', email: 'a@b.c', displayName: 'Ana');
+    expect(
+      authRedirect(
+        authAvailable: true,
+        user: me,
+        location: '/entrar',
+        uri: toLogin,
+      ),
+      invite,
+    );
+    expect(
+      authRedirect(
+        authAvailable: true,
+        user: me,
+        location: '/entrar',
+        uri: '/entrar',
+      ),
+      '/',
     );
   });
 }

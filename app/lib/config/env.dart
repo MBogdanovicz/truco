@@ -11,4 +11,13 @@ abstract final class Env {
 
   static bool get hasSupabase =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
+
+  /// Public address of the PWA, used in room invites.
+  static const webAppUrl = String.fromEnvironment(
+    'WEB_APP_URL',
+    defaultValue: 'https://truco.mytrophies.app',
+  );
+
+  static String roomInviteLink(String code) =>
+      '$webAppUrl/#/marcador/entrar?codigo=$code';
 }
