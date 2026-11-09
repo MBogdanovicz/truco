@@ -14,6 +14,7 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
 import 'online_room_controller.dart';
+import 'scoreboard_skin.dart';
 import 'scoreboard_view.dart';
 
 /// Online room: lobby while players gather, then the shared scoreboard.
@@ -144,6 +145,7 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     });
     final view = ref.watch(onlineRoomControllerProvider);
     final snap = view?.snapshot;
+    final skin = ref.watch(scoreboardSkinProvider);
 
     final Widget body;
     var title = 'Sala';
@@ -167,6 +169,7 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
       ];
       if (spectator && joinable.isEmpty) _tellFull();
       body = _Game(
+        skin: skin,
         room: view.room,
         snap: snap,
         flipTop: _flipTop,
@@ -184,8 +187,8 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
         },
         child: AppScaffold(
           title: title,
-          backgroundColor: dark ? AppColors.feltDark : null,
-          barColor: dark ? AppColors.feltDark : null,
+          backgroundColor: dark ? skin.bar : null,
+          barColor: dark ? skin.bar : null,
           maxWidth: dark ? null : 960,
           actions: [
             if (dark && snap != null && !(view?.nearby ?? true))
@@ -195,6 +198,7 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
                 icon: Icon(context.icon(AppIcon.key)),
                 onPressed: () => _showCode(snap.code),
               ),
+            if (dark) const ScoreboardSkinButton(),
             if (dark)
               IconButton(
                 tooltip: 'Virar placar de cima',
@@ -481,6 +485,7 @@ class _TeamSeats extends StatelessWidget {
 
 class _Game extends StatelessWidget {
   const _Game({
+    required this.skin,
     required this.room,
     required this.snap,
     required this.flipTop,
@@ -489,6 +494,7 @@ class _Game extends StatelessWidget {
     this.onWatch,
   });
 
+  final ScoreboardSkin skin;
   final OnlineRoom room;
   final RoomSnapshot snap;
   final bool flipTop;
@@ -505,6 +511,7 @@ class _Game extends StatelessWidget {
       children: [
         ScoreboardView(
           flipTop: flipTop,
+          skin: skin,
           model: ScoreboardModel(
             teamNames: snap.teamNames,
             seats: snap.seats,

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
-import '../../ui/theme/app_theme.dart';
+import 'scoreboard_skin.dart';
 import 'scoreboard_view.dart';
 import 'scorekeeper_controller.dart';
 
@@ -110,6 +110,7 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
       );
     }
     final controller = ref.read(scorekeeperControllerProvider.notifier);
+    final skin = ref.watch(scoreboardSkinProvider);
     return KeepScreenOn(
       child: PopScope(
         canPop: false,
@@ -118,10 +119,11 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
         },
         child: AppScaffold(
           title: 'Marcador',
-          backgroundColor: AppColors.feltDark,
-          barColor: AppColors.feltDark,
+          backgroundColor: skin.bar,
+          barColor: skin.bar,
           maxWidth: null,
           actions: [
+            const ScoreboardSkinButton(),
             IconButton(
               tooltip: 'Virar placar de cima',
               color: Colors.white,
@@ -137,6 +139,7 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
           ],
           body: ScoreboardView(
             flipTop: _flipTop,
+            skin: skin,
             model: ScoreboardModel(
               teamNames: session.setup.teamNames,
               seats: session.setup.seats,

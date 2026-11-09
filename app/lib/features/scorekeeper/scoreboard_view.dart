@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import '../../domain/scorekeeper/match_record.dart';
 import '../../domain/scorekeeper/match_state.dart';
 import '../../domain/scorekeeper/team.dart';
+import '../../ui/adaptive/app_icons.dart';
 import '../../ui/theme/app_theme.dart';
+import 'scoreboard_skin.dart';
 
 /// Everything the scoreboard needs, independent of how the game is synced.
 class ScoreboardModel {
@@ -42,10 +44,16 @@ class ScoreboardModel {
 /// Designed to lie flat on the table: the top half can be flipped so it
 /// reads correctly from the other side.
 class ScoreboardView extends StatefulWidget {
-  const ScoreboardView({super.key, required this.model, this.flipTop = false});
+  const ScoreboardView({
+    super.key,
+    required this.model,
+    this.flipTop = false,
+    this.skin = ScoreboardSkin.felt,
+  });
 
   final ScoreboardModel model;
   final bool flipTop;
+  final ScoreboardSkin skin;
 
   @override
   State<ScoreboardView> createState() => _ScoreboardViewState();
@@ -93,15 +101,24 @@ class _ScoreboardViewState extends State<ScoreboardView> {
         if (sideBySide) {
           return Column(
             children: [
-              _CenterStrip(model: m),
+              _CenterStrip(model: m, skin: widget.skin),
               Expanded(
                 child: Row(
                   children: [
                     Expanded(
-                      child: _TeamPanel(team: Team.a, model: m),
+                      child: _TeamPanel(
+                        team: Team.a,
+                        model: m,
+                        skin: widget.skin,
+                      ),
                     ),
+                    Container(width: 4, color: widget.skin.strip),
                     Expanded(
-                      child: _TeamPanel(team: Team.b, model: m),
+                      child: _TeamPanel(
+                        team: Team.b,
+                        model: m,
+                        skin: widget.skin,
+                      ),
                     ),
                   ],
                 ),
@@ -114,12 +131,12 @@ class _ScoreboardViewState extends State<ScoreboardView> {
             Expanded(
               child: RotatedBox(
                 quarterTurns: widget.flipTop ? 2 : 0,
-                child: _TeamPanel(team: Team.a, model: m),
+                child: _TeamPanel(team: Team.a, model: m, skin: widget.skin),
               ),
             ),
-            _CenterStrip(model: m),
+            _CenterStrip(model: m, skin: widget.skin),
             Expanded(
-              child: _TeamPanel(team: Team.b, model: m),
+              child: _TeamPanel(team: Team.b, model: m, skin: widget.skin),
             ),
           ],
         );
@@ -129,9 +146,10 @@ class _ScoreboardViewState extends State<ScoreboardView> {
 }
 
 class _CenterStrip extends StatelessWidget {
-  const _CenterStrip({required this.model});
+  const _CenterStrip({required this.model, required this.skin});
 
   final ScoreboardModel model;
+  final ScoreboardSkin skin;
 
   @override
   Widget build(BuildContext context) {
@@ -143,10 +161,10 @@ class _CenterStrip extends StatelessWidget {
         ? 'Mão de onze'
         : null;
     final textStyle = Theme.of(context).textTheme.labelLarge
-        ?.copyWith(color: Colors.white);
+        ?.copyWith(color: Colors.white.withValues(alpha: 0.9));
     return Container(
       width: double.infinity,
-      color: AppColors.felt,
+      color: skin.strip,
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -179,10 +197,15 @@ class _CenterStrip extends StatelessWidget {
 }
 
 class _TeamPanel extends StatelessWidget {
-  const _TeamPanel({required this.team, required this.model});
+  const _TeamPanel({
+    required this.team,
+    required this.model,
+    required this.skin,
+  });
 
   final Team team;
   final ScoreboardModel model;
+  final ScoreboardSkin skin;
 
   static const _labels = {3: 'Truco', 6: 'Seis', 9: 'Nove', 12: 'Doze'};
 
@@ -190,7 +213,6 @@ class _TeamPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = model.state;
     final score = state.scoreOf(team);
-    final color = team == Team.a ? AppColors.teamA : AppColors.teamB;
     final players = model.seats
         .where((s) => s.team == team)
         .map((s) => s.name)
@@ -201,7 +223,8 @@ class _TeamPanel extends StatelessWidget {
         canMark && !state.isFinished && cooldown == Duration.zero;
     final canUndo = canMark && state.lastActiveScoreEventOf(team) != null;
     final theme = Theme.of(context);
-    const onColor = Colors.white;
+    final onColor = skin.text;
+    final accent = skin.accent(team);
 
     void add(int delta) {
       HapticFeedback.lightImpact();
@@ -221,8 +244,8 @@ class _TeamPanel extends StatelessWidget {
         ? const [3]
         : const [3, 6, 9, 12];
 
-    return Container(
-      color: color,
+    final panel = Container(
+      decoration: skin.isWood ? null : skin.panel(team),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       alignment: Alignment.center,
       // On big screens the controls keep a comfortable size instead of
@@ -247,14 +270,14 @@ class _TeamPanel extends StatelessWidget {
                                   model.teamNames[team]!,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleLarge?.copyWith(
-                                    color: onColor,
+                                    color: accent,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                               if (model.highlightTeam == team) ...[
                                 const SizedBox(width: 8),
-                                const _Chip(label: 'você'),
+                                _Chip(label: 'você', color: accent),
                               ],
                             ],
                           ),
@@ -274,7 +297,7 @@ class _TeamPanel extends StatelessWidget {
                         tooltip: 'Desfazer',
                         color: onColor,
                         disabledColor: onColor.withValues(alpha: 0.3),
-                        icon: const Icon(Icons.undo),
+                        icon: Icon(context.icon(AppIcon.undo)),
                         onPressed: canUndo ? () => model.onUndo(team) : null,
                       ),
                   ],
@@ -287,7 +310,7 @@ class _TeamPanel extends StatelessWidget {
                           child: Text(
                             '$score',
                             key: ValueKey('score-${team.name}'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: onColor,
                               fontWeight: FontWeight.w800,
                               fontSize: 120,
@@ -302,6 +325,7 @@ class _TeamPanel extends StatelessWidget {
                           flex: 2,
                           child: _AddButton(
                             key: ValueKey('add-${team.name}-1'),
+                            skin: skin,
                             label: cooldown > Duration.zero
                                 ? '${(cooldown.inMilliseconds / 1000).ceil()}s'
                                 : onEleven
@@ -323,7 +347,12 @@ class _TeamPanel extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                _TentoPips(score: score, target: state.rules.targetScore),
+                Tally(
+                  skin: skin,
+                  team: team,
+                  score: score,
+                  target: state.rules.targetScore,
+                ),
                 if (canMark && extraDeltas.isNotEmpty) ...[
                   SizedBox(height: compact ? 6 : 10),
                   Row(
@@ -332,6 +361,7 @@ class _TeamPanel extends StatelessWidget {
                         Expanded(
                           child: _AddButton(
                             key: ValueKey('add-${team.name}-$d'),
+                            skin: skin,
                             label: '+$d',
                             caption: compact
                                 ? null
@@ -352,54 +382,28 @@ class _TeamPanel extends StatelessWidget {
         ),
       ),
     );
+    if (!skin.isWood) return panel;
+    return DecoratedBox(
+      decoration: skin.panel(team),
+      child: CustomPaint(painter: const WoodGrainPainter(), child: panel),
+    );
   }
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
+  const _Chip({required this.label, required this.color});
   final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.25),
+      color: color.withValues(alpha: 0.2),
       borderRadius: BorderRadius.circular(10),
     ),
-    child: Text(
-      label,
-      style: const TextStyle(color: Colors.white, fontSize: 12),
-    ),
+    child: Text(label, style: TextStyle(color: color, fontSize: 12)),
   );
-}
-
-/// Twelve marks, one per tento, filled as the team scores.
-class _TentoPips extends StatelessWidget {
-  const _TentoPips({required this.score, required this.target});
-
-  final int score;
-  final int target;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < target; i++)
-          Expanded(
-            child: Container(
-              height: 8,
-              margin: EdgeInsets.only(right: i == target - 1 ? 0 : 4),
-              decoration: BoxDecoration(
-                color: i < score
-                    ? AppColors.gold
-                    : Colors.white.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 }
 
 class _AddButton extends StatelessWidget {
@@ -407,6 +411,7 @@ class _AddButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    required this.skin,
     this.caption,
     this.big = false,
   });
@@ -415,15 +420,23 @@ class _AddButton extends StatelessWidget {
   final String? caption;
   final bool big;
   final VoidCallback? onPressed;
+  final ScoreboardSkin skin;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
+    final text = skin.buttonText(enabled);
+    final radius = BorderRadius.circular(big ? 22 : 16);
     return Material(
-      color: Colors.white.withValues(alpha: enabled ? 0.18 : 0.06),
-      borderRadius: BorderRadius.circular(16),
+      color: skin.button(enabled),
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(
+          color: skin.text.withValues(alpha: enabled ? 0.18 : 0.08),
+        ),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: radius,
         onTap: onPressed,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: big ? 0 : 10),
@@ -434,7 +447,7 @@ class _AddButton extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: enabled ? 1 : 0.4),
+                    color: text,
                     fontSize: big ? 44 : 22,
                     fontWeight: FontWeight.bold,
                   ),
@@ -443,9 +456,7 @@ class _AddButton extends StatelessWidget {
                   Text(
                     caption!,
                     style: TextStyle(
-                      color: Colors.white.withValues(
-                        alpha: enabled ? 0.8 : 0.5,
-                      ),
+                      color: text.withValues(alpha: enabled ? 0.75 : 0.4),
                       fontSize: 12,
                     ),
                   ),

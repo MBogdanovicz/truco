@@ -78,10 +78,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'marcador/novo',
             builder: (_, _) => const ScorekeeperModeScreen(),
-          ),
-          GoRoute(
-            path: 'marcador/novo/local',
-            builder: (_, _) => const ScorekeeperSetupScreen(),
+            routes: [
+              GoRoute(
+                path: 'local',
+                builder: (_, _) => const ScorekeeperSetupScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: 'marcador/entrar',
@@ -103,17 +105,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
           GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
-          GoRoute(path: 'grupos', builder: (_, _) => const GroupsScreen()),
+          // Nested so the back button of a group goes to the group list.
           GoRoute(
-            path: 'grupos/entrar',
-            builder: (_, state) => JoinGroupScreen(
-              initialCode: state.uri.queryParameters['codigo'],
-            ),
-          ),
-          GoRoute(
-            path: 'grupos/:id',
-            builder: (_, state) =>
-                GroupDetailScreen(groupId: state.pathParameters['id']!),
+            path: 'grupos',
+            builder: (_, _) => const GroupsScreen(),
+            routes: [
+              GoRoute(
+                path: 'entrar',
+                builder: (_, state) => JoinGroupScreen(
+                  initialCode: state.uri.queryParameters['codigo'],
+                ),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, state) =>
+                    GroupDetailScreen(groupId: state.pathParameters['id']!),
+              ),
+            ],
           ),
         ],
       ),
