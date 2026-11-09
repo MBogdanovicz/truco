@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -107,6 +108,7 @@ class _LoginState extends ConsumerState<LoginScreen> {
           const SizedBox(height: 24),
           if (!_codeSent)
             AppTextField(
+              key: const ValueKey('email'),
               controller: _email,
               label: 'E-mail',
               keyboardType: TextInputType.emailAddress,
@@ -115,9 +117,14 @@ class _LoginState extends ConsumerState<LoginScreen> {
             )
           else
             AppTextField(
+              // A distinct key makes Flutter build a new field, so the
+              // keyboard switches from the e-mail layout to digits.
+              key: const ValueKey('code'),
               controller: _code,
               label: 'Código',
               keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              autofillHints: const [AutofillHints.oneTimeCode],
               autofocus: true,
               maxLength: 8,
               onSubmitted: (_) => _verify(),

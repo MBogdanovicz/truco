@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'platform_style.dart';
 
@@ -133,6 +134,8 @@ class AppTextField extends StatelessWidget {
     this.maxLength,
     this.onSubmitted,
     this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+    this.autofillHints,
   });
 
   final TextEditingController controller;
@@ -142,6 +145,8 @@ class AppTextField extends StatelessWidget {
   final int? maxLength;
   final ValueChanged<String>? onSubmitted;
   final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +159,8 @@ class AppTextField extends StatelessWidget {
         maxLength: maxLength,
         onSubmitted: onSubmitted,
         textCapitalization: textCapitalization,
+        inputFormatters: inputFormatters,
+        autofillHints: autofillHints,
         padding: const EdgeInsets.all(14),
       );
     }
@@ -169,6 +176,8 @@ class AppTextField extends StatelessWidget {
       maxLength: maxLength,
       onSubmitted: onSubmitted,
       textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
+      autofillHints: autofillHints,
     );
   }
 }

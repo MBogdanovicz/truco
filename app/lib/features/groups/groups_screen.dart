@@ -50,11 +50,11 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             ),
             SwitchListTile.adaptive(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Grupo público'),
+              title: Text(public ? 'Grupo público' : 'Grupo privado'),
               subtitle: Text(
                 public
-                    ? 'Qualquer pessoa pode encontrar e entrar.'
-                    : 'Só entra quem tiver o código.',
+                    ? 'Aparece na busca e qualquer pessoa pode entrar.'
+                    : 'Não aparece na busca. Só entra quem tiver o código.',
               ),
               value: public,
               onChanged: (v) => setLocal(() => public = v),

@@ -60,10 +60,12 @@ class AuthRepository {
     await client.auth.updateUser(
       UserAttributes(data: {'display_name': trimmed}),
     );
-    await client.from('profiles').upsert({
-      'id': client.auth.currentUser!.id,
-      'display_name': trimmed,
-    });
+    // The database also copies the metadata name into profiles (trigger
+    // on auth.users); this update just makes it visible right away.
+    await client
+        .from('profiles')
+        .update({'display_name': trimmed})
+        .eq('id', client.auth.currentUser!.id);
   }
 
   Future<void> signOut() async => _client?.auth.signOut();

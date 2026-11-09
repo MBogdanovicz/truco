@@ -69,7 +69,13 @@ class _HistoryTile extends StatelessWidget {
       subtitle: Text(
         [
           '${side(Team.a)} vs ${side(Team.b)}',
-          _date(record.finishedAt),
+          [
+            _date(record.finishedAt),
+            if (record.ranked != null)
+              record.countsForRanking
+                  ? 'Rankeada${record.groupName == null ? '' : ' · ${record.groupName}'}'
+                  : 'Amistosa',
+          ].join(' · '),
           if (series.gamesPlayed > 1) 'Série ${series.winsA} × ${series.winsB}',
         ].join('\n'),
       ),

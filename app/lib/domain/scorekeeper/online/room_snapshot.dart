@@ -155,6 +155,8 @@ class RoomSnapshot {
       startedAt: gameStartedAt,
       finishedAt: finishedAt,
       series: series.recordWin(winner),
+      ranked: ranked,
+      groupName: group?.name,
     );
   }
 

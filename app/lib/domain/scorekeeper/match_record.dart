@@ -69,6 +69,8 @@ class MatchRecord {
     required this.startedAt,
     required this.finishedAt,
     required this.series,
+    this.ranked,
+    this.groupName,
   });
 
   final String id;
@@ -80,6 +82,19 @@ class MatchRecord {
 
   /// Series tally including this game.
   final SeriesTally series;
+
+  /// Room setting: ranked or friendly. Null for single-device games.
+  final bool? ranked;
+
+  /// Group whose leaderboard the game was meant for, if any.
+  final String? groupName;
+
+  /// Whether the game can count for the leaderboards: ranked, 2 v 2, and
+  /// four different players with accounts (the server checks the same).
+  bool get countsForRanking =>
+      ranked == true &&
+      seats.length == 4 &&
+      seats.map((s) => s.userId).whereType<String>().toSet().length == 4;
 
   MatchState get state => MatchState.fromEvents(events);
   Team? get winner => state.winner;
@@ -95,6 +110,8 @@ class MatchRecord {
     'startedAt': startedAt.toUtc().toIso8601String(),
     'finishedAt': finishedAt.toUtc().toIso8601String(),
     'series': series.toJson(),
+    if (ranked != null) 'ranked': ranked,
+    if (groupName != null) 'groupName': groupName,
   };
 
   factory MatchRecord.fromJson(Map<String, Object?> json) {
@@ -117,6 +134,8 @@ class MatchRecord {
       series: SeriesTally.fromJson(
         (json['series']! as Map).cast<String, Object?>(),
       ),
+      ranked: json['ranked'] as bool?,
+      groupName: json['groupName'] as String?,
     );
   }
 }

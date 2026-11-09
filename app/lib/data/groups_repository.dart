@@ -267,7 +267,7 @@ final groupsRepositoryProvider = Provider<GroupsRepository?>((ref) {
   return client == null ? null : GroupsRepository(client);
 });
 
-final myGroupsProvider = FutureProvider<List<Group>>((ref) async {
+final myGroupsProvider = FutureProvider.autoDispose<List<Group>>((ref) async {
   ref.watch(currentUserProvider);
   final repo = ref.watch(groupsRepositoryProvider);
   if (repo == null || ref.read(authRepositoryProvider).currentUser == null) {
@@ -276,19 +276,17 @@ final myGroupsProvider = FutureProvider<List<Group>>((ref) async {
   return repo.myGroups();
 });
 
-final groupProvider = FutureProvider.family<Group, String>(
+final groupProvider = FutureProvider.autoDispose.family<Group, String>(
   (ref, id) => ref.watch(groupsRepositoryProvider)!.group(id),
 );
 
-final groupMembersProvider = FutureProvider.family<List<GroupMember>, String>(
-  (ref, id) => ref.watch(groupsRepositoryProvider)!.members(id),
-);
+final groupMembersProvider = FutureProvider.autoDispose
+    .family<List<GroupMember>, String>(
+      (ref, id) => ref.watch(groupsRepositoryProvider)!.members(id),
+    );
 
-final leaderboardProvider =
-    FutureProvider.family<
-      List<LeaderboardEntry>,
-      (String?, LeaderboardSubject)
-    >(
+final leaderboardProvider = FutureProvider.autoDispose
+    .family<List<LeaderboardEntry>, (String?, LeaderboardSubject)>(
       (ref, args) => ref
           .watch(groupsRepositoryProvider)!
           .leaderboard(groupId: args.$1, subject: args.$2),
