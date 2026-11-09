@@ -37,6 +37,7 @@ class RoomSnapshot {
     this.rematchVotes = const {},
     this.cooldownSeconds = 15,
     this.revision = 0,
+    this.hostEpoch = 0,
     this.ranked = true,
     this.group,
   });
@@ -62,6 +63,16 @@ class RoomSnapshot {
 
   /// Increases with every host change, so clients can ignore stale copies.
   final int revision;
+
+  /// Increases each time another device takes over as host. A snapshot from
+  /// a later epoch wins over any revision from an earlier one, so a host
+  /// that comes back after losing signal cannot overwrite the new host.
+  final int hostEpoch;
+
+  /// Whether this snapshot should replace [other].
+  bool isNewerThan(RoomSnapshot other) => hostEpoch != other.hostEpoch
+      ? hostEpoch > other.hostEpoch
+      : revision > other.revision;
 
   /// Ranked games update the leaderboards (when all four players have
   /// accounts); friendly games are only kept in history.
@@ -103,6 +114,7 @@ class RoomSnapshot {
 
   RoomSnapshot copyWith({
     String? hostUserId,
+    int? hostEpoch,
     String? gameId,
     RoomPhase? phase,
     List<Seat>? seats,
@@ -127,6 +139,7 @@ class RoomSnapshot {
     rematchVotes: rematchVotes ?? this.rematchVotes,
     cooldownSeconds: cooldownSeconds,
     revision: revision + 1,
+    hostEpoch: hostEpoch ?? this.hostEpoch,
     ranked: ranked ?? this.ranked,
     group: clearGroup ? null : (group ?? this.group),
   );
@@ -159,6 +172,7 @@ class RoomSnapshot {
     'rematchVotes': {for (final e in rematchVotes.entries) e.key.name: e.value},
     'cooldownSeconds': cooldownSeconds,
     'revision': revision,
+    'hostEpoch': hostEpoch,
     'ranked': ranked,
     'group': group?.toJson(),
   };
@@ -187,6 +201,7 @@ class RoomSnapshot {
       },
       cooldownSeconds: json['cooldownSeconds']! as int,
       revision: json['revision']! as int,
+      hostEpoch: json['hostEpoch'] as int? ?? 0,
       ranked: json['ranked'] as bool? ?? true,
       group: json['group'] == null
           ? null

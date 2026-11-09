@@ -437,9 +437,47 @@ class _Game extends StatelessWidget {
         ),
         if (state.isFinished)
           _FinishedCard(room: room, snap: snap, onClose: onClose),
+        if (!room.isConnected) const _ConnectionLost(),
       ],
     );
   }
+}
+
+/// Shown while this device is out of touch with the room.
+class _ConnectionLost extends StatelessWidget {
+  const _ConnectionLost();
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox.square(
+            dimension: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              'Sem conexão com a sala. Reconectando…',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _FinishedCard extends StatelessWidget {

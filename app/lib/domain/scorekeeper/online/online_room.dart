@@ -38,6 +38,9 @@ class OnlineRoom {
   static const heartbeat = Duration(seconds: 5);
   static const hostTimeout = Duration(seconds: 15);
 
+  /// Silence after which a device shows that it lost the room.
+  static const connectionTimeout = Duration(seconds: 10);
+
   OnlineRoom.host({
     required MatchChannel channel,
     required this.me,
@@ -96,6 +99,7 @@ class OnlineRoom {
   Future<void> start() async {
     _sub = _channel.messages.listen(_onMessage);
     _heardFromHostAt = _clock();
+    _heardFromPeersAt = _clock();
     _watchdog = Timer.periodic(const Duration(seconds: 1), (_) => tick());
     if (isHost) {
       _trackScores(_snapshot!);
@@ -117,7 +121,28 @@ class OnlineRoom {
   Timer? _helloRetry;
   Timer? _watchdog;
   DateTime? _heardFromHostAt;
+  DateTime? _heardFromPeersAt;
   DateTime? _broadcastAt;
+  DateTime? _pingedAt;
+  bool _wasConnected = true;
+
+  /// Whether this device is in touch with the room. The host counts as
+  /// connected while it hears from the other app users (they ping it every
+  /// [heartbeat]); everyone else while they hear from the host. While
+  /// disconnected nobody may mark points, so the score cannot fork.
+  bool get isConnected {
+    final snap = _snapshot;
+    if (snap == null) return true;
+    final now = _clock();
+    if (_isHost) {
+      final othersSeated = snap.seats.any(
+        (s) => s.userId != null && s.userId != me.userId,
+      );
+      if (!othersSeated) return true;
+      return now.difference(_heardFromPeersAt ?? now) < connectionTimeout;
+    }
+    return now.difference(_heardFromHostAt ?? now) < connectionTimeout;
+  }
 
   /// Periodic upkeep: the host's heartbeat, and the hand-off check on the
   /// other devices. Called every second; public so tests can drive it.
@@ -125,6 +150,7 @@ class OnlineRoom {
     final snap = _snapshot;
     if (snap == null) return;
     final now = _clock();
+    _notifyConnection();
     if (_isHost) {
       final last = _broadcastAt;
       if (snap.phase != RoomPhase.closed &&
@@ -134,6 +160,11 @@ class OnlineRoom {
       return;
     }
     if (snap.phase == RoomPhase.closed) return;
+    final pinged = _pingedAt;
+    if (pinged == null || now.difference(pinged) >= heartbeat) {
+      _pingedAt = now;
+      await _channel.send({'type': 'ping', 'userId': me.userId});
+    }
     final rank = _successorRank(snap);
     if (rank == null) return;
     final silent = now.difference(_heardFromHostAt ?? now);
@@ -153,7 +184,18 @@ class OnlineRoom {
   Future<void> _takeOver(RoomSnapshot snap) async {
     _isHost = true;
     _helloRetry?.cancel();
-    await _update(snap.copyWith(hostUserId: me.userId));
+    _heardFromPeersAt = _clock();
+    await _update(
+      snap.copyWith(hostUserId: me.userId, hostEpoch: snap.hostEpoch + 1),
+    );
+  }
+
+  void _notifyConnection() {
+    final connected = isConnected;
+    if (connected == _wasConnected) return;
+    _wasConnected = connected;
+    final snap = _snapshot;
+    if (snap != null && !_changes.isClosed) _changes.add(snap);
   }
 
   Future<void> _sendHello() =>
@@ -258,7 +300,7 @@ class OnlineRoom {
   bool canMark(Team team) {
     final snap = _snapshot;
     final seat = mySeat;
-    if (snap == null || seat == null) return false;
+    if (snap == null || seat == null || !isConnected) return false;
     return _engineFor(snap).canMark(seat.index, team);
   }
 
@@ -286,18 +328,23 @@ class OnlineRoom {
       if (snap.roomId != roomId) return;
       if (snap.hostUserId == me.userId) return;
       final current = _snapshot;
-      if (current != null && snap.revision <= current.revision) {
-        // Same revision: a heartbeat, so the host is still there. Older
-        // snapshots (from a host that was replaced) are ignored.
-        if (!_isHost && snap.hostUserId == current.hostUserId) {
+      if (current != null && !snap.isNewerThan(current)) {
+        // A heartbeat from the current host shows it is still there.
+        // Snapshots from a host that was replaced are ignored.
+        if (!_isHost &&
+            snap.hostUserId == current.hostUserId &&
+            snap.hostEpoch == current.hostEpoch) {
           _heardFromHostAt = _clock();
+          _notifyConnection();
         }
         return;
       }
-      // Someone else runs the room now (this device was away too long).
+      // If this device was host, someone else took over while it was away:
+      // it steps down and adopts their state.
       _isHost = false;
       _heardFromHostAt = _clock();
       _setSnapshot(snap);
+      _notifyConnection();
     } else if (_isHost) {
       _handle(message);
     } else if (message['type'] == 'rejected' && message['to'] == me.userId) {
@@ -312,6 +359,10 @@ class OnlineRoom {
     final snap = _snapshot!;
     final userId = m['userId'] as String?;
     if (userId == null) return;
+    if (userId != me.userId) {
+      _heardFromPeersAt = _clock();
+      _notifyConnection();
+    }
     switch (m['type']) {
       case 'hello':
         await _broadcast();
