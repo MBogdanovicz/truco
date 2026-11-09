@@ -52,10 +52,18 @@ class AppScaffold extends StatelessWidget {
           child: SafeArea(child: body),
         ),
       );
-      if (onBar == null) return scaffold;
-      return CupertinoTheme(
-        data: CupertinoTheme.of(context).copyWith(primaryColor: onBar),
-        child: scaffold,
+      final themed = onBar == null
+          ? scaffold
+          : CupertinoTheme(
+              data: CupertinoTheme.of(context).copyWith(primaryColor: onBar),
+              child: scaffold,
+            );
+      // Invisible Material Scaffold so the ScaffoldMessenger has somewhere to
+      // show SnackBars (toasts); without it they never appear on the PWA.
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: false,
+        body: themed,
       );
     }
     return Scaffold(
