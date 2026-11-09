@@ -17,6 +17,19 @@ class CompletedGame {
   final RoomGroup? group;
 }
 
+/// Things that happen to the room that the user should be told about.
+enum RoomNotice {
+  /// The host went silent and this device now runs the room.
+  youAreHost,
+
+  /// Another device took over as host.
+  hostChanged,
+
+  /// This device was host, lost signal, and someone else took over; its
+  /// offline changes were dropped in favour of theirs.
+  replacedWhileAway,
+}
+
 /// The person using this device.
 class RoomMember {
   const RoomMember({required this.userId, required this.name});
@@ -82,6 +95,10 @@ class OnlineRoom {
   final _changes = StreamController<RoomSnapshot>.broadcast();
   final _rejections = StreamController<IntentRejection>.broadcast();
   final _completed = StreamController<CompletedGame>.broadcast();
+  final _notices = StreamController<RoomNotice>.broadcast();
+
+  /// Hand-off events worth telling the user about.
+  Stream<RoomNotice> get notices => _notices.stream;
   final _lastScoreSeenAt = <Team, (String, DateTime)>{};
 
   /// Latest known state; null until a client hears from the host.
@@ -99,7 +116,6 @@ class OnlineRoom {
   Future<void> start() async {
     _sub = _channel.messages.listen(_onMessage);
     _heardFromHostAt = _clock();
-    _heardFromPeersAt = _clock();
     _watchdog = Timer.periodic(const Duration(seconds: 1), (_) => tick());
     if (isHost) {
       _trackScores(_snapshot!);
@@ -121,27 +137,19 @@ class OnlineRoom {
   Timer? _helloRetry;
   Timer? _watchdog;
   DateTime? _heardFromHostAt;
-  DateTime? _heardFromPeersAt;
   DateTime? _broadcastAt;
-  DateTime? _pingedAt;
   bool _wasConnected = true;
 
-  /// Whether this device is in touch with the room. The host counts as
-  /// connected while it hears from the other app users (they ping it every
-  /// [heartbeat]); everyone else while they hear from the host. While
-  /// disconnected nobody may mark points, so the score cannot fork.
+  /// Whether this device is in touch with the room: the host while its own
+  /// connection is up, everyone else while they hear the host's heartbeat.
+  /// A disconnected device cannot mark points. A host that keeps playing
+  /// alone (its partners lost signal) is fine: when they come back they
+  /// adopt its score.
   bool get isConnected {
-    final snap = _snapshot;
-    if (snap == null) return true;
-    final now = _clock();
-    if (_isHost) {
-      final othersSeated = snap.seats.any(
-        (s) => s.userId != null && s.userId != me.userId,
-      );
-      if (!othersSeated) return true;
-      return now.difference(_heardFromPeersAt ?? now) < connectionTimeout;
-    }
-    return now.difference(_heardFromHostAt ?? now) < connectionTimeout;
+    if (_snapshot == null) return true;
+    if (_isHost) return _channel.isConnected;
+    return _clock().difference(_heardFromHostAt ?? _clock()) <
+        connectionTimeout;
   }
 
   /// Periodic upkeep: the host's heartbeat, and the hand-off check on the
@@ -160,11 +168,6 @@ class OnlineRoom {
       return;
     }
     if (snap.phase == RoomPhase.closed) return;
-    final pinged = _pingedAt;
-    if (pinged == null || now.difference(pinged) >= heartbeat) {
-      _pingedAt = now;
-      await _channel.send({'type': 'ping', 'userId': me.userId});
-    }
     final rank = _successorRank(snap);
     if (rank == null) return;
     final silent = now.difference(_heardFromHostAt ?? now);
@@ -184,7 +187,7 @@ class OnlineRoom {
   Future<void> _takeOver(RoomSnapshot snap) async {
     _isHost = true;
     _helloRetry?.cancel();
-    _heardFromPeersAt = _clock();
+    _notices.add(RoomNotice.youAreHost);
     await _update(
       snap.copyWith(hostUserId: me.userId, hostEpoch: snap.hostEpoch + 1),
     );
@@ -209,6 +212,7 @@ class OnlineRoom {
     await _changes.close();
     await _rejections.close();
     await _completed.close();
+    await _notices.close();
   }
 
   // ---------------------------------------------------------------- actions
@@ -341,6 +345,11 @@ class OnlineRoom {
       }
       // If this device was host, someone else took over while it was away:
       // it steps down and adopts their state.
+      if (_isHost) {
+        _notices.add(RoomNotice.replacedWhileAway);
+      } else if (current != null && snap.hostUserId != current.hostUserId) {
+        _notices.add(RoomNotice.hostChanged);
+      }
       _isHost = false;
       _heardFromHostAt = _clock();
       _setSnapshot(snap);
@@ -359,10 +368,6 @@ class OnlineRoom {
     final snap = _snapshot!;
     final userId = m['userId'] as String?;
     if (userId == null) return;
-    if (userId != me.userId) {
-      _heardFromPeersAt = _clock();
-      _notifyConnection();
-    }
     switch (m['type']) {
       case 'hello':
         await _broadcast();

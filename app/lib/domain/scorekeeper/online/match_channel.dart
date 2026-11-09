@@ -7,6 +7,9 @@ abstract interface class MatchChannel {
   Stream<Map<String, Object?>> get messages;
   Future<void> send(Map<String, Object?> message);
   Future<void> close();
+
+  /// Whether this device's own link to the channel is up right now.
+  bool get isConnected;
 }
 
 /// In-process channel hub, used by tests and as a reference implementation.
@@ -47,6 +50,9 @@ class _InMemoryChannel implements MatchChannel {
 
   @override
   Stream<Map<String, Object?>> get messages => _controller.stream;
+
+  @override
+  bool get isConnected => _hub._members.contains(this);
 
   @override
   Future<void> send(Map<String, Object?> message) async {

@@ -15,7 +15,12 @@ import '../../domain/scorekeeper/team.dart';
 
 /// What the online screens render.
 class OnlineRoomView {
-  const OnlineRoomView({required this.room, this.snapshot, this.lastRejection});
+  const OnlineRoomView({
+    required this.room,
+    this.snapshot,
+    this.lastRejection,
+    this.lastNotice,
+  });
 
   final OnlineRoom room;
 
@@ -25,13 +30,18 @@ class OnlineRoomView {
   /// Most recent refusal from the host, shown as a toast.
   final (IntentRejection, DateTime)? lastRejection;
 
+  /// Most recent host hand-off event, shown as a toast.
+  final (RoomNotice, DateTime)? lastNotice;
+
   OnlineRoomView copyWith({
     RoomSnapshot? snapshot,
     (IntentRejection, DateTime)? lastRejection,
+    (RoomNotice, DateTime)? lastNotice,
   }) => OnlineRoomView(
     room: room,
     snapshot: snapshot ?? this.snapshot,
     lastRejection: lastRejection ?? this.lastRejection,
+    lastNotice: lastNotice ?? this.lastNotice,
   );
 }
 
@@ -113,6 +123,11 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
       ..add(
         room.rejections.listen(
           (r) => state = state?.copyWith(lastRejection: (r, DateTime.now())),
+        ),
+      )
+      ..add(
+        room.notices.listen(
+          (n) => state = state?.copyWith(lastNotice: (n, DateTime.now())),
         ),
       )
       ..add(room.completedGames.listen((record) => _onCompleted(room, record)));

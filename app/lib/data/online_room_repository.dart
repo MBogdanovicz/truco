@@ -142,6 +142,10 @@ class SupabaseMatchChannel implements MatchChannel {
   @override
   Stream<Map<String, Object?>> get messages => _messages.stream;
 
+  /// False once the socket drops or the channel is rejoining.
+  @override
+  bool get isConnected => _channel.canPush;
+
   @override
   Future<void> send(Map<String, Object?> message) async {
     // The client writes its own `type`/`event` keys into the map it is

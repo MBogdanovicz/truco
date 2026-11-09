@@ -194,16 +194,20 @@ void main() {
     expect([p2, p3, p4].any((p) => p.isHost), isFalse);
 
     // Then its phone loses signal.
+    final hostNotices = <RoomNotice>[];
+    final p3Notices = <RoomNotice>[];
+    host.notices.listen(hostNotices.add);
+    p3.notices.listen(p3Notices.add);
     hub.disconnect(hostChannel);
-    // It still marks once before noticing, which no one else sees.
-    await host.addPoints(Team.a, 1);
-    expect(host.snapshot!.state.scoreOf(Team.a), 4);
+    expect(host.isConnected, isFalse);
+    expect(host.canMark(Team.a), isFalse);
     now = now.add(OnlineRoom.hostTimeout);
     for (final p in [p2, p3, p4]) {
       await p.tick();
       await settle();
     }
     expect(p3.isHost, isTrue, reason: 'seat 1 is first in line');
+    expect(p3Notices, [RoomNotice.youAreHost]);
     expect(p2.isHost || p4.isHost, isFalse);
     for (final p in [p2, p3, p4]) {
       expect(p.snapshot!.hostUserId, 'p3');
@@ -216,10 +220,8 @@ void main() {
     await settle();
     expect(p2.snapshot!.state.scoreOf(Team.b), 1);
 
-    // The old host comes back and steps down, even though it kept a
-    // higher revision of its own while it was away.
-    expect(host.isConnected, isFalse);
-    expect(host.canMark(Team.a), isFalse);
+    // The old host comes back and steps down, even though its heartbeats
+    // kept counting revisions while it was away.
     hub.reconnect(hostChannel);
     now = now.add(const Duration(seconds: 6));
     await host.tick();
@@ -230,6 +232,7 @@ void main() {
     expect(host.snapshot!.hostUserId, 'p3');
     expect(host.snapshot!.state.scoreOf(Team.b), 1);
     expect(host.snapshot!.state.scoreOf(Team.a), 3);
+    expect(hostNotices, [RoomNotice.replacedWhileAway]);
     for (final p in [p2, p4]) {
       expect(p.snapshot!.hostUserId, 'p3');
     }
@@ -239,11 +242,40 @@ void main() {
     final [p2, p3, p4] = await fullTable();
     expect(p2.isConnected, isTrue);
     hub.disconnect(hostChannel);
+    expect(host.isConnected, isFalse);
     now = now.add(OnlineRoom.connectionTimeout);
-    for (final p in [host, p2, p3, p4]) {
+    for (final p in [p2, p3, p4]) {
       expect(p.isConnected, isFalse);
     }
     expect(p2.canMark(Team.a), isFalse);
+  });
+
+  test('with two devices, the one left keeps marking alone', () async {
+    final p2 = joiner('p2', 'Bia');
+    await p2.start();
+    await settle();
+    await p2.pickTeam(Team.b);
+    await settle();
+    await host.startGame();
+    await settle();
+
+    hub.disconnect(hostChannel);
+    now = now.add(OnlineRoom.hostTimeout);
+    await p2.tick();
+    await settle();
+    expect(p2.isHost, isTrue);
+    expect(p2.isConnected, isTrue);
+    expect(p2.canMark(Team.b), isTrue);
+    await p2.addPoints(Team.b, 3);
+    expect(p2.snapshot!.state.scoreOf(Team.b), 3);
+
+    hub.reconnect(hostChannel);
+    now = now.add(OnlineRoom.heartbeat);
+    await host.tick();
+    await p2.tick();
+    await settle();
+    expect(host.isHost, isFalse);
+    expect(host.snapshot!.state.scoreOf(Team.b), 3);
   });
 
   test('snapshot JSON round trip', () async {

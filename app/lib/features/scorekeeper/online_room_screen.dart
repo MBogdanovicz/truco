@@ -27,6 +27,15 @@ class OnlineRoomScreen extends ConsumerStatefulWidget {
 class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
   bool _flipTop = false;
 
+  static const _noticeText = {
+    RoomNotice.youAreHost:
+        'Quem controlava a sala ficou sem conexão. Agora você controla a sala.',
+    RoomNotice.hostChanged: 'Outro jogador passou a controlar a sala.',
+    RoomNotice.replacedWhileAway:
+        'Outro jogador assumiu a sala enquanto você estava sem conexão. '
+        'O placar dele foi mantido.',
+  };
+
   static const _rejectionText = {
     IntentRejection.cooldown:
         'Sua dupla acabou de marcar. Aguarde alguns segundos.',
@@ -69,6 +78,12 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
       next,
     ) {
       if (next != null) showAppToast(context, _rejectionText[next.$1]!);
+    });
+    ref.listen(onlineRoomControllerProvider.select((v) => v?.lastNotice), (
+      _,
+      next,
+    ) {
+      if (next != null) showAppToast(context, _noticeText[next.$1]!);
     });
     final view = ref.watch(onlineRoomControllerProvider);
     final snap = view?.snapshot;
