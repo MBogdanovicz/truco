@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -7,8 +8,12 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:truco/app.dart';
 import 'package:truco/domain/game/ai.dart';
+import 'package:truco/domain/game/game_session.dart';
 import 'package:truco/domain/game/rules.dart';
+import 'package:truco/domain/game/table_view.dart';
 import 'package:truco/domain/game/truco_game.dart';
+import 'package:truco/domain/scorekeeper/team.dart';
+import 'package:truco/features/game/game_table.dart';
 import 'package:truco/features/game/local_game_controller.dart';
 import 'package:truco/router.dart';
 import 'package:truco/ui/adaptive/platform_style.dart';
@@ -54,10 +59,10 @@ void main() {
           // The human plays like a medium bot, through the controller.
           final me = TrucoBot(AiLevel.medium, random: Random(1));
           var steps = 0;
-          while (container.read(localGameControllerProvider)!.game.phase !=
+          while (container.read(localGameControllerProvider)!.view.phase !=
               GamePhase.gameOver) {
             if (ctrl.waitingForHuman) {
-              final g = container.read(localGameControllerProvider)!.game;
+              final g = ctrl.session!.game;
               switch (me.decide(g.viewFor(humanSeat))) {
                 case PlayCard(:final card, :final covered):
                   if (g.iron) {
@@ -81,7 +86,7 @@ void main() {
           await tester.tap(find.text('Revanche'));
           await tester.pump();
           expect(
-            container.read(localGameControllerProvider)!.game.phase,
+            ctrl.session!.game.phase,
             isNot(GamePhase.gameOver),
           );
           ctrl.quit();
@@ -125,44 +130,68 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const TrucoApp(style: AppPlatformStyle.material),
+    // Dealer 0: seat 1 (an opponent) leads and calls truco against us.
+    final session = GameSession(
+      rules: TrucoRules.paulista.copyWith(dealerSeesPartnerThirdCard: false),
+      seed: 3,
+      firstDealer: 0,
+      bots: const [null, AiLevel.easy, AiLevel.easy, AiLevel.easy],
+    );
+    Widget table() => MaterialApp(
+      home: GameTable(
+        model: GameTableModel(
+          view: session.viewFor(0),
+          names: const ['Eu', 'Zeca', 'Bia', 'Tonho'],
+          wins: const {Team.a: 0, Team.b: 0},
+        ),
+        actions: GameTableActions(
+          playCard: (_, {covered = false}) {},
+          playBlind: (_) {},
+          raise: () {},
+          accept: () {},
+          fold: () {},
+          onLeave: () {},
+        ),
       ),
     );
-    await tester.pumpAndSettle();
-    final ctrl = container.read(localGameControllerProvider.notifier)
-      ..botDelay = const Duration(hours: 1)
-      ..start(
-        LocalGameSetup(
-          rules: TrucoRules.paulista.copyWith(
-            dealerSeesPartnerThirdCard: false,
-          ),
-          partnerLevel: AiLevel.easy,
-          opponentLevel: AiLevel.easy,
-          myName: 'Eu',
-        ),
-      );
-    container.read(routerProvider).go('/jogo/partida');
-    await tester.pumpAndSettle(const Duration(milliseconds: 100));
-    final g = container.read(localGameControllerProvider)!.game;
-    if (g.phase != GamePhase.playing || g.turn == humanSeat || g.turn == 2) {
-      ctrl.quit();
-      await tester.pumpAndSettle();
-      return; // this deal starts with us; covered by the engine tests
-    }
-    expect(find.byKey(ValueKey('shown-${g.handOf(2).first.id}')), findsNothing);
-    g.apply(Raise(g.turn));
-    // Nudge the controller so the screen rebuilds with the new state.
-    ctrl.refresh();
-    await tester.pump();
-    for (final c in g.handOf(2)) {
+    await tester.pumpWidget(table());
+    final partner = session.game.handOf(2);
+    expect(find.byKey(ValueKey('shown-${partner.first.id}')), findsNothing);
+    session.game.apply(const Raise(1));
+    await tester.pumpWidget(table());
+    for (final c in partner) {
       expect(find.byKey(ValueKey('shown-${c.id}')), findsOneWidget);
     }
-    ctrl.quit();
-    await tester.pumpAndSettle();
+    expect(find.text('Aceitar'), findsOneWidget);
+  });
+
+  test('frames survive JSON (what the server sends)', () {
+    final session = GameSession(
+      rules: TrucoRules.paulista,
+      seed: 11,
+      firstDealer: 2,
+      bots: const [null, AiLevel.medium, null, AiLevel.medium],
+    );
+    final frames = session.advance();
+    for (final views in frames.values) {
+      for (final v in views) {
+        final again = TableView.fromJson(
+          jsonDecode(jsonEncode(v.toJson())) as Map<String, Object?>,
+        );
+        expect(jsonEncode(again.toJson()), jsonEncode(v.toJson()));
+      }
+    }
+    // Replaying the log rebuilds the same game.
+    final copy = GameSession(
+      rules: TrucoRules.fromJson(TrucoRules.paulista.toJson()),
+      seed: 11,
+      firstDealer: 2,
+      bots: const [null, AiLevel.medium, null, AiLevel.medium],
+      log: session.log,
+    );
+    expect(
+      jsonEncode(copy.viewFor(0).toJson()),
+      jsonEncode(session.viewFor(0).toJson()),
+    );
   });
 }

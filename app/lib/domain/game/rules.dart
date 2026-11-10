@@ -112,6 +112,25 @@ class TrucoRules {
         dealerSeesPartnerThirdCard ?? this.dealerSeesPartnerThirdCard,
   );
 
+  /// Table options as stored with a room (Paulista base + variations).
+  Map<String, Object?> toJson() => {
+    'manilhas': manilhaMode.name,
+    'coberta': allowCoveredCard,
+    'ferro': ironHand,
+    'verNoTruco': seePartnerOnRaise,
+    'verNaMaoDeOnze': bothTeamsSeeOnDecision,
+    'terceiraCarta': dealerSeesPartnerThirdCard,
+  };
+
+  static TrucoRules fromJson(Map<String, Object?> j) => paulista.copyWith(
+    manilhaMode: ManilhaMode.values.asNameMap()[j['manilhas']],
+    allowCoveredCard: j['coberta'] as bool?,
+    ironHand: j['ferro'] as bool?,
+    seePartnerOnRaise: j['verNoTruco'] as bool?,
+    bothTeamsSeeOnDecision: j['verNaMaoDeOnze'] as bool?,
+    dealerSeesPartnerThirdCard: j['terceiraCarta'] as bool?,
+  );
+
   /// Short description of the options, e.g. for results and the rules page.
   String get summary => [
     manilhaMode == ManilhaMode.vira ? 'manilha virada' : 'manilhas fixas',
