@@ -64,22 +64,24 @@ class Ads {
   static void _load() {
     if (_ad != null || _loading) return;
     _loading = true;
-    unawaited(InterstitialAd.load(
-      adUnitId: _unitId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _ad = ad;
-          _loading = false;
-        },
-        onAdFailedToLoad: (e) {
-          _loading = false;
-          debugPrint('Ad failed to load: $e');
-        },
-      ),
-    ).catchError((Object e) {
-      _loading = false;
-    }));
+    unawaited(
+      InterstitialAd.load(
+        adUnitId: _unitId,
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            _ad = ad;
+            _loading = false;
+          },
+          onAdFailedToLoad: (e) {
+            _loading = false;
+            debugPrint('Ad failed to load: $e');
+          },
+        ),
+      ).catchError((Object e) {
+        _loading = false;
+      }),
+    );
   }
 
   /// Shows the ad before a game and waits until it is closed. Does nothing

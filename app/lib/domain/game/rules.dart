@@ -28,6 +28,9 @@ class TrucoRules {
     this.targetScore = 12,
     this.allowCoveredCard = true,
     this.ironHand = true,
+    this.seePartnerOnRaise = true,
+    this.bothTeamsSeeOnDecision = true,
+    this.footSeesPartnerLastCard = true,
   });
 
   /// Stable id ("paulista"), stored with results.
@@ -56,6 +59,17 @@ class TrucoRules {
   /// without seeing their own cards.
   final bool ironHand;
 
+  /// The team answering a truco (or any raise) sees each other's cards
+  /// before deciding.
+  final bool seePartnerOnRaise;
+
+  /// In a mão de onze the other team also sees each other's cards (the team
+  /// at 11 always does). Never in a mão de ferro.
+  final bool bothTeamsSeeOnDecision;
+
+  /// In the third round the "pé" (last to play) sees the partner's last card.
+  final bool footSeesPartnerLastCard;
+
   int get baseValue => stakes.first;
 
   /// Name of the call that raises the hand from [stakes][level] to the next
@@ -77,6 +91,9 @@ class TrucoRules {
     ManilhaMode? manilhaMode,
     bool? allowCoveredCard,
     bool? ironHand,
+    bool? seePartnerOnRaise,
+    bool? bothTeamsSeeOnDecision,
+    bool? footSeesPartnerLastCard,
   }) => TrucoRules(
     id: id,
     name: name,
@@ -87,6 +104,11 @@ class TrucoRules {
     targetScore: targetScore,
     allowCoveredCard: allowCoveredCard ?? this.allowCoveredCard,
     ironHand: ironHand ?? this.ironHand,
+    seePartnerOnRaise: seePartnerOnRaise ?? this.seePartnerOnRaise,
+    bothTeamsSeeOnDecision:
+        bothTeamsSeeOnDecision ?? this.bothTeamsSeeOnDecision,
+    footSeesPartnerLastCard:
+        footSeesPartnerLastCard ?? this.footSeesPartnerLastCard,
   );
 
   /// Short description of the options, e.g. for results and the rules page.

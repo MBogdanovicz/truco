@@ -88,7 +88,8 @@ class PlayGamesSync {
         if (!await gs.GameAuth.isSignedIn.timeout(_timeout)) return;
       }
       final player = await gs.Player.getPlayerID().timeout(_timeout);
-      final linked = player != null &&
+      final linked =
+          player != null &&
           await client.rpc<bool>(
                 'link_play_games',
                 params: {'p_player': player},
@@ -114,23 +115,28 @@ class PlayGamesSync {
         final item = id == null ? null : remote[id];
         if (a == null || id == null || item == null) continue;
         final target = parts.length > 1 ? int.parse(parts[1]) : null;
-        final done = item.unlocked ||
+        final done =
+            item.unlocked ||
             (item.totalSteps > 0 &&
                 item.completedSteps >= (target ?? item.totalSteps));
-        if (done || await _send(entry, () async {
-          if (item.totalSteps > 0) {
-            await gs.Achievements.setSteps(
-              achievement: gs.Achievement(
-                androidID: id,
-                steps: (target ?? item.totalSteps).clamp(0, item.totalSteps),
-              ),
-            );
-          } else if (target == null || target >= _incrementalSteps[a]!) {
-            await gs.Achievements.unlock(
-              achievement: gs.Achievement(androidID: id),
-            );
-          }
-        })) {
+        if (done ||
+            await _send(entry, () async {
+              if (item.totalSteps > 0) {
+                await gs.Achievements.setSteps(
+                  achievement: gs.Achievement(
+                    androidID: id,
+                    steps: (target ?? item.totalSteps).clamp(
+                      0,
+                      item.totalSteps,
+                    ),
+                  ),
+                );
+              } else if (target == null || target >= _incrementalSteps[a]!) {
+                await gs.Achievements.unlock(
+                  achievement: gs.Achievement(androidID: id),
+                );
+              }
+            })) {
           sent.add(entry);
           // Saved at once: a later failure or the app closing must not
           // send (and show) this one again.

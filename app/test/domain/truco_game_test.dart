@@ -126,7 +126,7 @@ void main() {
       expect(g.decisionTeam, Team.a);
       expect(g.legalActions(1), isEmpty);
       expect(g.viewFor(0).partnerHand, isNotNull);
-      expect(g.viewFor(1).partnerHand, isNull);
+      expect(g.viewFor(1).partnerHand, isNotNull); // both teams see (option)
       g.apply(const Fold(0));
       expect(g.scores[Team.b], 5);
     });
@@ -227,6 +227,81 @@ void main() {
         if (g.winner == Team.a) hardWins++;
       }
       expect(hardWins, greaterThan(games * 0.65));
+    });
+  });
+
+  group('seeing the partner\'s cards', () {
+    TrucoGame fresh(TrucoRules r, int seed) =>
+        TrucoGame(rules: r, seed: seed, firstDealer: 3);
+
+    test('answering a truco', () {
+      final g = fresh(TrucoRules.paulista, 1)..apply(const Raise(0));
+      expect(g.viewFor(1).partnerHand, g.handOf(3));
+      expect(g.viewFor(0).partnerHand, isNull);
+      final off = fresh(
+        TrucoRules.paulista.copyWith(seePartnerOnRaise: false),
+        1,
+      )..apply(const Raise(0));
+      expect(off.viewFor(1).partnerHand, isNull);
+    });
+
+    TrucoGame atScores(TrucoRules r, int a, int b) {
+      final g = fresh(r, 5)
+        ..apply(const Raise(0))
+        ..apply(const Fold(1));
+      g.scores[Team.a] = a;
+      g.scores[Team.b] = b;
+      g.startNextHand();
+      return g;
+    }
+
+    test('mão de onze: both teams, unless the option is off', () {
+      final g = atScores(TrucoRules.paulista, 11, 3);
+      expect(g.viewFor(0).partnerHand, isNotNull);
+      expect(g.viewFor(1).partnerHand, isNotNull);
+      final off = atScores(
+        TrucoRules.paulista.copyWith(bothTeamsSeeOnDecision: false),
+        11,
+        3,
+      );
+      expect(off.viewFor(0).partnerHand, isNotNull);
+      expect(off.viewFor(1).partnerHand, isNull);
+    });
+
+    test('never in a mão de ferro', () {
+      final g = atScores(TrucoRules.paulista, 11, 11);
+      for (var s = 0; s < 4; s++) {
+        expect(g.viewFor(s).partnerHand, isNull);
+      }
+    });
+
+    test('the pé is the dealer first, then left of the round winner', () {
+      final g = fresh(TrucoRules.paulista, 7);
+      expect(g.foot, g.dealer);
+      for (var i = 0; i < 4; i++) {
+        g.apply(PlayCard(g.turn, g.handOf(g.turn).first));
+      }
+      if (g.phase == GamePhase.playing) {
+        expect(g.foot, (g.rounds.last.topSeat + 3) % 4);
+        expect(g.turn, g.rounds.last.topSeat);
+      }
+    });
+
+    test('the pé sees the partner\'s last card in the third round', () {
+      var checked = 0;
+      for (var seed = 0; seed < 40 && checked < 3; seed++) {
+        final g = fresh(TrucoRules.paulista, seed);
+        while (g.phase == GamePhase.playing && g.rounds.length < 2) {
+          g.apply(PlayCard(g.turn, g.handOf(g.turn).first));
+        }
+        if (g.phase != GamePhase.playing) continue;
+        checked++;
+        final foot = g.foot;
+        expect(g.viewFor(foot).partnerHand, hasLength(1));
+        expect(g.viewFor(partnerOf(foot)).partnerHand, isNull);
+        expect(g.viewFor(nextSeat(foot)).partnerHand, isNull);
+      }
+      expect(checked, greaterThan(0));
     });
   });
 }

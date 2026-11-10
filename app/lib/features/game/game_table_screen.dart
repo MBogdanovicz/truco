@@ -305,7 +305,6 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
           prompt =
               '$label! Vale ${v.rules.decisionHandValue}. Jogar ou correr? '
               'Correndo, eles levam ${v.rules.baseValue}.';
-          extra = _partnerCards(v);
           buttons.addAll([
             _ActionButton('Jogar', AppColors.gold, _ctrl.accept),
             _ActionButton('Correr', Colors.white24, _ctrl.fold),
@@ -359,6 +358,11 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
         break;
     }
 
+    // Whenever the rules let us see the partner's cards (mão de onze,
+    // answering a truco, pé in the third round).
+    final partner = v.partnerHand;
+    if (partner != null && partner.isNotEmpty) extra = _partnerCards(v);
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 150),
       child: Padding(
@@ -395,28 +399,26 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
   Widget _partnerCards(PlayerView v) {
     final cards = v.partnerHand ?? const <deck.Card>[];
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
+      key: const ValueKey('partner-cards'),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            'Cartas do parceiro',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+          Text(
+            cards.length == 1 ? 'Carta do\nparceiro' : 'Cartas do\nparceiro',
+            textAlign: TextAlign.right,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (final c in cards)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: PlayingCardView(
-                    card: c,
-                    width: 44,
-                    manilha: v.rules.isManilha(c, vira: v.vira),
-                  ),
-                ),
-            ],
-          ),
+          const SizedBox(width: 8),
+          for (final c in cards)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: PlayingCardView(
+                card: c,
+                width: 34,
+                manilha: v.rules.isManilha(c, vira: v.vira),
+              ),
+            ),
         ],
       ),
     );
@@ -430,7 +432,11 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
     final canPlay = _ctrl.waitingForHuman && g.phase == GamePhase.playing;
     return LayoutBuilder(
       builder: (context, c) {
-        final cw = (c.maxWidth / 4.0).clamp(60.0, 110.0).toDouble();
+        final screenH = MediaQuery.sizeOf(context).height;
+        final cw = (c.maxWidth / 4.0)
+            .clamp(56.0, 110.0)
+            .clamp(0.0, screenH * 0.12)
+            .toDouble();
         final count = v.handCount;
         return Padding(
           padding: const EdgeInsets.fromLTRB(8, 6, 8, 12),
@@ -624,21 +630,51 @@ class _SeatBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = session.game;
     final said = session.speech[seat];
-    final dealer = g.dealer == seat;
+    // The pé (last to play this round) gets an orange tag and outline.
+    final foot = g.foot == seat && g.phase != GamePhase.gameOver;
     final count = g.handOf(seat).length;
     final name = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
       decoration: BoxDecoration(
         color: active ? AppColors.gold : Colors.black38,
         borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '${session.names[seat]}${dealer ? ' · dá' : ''}',
-        style: TextStyle(
-          color: active ? Colors.black : Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
+        border: Border.all(
+          color: foot ? AppColors.orange : Colors.transparent,
+          width: 2,
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            session.names[seat],
+            style: TextStyle(
+              color: active ? Colors.black : Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+          if (foot)
+            Container(
+              key: ValueKey('foot-$seat'),
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.orange,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Text(
+                'PÉ',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 6),
+        ],
       ),
     );
     final bubble = said == null

@@ -43,8 +43,9 @@ const releaseNotes = <ReleaseNote>[
   ReleaseNote(5, [
     'Novo: jogue truco paulista contra o computador! Escolha o nível do '
         'parceiro e dos adversários (fácil, médio ou difícil).',
-    'Variações de regra: manilha virada ou fixa, carta coberta e mão de '
-        'ferro.',
+    'Variações de regra: manilha virada ou fixa, carta coberta, mão de '
+        'ferro, ver as cartas do parceiro ao receber truco ou na mão de onze, '
+        'e o pé ver a última carta do parceiro.',
     'Tela com as regras do truco.',
   ]),
 ];

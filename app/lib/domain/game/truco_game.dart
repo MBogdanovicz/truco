@@ -224,6 +224,13 @@ class TrucoGame {
   /// The three cards [seat] got at the start of this hand.
   List<Card> dealtTo(int seat) => List.unmodifiable(_dealt[seat]);
 
+  /// The "pé": last to play in the current round (the seat before whoever
+  /// leads it). In the first round that is the dealer.
+  int get foot {
+    final leader = _rounds.isEmpty ? nextSeat(_dealer) : _rounds.last.topSeat;
+    return (leader + 3) % 4;
+  }
+
   /// What the current hand is worth if nobody raises again.
   int get handValue {
     if (_decisionTeam != null) return rules.decisionHandValue;
@@ -500,9 +507,28 @@ class PlayerView {
   int get handCount => _game.handOf(seat).length;
   int handCountOf(int s) => _game.handOf(s).length;
 
-  /// In a "mão de onze" the deciding team sees each other's cards.
-  List<Card>? get partnerHand =>
-      _game.decisionTeam == team ? _game.handOf(partnerOf(seat)) : null;
+  int get foot => _game.foot;
+
+  /// The partner's cards when the rules let this seat see them: in a mão de
+  /// onze, when answering a raise, or as the pé in the third round. Never in
+  /// a mão de ferro.
+  List<Card>? get partnerHand {
+    final g = _game;
+    final r = g.rules;
+    if (g.iron) return null;
+    final visible =
+        g.decisionTeam == team ||
+        (g.decisionTeam != null && r.bothTeamsSeeOnDecision) ||
+        (r.seePartnerOnRaise &&
+            g.phase == GamePhase.raisePending &&
+            g.pending!.team != team) ||
+        (r.footSeesPartnerLastCard &&
+            g.rounds.length == 2 &&
+            (g.phase == GamePhase.playing ||
+                g.phase == GamePhase.raisePending) &&
+            g.foot == seat);
+    return visible ? g.handOf(partnerOf(seat)) : null;
+  }
 
   int strength(Card c) => _game.rules.strength(c, vira: _game.vira);
   int strengthOf(Play p) => _game.strengthOf(p);

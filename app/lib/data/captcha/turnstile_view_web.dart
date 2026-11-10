@@ -54,7 +54,8 @@ Future<void>? _loading;
 Future<void> _loadScript() => _loading ??= () async {
   if (globalContext.has('turnstile')) return;
   final script = web.HTMLScriptElement()
-    ..src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    ..src =
+        'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
     ..async = true;
   web.document.head!.appendChild(script);
   for (var i = 0; i < 300; i++) {

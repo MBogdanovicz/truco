@@ -22,17 +22,26 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   static const _kFixed = 'game.fixedManilhas';
   static const _kCover = 'game.coveredCard';
   static const _kIron = 'game.ironHand';
+  static const _kSeeOnRaise = 'game.seePartnerOnRaise';
+  static const _kSeeOnDecision = 'game.bothTeamsSeeOnDecision';
+  static const _kFoot = 'game.footSeesPartnerLastCard';
   static const _kPartner = 'game.partner';
   static const _kOpponents = 'game.opponents';
 
   bool _fixed = false;
   bool _cover = true;
   bool _iron = true;
+  bool _seeOnRaise = true;
+  bool _seeOnDecision = true;
+  bool _foot = true;
 
   TrucoRules get _rules => TrucoRules.paulista.copyWith(
     manilhaMode: _fixed ? ManilhaMode.fixed : ManilhaMode.vira,
     allowCoveredCard: _cover,
     ironHand: _iron,
+    seePartnerOnRaise: _seeOnRaise,
+    bothTeamsSeeOnDecision: _seeOnDecision,
+    footSeesPartnerLastCard: _foot,
   );
   AiLevel _partner = AiLevel.medium;
   AiLevel _opponents = AiLevel.medium;
@@ -51,6 +60,9 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
         _fixed = p.getBool(_kFixed) ?? _fixed;
         _cover = p.getBool(_kCover) ?? _cover;
         _iron = p.getBool(_kIron) ?? _iron;
+        _seeOnRaise = p.getBool(_kSeeOnRaise) ?? _seeOnRaise;
+        _seeOnDecision = p.getBool(_kSeeOnDecision) ?? _seeOnDecision;
+        _foot = p.getBool(_kFoot) ?? _foot;
         _partner =
             AiLevel.values.asNameMap()[p.getString(_kPartner)] ?? _partner;
         _opponents =
@@ -65,6 +77,9 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
       await p.setBool(_kFixed, _fixed);
       await p.setBool(_kCover, _cover);
       await p.setBool(_kIron, _iron);
+      await p.setBool(_kSeeOnRaise, _seeOnRaise);
+      await p.setBool(_kSeeOnDecision, _seeOnDecision);
+      await p.setBool(_kFoot, _foot);
       await p.setString(_kPartner, _partner.name);
       await p.setString(_kOpponents, _opponents.name);
     } catch (_) {}
@@ -142,6 +157,34 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
               trailing: AppSwitch(
                 value: _iron,
                 onChanged: (v) => setState(() => _iron = v),
+              ),
+            ),
+            AppTile(
+              title: 'Ver o parceiro ao receber truco',
+              subtitle: 'Quem responde ao truco vê as cartas do parceiro.',
+              trailing: AppSwitch(
+                value: _seeOnRaise,
+                onChanged: (v) => setState(() => _seeOnRaise = v),
+              ),
+            ),
+            AppTile(
+              title: 'Mão de onze: as duas duplas veem',
+              subtitle:
+                  'Os adversários também veem as cartas do parceiro '
+                  '(nunca na mão de ferro).',
+              trailing: AppSwitch(
+                value: _seeOnDecision,
+                onChanged: (v) => setState(() => _seeOnDecision = v),
+              ),
+            ),
+            AppTile(
+              title: 'Pé vê a última carta do parceiro',
+              subtitle:
+                  'Na 3ª rodada, quem joga por último vê a carta do '
+                  'parceiro.',
+              trailing: AppSwitch(
+                value: _foot,
+                onChanged: (v) => setState(() => _foot = v),
               ),
             ),
             AppTile(

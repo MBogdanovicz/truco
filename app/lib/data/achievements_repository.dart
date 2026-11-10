@@ -23,8 +23,9 @@ final unlockedAchievementsProvider =
           .eq('user_id', userId);
       return {
         for (final r in rows)
-          ?Achievement.byId(r['achievement'] as String):
-              DateTime.parse(r['unlocked_at'] as String).toLocal(),
+          ?Achievement.byId(r['achievement'] as String): DateTime.parse(
+            r['unlocked_at'] as String,
+          ).toLocal(),
       };
     });
 

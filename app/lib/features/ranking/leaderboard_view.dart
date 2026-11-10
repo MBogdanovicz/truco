@@ -230,8 +230,7 @@ class _TableRow extends StatelessWidget {
         child: Center(
           child: CircleAvatar(
             radius: 12,
-            backgroundColor:
-                medal ?? theme.colorScheme.surfaceContainerHighest,
+            backgroundColor: medal ?? theme.colorScheme.surfaceContainerHighest,
             foregroundColor: medal == null
                 ? theme.colorScheme.onSurface
                 : Colors.white,

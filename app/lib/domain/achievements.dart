@@ -1,7 +1,11 @@
 /// Achievements unlocked by the server from confirmed ranked games.
 /// Ids match supabase/migrations/20261110000004_achievements.sql.
 enum Achievement {
-  firstGame('first_game', 'Primeira mão', 'Termine sua primeira partida rankeada.'),
+  firstGame(
+    'first_game',
+    'Primeira mão',
+    'Termine sua primeira partida rankeada.',
+  ),
   firstWin('first_win', 'Primeira vitória', 'Vença uma partida rankeada.'),
   veteran10('veteran_10', 'Veterano', 'Jogue 10 partidas rankeadas.'),
   veteran50('veteran_50', 'Veterano de mesa', 'Jogue 50 partidas rankeadas.'),

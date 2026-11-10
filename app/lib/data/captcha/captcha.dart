@@ -68,7 +68,9 @@ class _CaptchaBodyState extends State<_CaptchaBody> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Só um instante, estamos confirmando que você não é um robô.'),
+        const Text(
+          'Só um instante, estamos confirmando que você não é um robô.',
+        ),
         const SizedBox(height: 12),
         SizedBox(
           width: 300,

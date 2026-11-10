@@ -44,6 +44,8 @@ void main() {
             200,
             scrollable: find.byType(Scrollable).first,
           );
+          await tester.ensureVisible(find.text('Começar'));
+          await tester.pumpAndSettle();
           await tester.tap(find.text('Começar'));
           await tester.pumpAndSettle();
 
@@ -89,6 +91,9 @@ void main() {
   }
 
   testWidgets('rules screen shows both manilha options', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     final container = ProviderContainer();
     addTearDown(container.dispose);
     await tester.pumpWidget(
@@ -110,6 +115,6 @@ void main() {
     expect(find.textContaining('vira'), findsWidgets);
     await tester.tap(find.text('Manilhas fixas'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('espadilha'), findsWidgets);
+    expect(find.textContaining('espadilha', skipOffstage: false), findsWidgets);
   });
 }

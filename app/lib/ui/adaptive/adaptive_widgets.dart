@@ -966,7 +966,11 @@ class AppSwitch extends StatelessWidget {
 
 /// One choice in [showAppPicker].
 class AppPickerOption<T> {
-  const AppPickerOption({required this.label, required this.value, this.subtitle});
+  const AppPickerOption({
+    required this.label,
+    required this.value,
+    this.subtitle,
+  });
 
   final String label;
   final String? subtitle;
@@ -1088,7 +1092,10 @@ class _AppPickerState<T> extends State<_AppPicker<T>> {
                   if (shown.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(24),
-                      child: Text('Nenhum resultado.', textAlign: TextAlign.center),
+                      child: Text(
+                        'Nenhum resultado.',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                 ],
               ),

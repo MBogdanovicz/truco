@@ -37,6 +37,10 @@ class _RulesScreenState extends State<RulesScreen> {
               'Quem ganhar 2 rodadas leva a mão.',
           'O jogo anda no sentido anti-horário: começa quem está à direita '
               'de quem deu as cartas.',
+          'O "pé" é quem joga por último na rodada. Na primeira é quem deu '
+              'as cartas; depois, é quem está à esquerda de quem ganhou a '
+              'rodada anterior (quem ganha começa a próxima). Na mesa, o pé '
+              'tem a marca PÉ.',
         ],
       ),
       (
@@ -77,6 +81,8 @@ class _RulesScreenState extends State<RulesScreen> {
           'Se correrem, quem pediu leva o valor que a mão tinha antes do '
               'pedido. Quem aceitou um pedido pode aumentar depois, na sua vez; '
               'quem pediu, não.',
+          'Opcional: quem responde ao truco pode ver as cartas do parceiro '
+              'antes de decidir.',
         ],
       ),
       (
@@ -86,9 +92,17 @@ class _RulesScreenState extends State<RulesScreen> {
               'parceiros veem as cartas um do outro e decidem se jogam a mão. '
               'Jogando, ela vale ${r.decisionHandValue}; correndo, os '
               'adversários levam ${r.baseValue}. Ninguém pode pedir truco.',
+          'Opcional: os adversários também veem as cartas do parceiro.',
           'Mão de ferro (opcional): se as duas duplas estiverem com '
               '${r.decisionScore}, todos jogam sem ver as próprias cartas, e '
               'a mão vale ${r.baseValue}.',
+        ],
+      ),
+      (
+        'Pé',
+        [
+          'Opcional: na terceira rodada, o pé pode ver a última carta do '
+              'parceiro.',
         ],
       ),
     ];
