@@ -6,7 +6,7 @@ import '../../data/groups_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
 
-enum LeaderboardSort { elo, winRate }
+enum LeaderboardSort { elo, winRate, shutouts }
 
 /// Players or duos of one scope, sortable by Elo or win rate.
 class LeaderboardView extends ConsumerStatefulWidget {
@@ -44,8 +44,9 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
         const SizedBox(height: 10),
         AppSegmented<LeaderboardSort>(
           segments: const {
-            LeaderboardSort.elo: 'Pontuação Elo',
-            LeaderboardSort.winRate: '% de vitórias',
+            LeaderboardSort.elo: 'Elo',
+            LeaderboardSort.winRate: '% vitórias',
+            LeaderboardSort.shutouts: '12 x 0',
           },
           value: _sort,
           onChanged: (v) => setState(() => _sort = v),
@@ -87,11 +88,22 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
         final list = rows
             .where((r) => _showProvisional || !r.isProvisional)
             .toList();
-        if (_sort == LeaderboardSort.winRate) {
-          list.sort((a, b) {
-            final byRate = b.winRate.compareTo(a.winRate);
-            return byRate != 0 ? byRate : b.games.compareTo(a.games);
-          });
+        switch (_sort) {
+          case LeaderboardSort.elo:
+            break;
+          case LeaderboardSort.winRate:
+            list.sort((a, b) {
+              final byRate = b.winRate.compareTo(a.winRate);
+              return byRate != 0 ? byRate : b.games.compareTo(a.games);
+            });
+          case LeaderboardSort.shutouts:
+            // Most given first; among equals, fewest taken.
+            list.sort((a, b) {
+              final byFor = b.shutoutsFor.compareTo(a.shutoutsFor);
+              return byFor != 0
+                  ? byFor
+                  : a.shutoutsAgainst.compareTo(b.shutoutsAgainst);
+            });
         }
         if (list.isEmpty) {
           return Padding(
@@ -179,9 +191,14 @@ class _Row extends StatelessWidget {
         child: Text('$position', style: const TextStyle(fontSize: 14)),
       ),
       title: _title,
-      subtitle:
-          '${entry.games} jogos · ${entry.wins}V ${entry.losses}D · '
-          '${(entry.winRate * 100).round()}%${entry.isProvisional ? ' · provisório' : ''}',
+      subtitle: [
+        '${entry.games} jogos · ${entry.wins}V ${entry.losses}D · '
+            '${(entry.winRate * 100).round()}%'
+            '${entry.isProvisional ? ' · provisório' : ''}',
+        if (entry.shutoutsFor > 0 || entry.shutoutsAgainst > 0)
+          '12 x 0: aplicou ${entry.shutoutsFor} · '
+              'tomou ${entry.shutoutsAgainst}',
+      ].join('\n'),
       trailing: Text(
         entry.elo.round().toString(),
         style: theme.textTheme.titleMedium?.copyWith(
@@ -211,7 +228,9 @@ Future<void> showEloHelp(BuildContext context) => showAppDialog<void>(
       'Quem tem menos de 5 jogos aparece como "provisório". Ainda é cedo para '
       'a pontuação dizer muito.\n\n'
       'As duplas têm um Elo próprio, que conta só as partidas em que os dois '
-      'jogaram juntos. O ranking do grupo conta só as partidas daquele grupo.',
+      'jogaram juntos. O ranking do grupo conta só as partidas daquele grupo.\n\n'
+      '12 x 0: pela tradição, quem perde sem marcar nenhum ponto passa por '
+      'baixo da mesa. O ranking mostra quantos 12 x 0 cada um aplicou e tomou.',
     ),
   ),
   actions: const [

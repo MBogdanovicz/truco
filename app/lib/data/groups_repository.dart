@@ -75,6 +75,8 @@ class LeaderboardEntry {
     required this.losses,
     required this.pointsFor,
     required this.pointsAgainst,
+    this.shutoutsFor = 0,
+    this.shutoutsAgainst = 0,
     this.hints = const [],
   });
 
@@ -91,6 +93,10 @@ class LeaderboardEntry {
   final int losses;
   final int pointsFor;
   final int pointsAgainst;
+
+  /// Games won 12 x 0, and lost 12 x 0 (the losers pass under the table).
+  final int shutoutsFor;
+  final int shutoutsAgainst;
 
   double get winRate => games == 0 ? 0 : wins / games;
 
@@ -114,6 +120,8 @@ class LeaderboardEntry {
         losses: row['losses'] as int,
         pointsFor: row['points_for'] as int,
         pointsAgainst: row['points_against'] as int,
+        shutoutsFor: row['shutouts_for'] as int? ?? 0,
+        shutoutsAgainst: row['shutouts_against'] as int? ?? 0,
         hints: [
           row['hint_a'] as String?,
           if (row['player_b'] != null) row['hint_b'] as String?,
