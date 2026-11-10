@@ -99,7 +99,7 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
                     ? 'Cada um no seu celular Android, na mesma mesa, sem precisar de internet.'
                     : login,
                 enabled: online,
-                onTap: () => context.go('/marcador/perto'),
+                onTap: () => context.go('/marcador/novo/perto'),
               ),
           ],
         ),

@@ -1,10 +1,14 @@
 /// What's new, shown once after an update. Add a note with the next [id]
 /// for every release that has something users should know about.
 class ReleaseNote {
-  const ReleaseNote(this.id, this.items);
+  const ReleaseNote(this.id, this.items, {this.appOnly = const []});
 
   final int id;
   final List<String> items;
+
+  /// Shown only in the Android app, never on the site (e.g. ads, which the
+  /// site doesn't have).
+  final List<String> appOnly;
 }
 
 const releaseNotes = <ReleaseNote>[
@@ -28,8 +32,12 @@ const releaseNotes = <ReleaseNote>[
     'Aviso claro ao tentar entrar na própria sala com a mesma conta em '
         'outro aparelho.',
   ]),
-  ReleaseNote(4, [
-    'A versão grátis agora mostra um anúncio antes das partidas. Com o '
-        'Premium, nenhum anúncio.',
-  ]),
+  ReleaseNote(
+    4,
+    [],
+    appOnly: [
+      'A versão grátis agora mostra um anúncio antes das partidas. Com o '
+          'Premium, nenhum anúncio.',
+    ],
+  ),
 ];

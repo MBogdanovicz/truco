@@ -95,6 +95,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'local',
                 builder: (_, _) => const ScorekeeperSetupScreen(),
               ),
+              // Under "Novo marcador", so going back returns there.
+              GoRoute(
+                path: 'perto',
+                builder: (_, _) => const NearbyScreen(),
+              ),
             ],
           ),
           GoRoute(
@@ -102,10 +107,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => JoinRoomScreen(
               initialCode: state.uri.queryParameters['codigo'],
             ),
-          ),
-          GoRoute(
-            path: 'marcador/perto',
-            builder: (_, _) => const NearbyScreen(),
           ),
           GoRoute(
             path: 'marcador/sala',

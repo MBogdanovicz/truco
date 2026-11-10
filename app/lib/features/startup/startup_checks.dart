@@ -79,8 +79,9 @@ class _StartupChecksState extends State<StartupChecks> {
     if (seen == null || seen >= latest || !mounted) return;
     final items = [
       for (final n in releaseNotes)
-        if (n.id > seen) ...n.items,
+        if (n.id > seen) ...[...n.items, if (!kIsWeb) ...n.appOnly],
     ];
+    if (items.isEmpty) return;
     await showAppDialog<void>(
       context,
       title: 'Novidades',
