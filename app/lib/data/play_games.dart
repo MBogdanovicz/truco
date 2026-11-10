@@ -29,81 +29,99 @@ const _incrementalSteps = <Achievement, int>{
 };
 
 /// Mirrors the server's achievements to Google Play Games on Android.
-/// Play Games ignores repeats, so syncing everything again is safe.
+/// Reads what Play Games already has and only sends what is missing, using
+/// the type each achievement has in Play Console (normal or incremental).
 class PlayGamesSync {
   bool _signedIn = false;
-  final _sent = <String>{};
+  bool _running = false;
 
   static bool get supported =>
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.android &&
       _playGamesIds.isNotEmpty;
 
+  Future<bool> _signIn() async {
+    _signedIn = await gs.GameAuth.isSignedIn;
+    if (!_signedIn) {
+      await gs.GameAuth.signIn();
+      _signedIn = await gs.GameAuth.isSignedIn;
+    }
+    return _signedIn;
+  }
+
   Future<void> sync(Map<Achievement, DateTime> unlocked, int rankedGames) async {
-    if (!supported) return;
+    if (!supported || _running) return;
+    _running = true;
     try {
-      if (!_signedIn) {
-        _signedIn = await gs.GameAuth.isSignedIn;
-        if (!_signedIn) {
-          await gs.GameAuth.signIn();
-          _signedIn = await gs.GameAuth.isSignedIn;
-        }
-        if (!_signedIn) return;
-      }
+      if (!_signedIn && !await _signIn()) return;
+      final remote = {
+        for (final item
+            in await gs.Achievements.loadAchievements(
+                  forceRefresh: true,
+                  ignoreImages: true,
+                ) ??
+                const <gs.AchievementItemData>[])
+          item.id: item,
+      };
       debugPrint(
-        'Play Games sync: ${unlocked.length} unlocked, $rankedGames games',
+        'Play Games sync: ${unlocked.length} unlocked, $rankedGames games, '
+        '${remote.length} in Play Games',
       );
       for (final MapEntry(key: a, value: id) in _playGamesIds.entries) {
-        final steps = _incrementalSteps[a];
-        if (steps != null) {
-          final done = rankedGames.clamp(0, steps);
-          if (done == 0) continue;
-          await _send('$id:$done', () async {
-            try {
-              await gs.Achievements.setSteps(
-                achievement: gs.Achievement(androidID: id, steps: done),
-              );
-            } on Object {
-              // Registered as a normal achievement in Play Console.
-              if (done < steps) rethrow;
-              await gs.Achievements.unlock(
-                achievement: gs.Achievement(androidID: id),
-              );
-            }
-          });
-        } else if (unlocked.containsKey(a)) {
-          await _send(id, () async {
-            try {
-              await gs.Achievements.unlock(
-                achievement: gs.Achievement(androidID: id),
-              );
-            } on Object {
-              // Registered as incremental in Play Console: fill every step
-              // (Play Games caps it at the total).
-              await gs.Achievements.setSteps(
-                achievement: gs.Achievement(androidID: id, steps: 10000),
-              );
-            }
-          });
+        final item = remote[id];
+        if (item == null) {
+          debugPrint('Play Games: $id (${a.id}) not found');
+          continue;
+        }
+        if (item.unlocked) continue;
+        // Progress the server knows about, in this achievement's steps.
+        final needed = _incrementalSteps[a];
+        final earned = unlocked.containsKey(a) ||
+            (needed != null && rankedGames >= needed);
+        if (item.totalSteps > 0) {
+          final target = needed != null
+              ? rankedGames.clamp(0, item.totalSteps)
+              : (earned ? item.totalSteps : 0);
+          if (target <= item.completedSteps) continue;
+          await _send(
+            '${a.id} steps $target/${item.totalSteps}',
+            () => gs.Achievements.setSteps(
+              achievement: gs.Achievement(androidID: id, steps: target),
+            ),
+          );
+        } else if (earned) {
+          await _send(
+            '${a.id} unlock',
+            () => gs.Achievements.unlock(
+              achievement: gs.Achievement(androidID: id),
+            ),
+          );
         }
       }
     } on Object catch (e) {
       // No Play Games on the device, or the player declined: not an error.
       debugPrint('Play Games sync skipped: $e');
       CrashReporting.log('Play Games sync skipped: $e');
+    } finally {
+      _running = false;
     }
   }
 
-  /// Sends one update; one failure doesn't stop the others, and a failed
-  /// one is retried on the next sync.
-  Future<void> _send(String key, Future<void> Function() call) async {
-    if (_sent.contains(key)) return;
-    try {
-      await call();
-      _sent.add(key);
-    } on Object catch (e) {
-      debugPrint('Play Games: $key failed: $e');
-      CrashReporting.log('Play Games $key failed: $e');
+  /// Sends one update; a failure doesn't stop the others and is retried on
+  /// the next sync (after signing in again when Play Games asks for it).
+  Future<void> _send(String what, Future<Object?> Function() call) async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await call();
+        debugPrint('Play Games: $what ok');
+        return;
+      } on Object catch (e) {
+        debugPrint('Play Games: $what failed: $e');
+        CrashReporting.log('Play Games $what failed: $e');
+        if (attempt > 0 || !'$e'.contains('RECONNECT') || !await _signIn()) {
+          return;
+        }
+      }
     }
   }
 }
