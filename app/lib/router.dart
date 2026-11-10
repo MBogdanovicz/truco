@@ -16,6 +16,7 @@ import 'features/startup/startup_checks.dart';
 import 'features/scorekeeper/join_room_screen.dart';
 import 'features/scorekeeper/mode_screen.dart';
 import 'features/scorekeeper/nearby_screen.dart';
+import 'features/achievements/achievements_screen.dart';
 import 'features/scorekeeper/online_room_screen.dart';
 import 'features/scorekeeper/scoreboard_screen.dart';
 import 'features/scorekeeper/setup_screen.dart';
@@ -116,6 +117,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
           GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
+          GoRoute(
+            path: 'conquistas',
+            builder: (_, _) => const AchievementsScreen(),
+          ),
           GoRoute(path: 'premium', builder: (_, _) => const PremiumScreen()),
           // Nested so the back button of a group goes to the group list.
           GoRoute(

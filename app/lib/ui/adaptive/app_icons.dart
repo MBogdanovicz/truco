@@ -38,6 +38,7 @@ enum AppIcon {
   check(Icons.check_circle, CupertinoIcons.checkmark_circle_fill),
   waiting(Icons.hourglass_empty, CupertinoIcons.hourglass),
   trophy(Icons.emoji_events, CupertinoIcons.rosette),
+  medal(Icons.military_tech, CupertinoIcons.star_circle_fill),
   palette(Icons.palette_outlined, CupertinoIcons.paintbrush),
   email(Icons.mail_outline, CupertinoIcons.mail),
   update(Icons.system_update, CupertinoIcons.arrow_down_circle),

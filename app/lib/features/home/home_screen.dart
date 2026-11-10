@@ -90,6 +90,14 @@ class HomeScreen extends ConsumerWidget {
       ),
       if (hasAccount)
         _MenuItem(
+          icon: AppIcon.medal,
+          color: AppColors.gold,
+          title: 'Conquistas',
+          subtitle: 'Desafios das partidas rankeadas.',
+          onTap: () => context.go('/conquistas'),
+        ),
+      if (hasAccount)
+        _MenuItem(
           icon: AppIcon.trophy,
           color: AppColors.gold,
           title: premium ? 'Premium ativo' : 'Truco Premium',
