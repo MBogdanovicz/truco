@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Truco! · Entrar na sala</title>
+<!-- Invite links open the Android app when it is installed (App Links);
+     everywhere else this page forwards to the PWA with the code filled in. -->
+<script>
+  var code = new URLSearchParams(location.search).get('codigo') || '';
+  location.replace('/#/marcador/entrar' + (code ? '?codigo=' + encodeURIComponent(code) : ''));
+</script>
+</head>
+<body></body>
+</html>

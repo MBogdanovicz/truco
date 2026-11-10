@@ -40,10 +40,15 @@ jobs:
           sed -i "s|\"main.dart.js\"|\"main.dart.js?v=$v\"|g" flutter_bootstrap.js
           grep -q "flutter_bootstrap.js?v=$v" index.html
           grep -q "main.dart.js?v=$v" flutter_bootstrap.js
+      - name: Keep the App Links file (dot folders can be skipped)
+        run: |
+          mkdir -p build/web/.well-known
+          cp web/.well-known/assetlinks.json build/web/.well-known/
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
           path: app/build/web
+          include-hidden-files: true
 
   deploy:
     needs: build

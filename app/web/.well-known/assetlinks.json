@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.mytrophies.truco",
+      "sha256_cert_fingerprints": [
+        "D1:1C:C9:09:1E:F6:8F:5D:12:54:D2:4F:15:6B:38:31:90:FF:7C:2E:0F:1B:E2:DA:0A:2A:81:E1:00:36:AD:1C",
+        "FF:E5:D9:A7:C5:D9:25:A8:EC:A9:4D:FB:20:22:52:0C:B3:F6:B4:E6:E5:12:B4:B6:7D:F1:A9:14:F3:4A:75:99"
+      ]
+    }
+  }
+]

@@ -52,6 +52,10 @@ String? authRedirect({
   return null;
 }
 
+String _withCode(String path, String? code) => code == null || code.isEmpty
+    ? path
+    : '$path?codigo=${Uri.encodeQueryComponent(code)}';
+
 String? _fromParam(String? uri) {
   if (uri == null) return null;
   final from = Uri.tryParse(uri)?.queryParameters['de'];
@@ -132,6 +136,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      // Invite links opened in the Android app (see Env.roomInviteLink).
+      GoRoute(
+        path: '/sala',
+        redirect: (_, state) =>
+            _withCode('/marcador/entrar', state.uri.queryParameters['codigo']),
+      ),
+      GoRoute(
+        path: '/grupo',
+        redirect: (_, state) =>
+            _withCode('/grupos/entrar', state.uri.queryParameters['codigo']),
       ),
       GoRoute(path: '/entrar', builder: (_, _) => const LoginScreen()),
       GoRoute(

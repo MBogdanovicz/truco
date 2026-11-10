@@ -36,9 +36,10 @@ abstract final class Env {
   static const androidStoreUrl =
       'https://play.google.com/store/apps/details?id=app.mytrophies.truco';
 
-  static String roomInviteLink(String code) =>
-      '$webAppUrl/#/marcador/entrar?codigo=$code';
+  /// Invite links open the Android app when installed, otherwise the PWA
+  /// (web/sala/ and web/grupo/ forward to the join screens).
+  static String roomInviteLink(String code) => '$webAppUrl/sala/?codigo=$code';
 
   static String groupInviteLink(String code) =>
-      '$webAppUrl/#/grupos/entrar?codigo=$code';
+      '$webAppUrl/grupo/?codigo=$code';
 }
