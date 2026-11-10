@@ -40,11 +40,15 @@ class PlayGamesSync {
       defaultTargetPlatform == TargetPlatform.android &&
       _playGamesIds.isNotEmpty;
 
+  /// Every Play Games call gets a deadline: a call that never answers
+  /// would otherwise stop the sync for the rest of the session.
+  static const _timeout = Duration(seconds: 15);
+
   Future<bool> _signIn() async {
-    _signedIn = await gs.GameAuth.isSignedIn;
+    _signedIn = await gs.GameAuth.isSignedIn.timeout(_timeout);
     if (!_signedIn) {
-      await gs.GameAuth.signIn();
-      _signedIn = await gs.GameAuth.isSignedIn;
+      await gs.GameAuth.signIn().timeout(_timeout);
+      _signedIn = await gs.GameAuth.isSignedIn.timeout(_timeout);
     }
     return _signedIn;
   }
@@ -59,7 +63,7 @@ class PlayGamesSync {
             in await gs.Achievements.loadAchievements(
                   forceRefresh: true,
                   ignoreImages: true,
-                ) ??
+                ).timeout(_timeout) ??
                 const <gs.AchievementItemData>[])
           item.id: item,
       };
@@ -108,17 +112,22 @@ class PlayGamesSync {
   }
 
   /// Sends one update; a failure doesn't stop the others and is retried on
-  /// the next sync (after signing in again when Play Games asks for it).
+  /// the next sync. Play Games often answers CLIENT_RECONNECT_REQUIRED to
+  /// the first call after a pause; checking the sign-in reconnects it.
   Future<void> _send(String what, Future<Object?> Function() call) async {
-    for (var attempt = 0; attempt < 2; attempt++) {
+    for (var attempt = 0; attempt < 3; attempt++) {
       try {
-        await call();
+        await call().timeout(_timeout);
         debugPrint('Play Games: $what ok');
         return;
       } on Object catch (e) {
         debugPrint('Play Games: $what failed: $e');
         CrashReporting.log('Play Games $what failed: $e');
-        if (attempt > 0 || !'$e'.contains('RECONNECT') || !await _signIn()) {
+        if (!'$e'.contains('RECONNECT')) return;
+        try {
+          await gs.GameAuth.isSignedIn.timeout(_timeout);
+        } on Object catch (e) {
+          debugPrint('Play Games: reconnect failed: $e');
           return;
         }
       }
