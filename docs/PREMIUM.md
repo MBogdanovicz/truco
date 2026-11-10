@@ -49,6 +49,8 @@ is enforced by the server as soon as the migration runs.
 
    Without the Mac: Actions > "Play release" > Run workflow builds the same
    signed AAB (see the secrets listed in `.github/workflows/release.yml`).
+   Leave "real ads" off while the app is only in closed testing (testers
+   get Google's test ads); turn it on for production releases.
 
    Sideloaded test APKs keep the committed test key, so the test phones can
    still update in place (a phone with the Play version must uninstall it

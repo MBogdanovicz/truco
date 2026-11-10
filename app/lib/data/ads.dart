@@ -10,9 +10,10 @@ import 'entitlements.dart';
 /// The interstitial shown to free accounts before each game (Android only;
 /// Premium removes it).
 ///
-/// Only Play Store builds use the real AdMob unit (`--dart-define=
-/// ADMOB_REAL=true`, see release.yml). Test builds show Google's test ads,
-/// so tapping them on the test phones never breaks AdMob's rules.
+/// Only production builds use the real AdMob unit (`--dart-define=
+/// ADMOB_REAL=true`, the "real_ads" option of release.yml). Test and
+/// closed-testing builds show Google's test ads, so testers tapping them
+/// never breaks AdMob's rules.
 class Ads {
   Ads._();
 

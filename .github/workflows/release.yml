@@ -12,6 +12,11 @@ name: Play release
 
 on:
   workflow_dispatch:
+    inputs:
+      real_ads:
+        description: 'Anúncios reais (só para produção; desligado = anúncios de teste)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -60,12 +65,13 @@ jobs:
             flutter build appbundle --release \
               --dart-define-from-file=config/supabase.json \
               --dart-define=APP_COMMIT=${GITHUB_SHA::7} \
-              --dart-define=ADMOB_REAL=true \
+              --dart-define=ADMOB_REAL=${{ inputs.real_ads }} \
               --build-number=$(git rev-list --count HEAD)
           }
           build || { echo "Retrying in 30 s"; sleep 30; build; }
+          ads=${{ inputs.real_ads && 'real-ads' || 'test-ads' }}
           cp build/app/outputs/bundle/release/app-release.aab \
-            "truco-$(git rev-list --count HEAD)-${GITHUB_SHA::7}.aab"
+            "truco-$(git rev-list --count HEAD)-${GITHUB_SHA::7}-$ads.aab"
       - uses: actions/upload-artifact@v7
         with:
           name: truco-aab
