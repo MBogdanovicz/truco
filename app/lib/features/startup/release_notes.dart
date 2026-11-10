@@ -40,4 +40,11 @@ const releaseNotes = <ReleaseNote>[
           'Premium, nenhum anúncio.',
     ],
   ),
+  ReleaseNote(5, [
+    'Novo: jogue truco paulista contra o computador! Escolha o nível do '
+        'parceiro e dos adversários (fácil, médio ou difícil).',
+    'Variações de regra: manilha virada ou fixa, carta coberta e mão de '
+        'ferro.',
+    'Tela com as regras do truco.',
+  ]),
 ];

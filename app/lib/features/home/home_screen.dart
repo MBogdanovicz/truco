@@ -11,6 +11,7 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
 import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
+import '../game/local_game_controller.dart';
 import '../scorekeeper/online_room_controller.dart';
 import '../scorekeeper/scorekeeper_controller.dart';
 
@@ -23,6 +24,7 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider).value ?? auth.currentUser;
     final ongoing = ref.watch(scorekeeperControllerProvider);
     final room = ref.watch(onlineRoomControllerProvider);
+    final game = ref.watch(localGameControllerProvider);
     // Mirrors achievements to Google Play Games (Android only).
     ref.watch(playGamesSyncProvider);
     final lastRoom = ref.watch(lastRoomCodeProvider).value;
@@ -109,11 +111,12 @@ class HomeScreen extends ConsumerWidget {
               : 'Sem anúncios, grupos sem limite e visuais do placar.',
           onTap: () => context.go('/premium'),
         ),
-      const _MenuItem(
+      _MenuItem(
         icon: AppIcon.cards,
         color: AppColors.purple,
-        title: 'Jogar truco',
-        subtitle: 'Em breve.',
+        title: game == null ? 'Jogar truco' : 'Continuar jogo',
+        subtitle: 'Truco paulista contra o computador.',
+        onTap: () => context.go(game == null ? '/jogo' : '/jogo/partida'),
       ),
     ];
     final muted = theme.textTheme.bodySmall?.copyWith(

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: living document, last updated 2026-11-09. The schema in §4 is the target; see `supabase/migrations` for what
+Status: living document, last updated 2026-11-10. The schema in §4 is the target; see `supabase/migrations` for what
 exists today. This document covers the whole product, but only the parts needed for
 **Phase 1 (scorekeeper / "marcador")** are specified in detail. The card game itself (Phase 2) is sketched so that
 Phase 1 decisions don't block it.
@@ -309,16 +309,56 @@ deferred until after Phase 1. AdMob does not support Flutter Web, so the PWA fre
 
 ---
 
-## 10. Phase 2 sketch (game)
+## 10. Phase 2: the game
 
-* Game engine in `domain/game/` (pure Dart, deterministic, seeded shuffles), with variant rules pluggable
-  (Paulista first, others later).
-* Same transport idea as the scorekeeper: online via an authoritative server (Supabase Edge Function or a small
-  dedicated server, to hide other players' cards) and local via Nearby Connections with the host as authority.
-* Matches reuse `matches` (`kind = 'game'`) and the same ranking pipeline.
+### 10.1 Engine (`app/lib/domain/game/`)
+
+* `cards.dart`: the 40-card deck (no 8, 9, 10). Card ids like `7c` are used in logs and on the wire.
+* `rules.dart`: `TrucoRules`. Paulista is the only preset (stakes 1/3/6/9/12, mão de onze worth 3, game to 12).
+  Variations are fields (`copyWith`): `manilhaMode` (`vira` = flipped card decides the manilha rank, `fixed` =
+  4♣ 7♥ A♠ 7♦), `allowCoveredCard`, `ironHand`. The engine reads stakes and the decision score from the rules, so
+  other scorings could come back as custom rules without engine changes.
+* `truco_game.dart`: `TrucoGame`, a mutable, deterministic state machine (seeded shuffles). Seats 0..3 in playing
+  order (counter-clockwise); 0/2 are team A. Phases: `decision` (mão de onze), `playing`, `raisePending`,
+  `handOver`, `gameOver`. Actions: `PlayCard` (optionally covered), `Raise` (truco or counter-raise), `Accept`,
+  `Fold`. `legalActions(seat)` is the single source of what a seat may do; `apply` rejects anything else.
+  Every change appends a `GameEvent` (hand started, card played, raise called/accepted, fold, round/hand/game ended)
+  so UIs and future transports can animate or replay.
+* `PlayerView` is what one seat may know (own hand, partner's hand only in a mão de onze, face-up plays). Bots and
+  UIs only get views, which is the boundary the online version needs to hide hands.
+* Hand resolution (`handOutcomeOf`): two rounds win; a tie after a won round goes to the first-round winner; a tied
+  first round is decided by the next decided round; all tied = nobody scores. Equal top cards from both teams tie
+  the round; the first player of the tied top card leads next.
+* Mão de onze: the team at 11 sees both hands and plays (worth 3, no raises) or runs (other team +1). 11×11 with
+  `ironHand` = mão de ferro: nobody sees their own cards, worth 1.
+
+### 10.2 Bots (`ai.dart`)
+
+`TrucoBot(level)` decides from a `PlayerView`:
+
+* easy: random cards about half the time, random bets.
+* medium: heuristic card play (`heuristicPick`: let a winning partner win, beat with the cheapest card, tie when the
+  first round is ours, keep a manilha in round 1 when there is another decent card), bets from a 40-deal Monte Carlo
+  estimate of the hand.
+* hard: 220-deal Monte Carlo for bets, weighted towards strong opponent hands after they raise; per-card simulations
+  to pick the card; occasional covered cards and rare bluffs.
+
+Bots self-play tests: medium beats easy ~88%, hard beats medium ~55-60% (12-point games, 100-game samples).
+
+### 10.3 Local game UI (`app/lib/features/game/`)
+
+`LocalGameController` (Riverpod) owns a `TrucoGame` with the human at seat 0 and bots elsewhere, pacing bot moves
+with timers. `GameTableScreen` draws the table with plain widgets (no card images), `GameSetupScreen` chooses
+variations and bot levels (remembered in shared preferences), `RulesScreen` explains the rules. Local games are
+friendly: nothing is uploaded and they never count for ranking or achievements.
+
+### 10.4 Next (see ROADMAP G2+)
+
+* Online: same room flow as the scorekeeper. Hands must be hidden from other clients, so the host (or an Edge
+  Function) runs `TrucoGame` and sends each client only its `PlayerView`. Bots can fill empty seats; a game is
+  ranked only with four humans. Matches reuse `matches` (`kind = 'game'`) and the ranking pipeline, with a ranking
+  filter for game / scorekeeper / both.
 * Championships: new tables for tournaments, brackets and entries.
-
----
 
 ## 11. Repository layout (planned)
 
