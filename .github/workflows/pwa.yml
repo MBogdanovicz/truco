@@ -57,9 +57,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      # GitHub Pages sometimes stays in "syncing_files" past the 10 min
+      # limit (the maximum); a second try usually goes through.
+      - id: first
         uses: actions/deploy-pages@v5
-        with:
-          # GitHub Pages sometimes stays in "syncing_files" for over 10 min
-          # (the default timeout).
-          timeout: 1800000
+        continue-on-error: true
+      - id: retry
+        if: steps.first.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+      - id: deployment
+        run: echo "page_url=${{ steps.first.outputs.page_url || steps.retry.outputs.page_url }}" >> "$GITHUB_OUTPUT"

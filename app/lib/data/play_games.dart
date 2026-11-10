@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:games_services/games_services.dart' as gs;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/achievements.dart';
 import 'achievements_repository.dart';
+import 'auth_repository.dart';
 import 'crash_reporting.dart';
 
 /// Achievement ids in Google Play Games (Play Console > Play Games Services
@@ -29,35 +32,66 @@ const _incrementalSteps = <Achievement, int>{
 };
 
 /// Mirrors the server's achievements to Google Play Games on Android.
-/// Reads what Play Games already has and only sends what is missing, using
-/// the type each achievement has in Play Console (normal or incremental).
+///
+/// Remembers on the device what Play Games already got, so opening the app
+/// calls Play Games only when there is something new (each call can show
+/// Google's banner). Only the Play Games player linked to this app account
+/// receives them (see link_play_games in the database).
 class PlayGamesSync {
-  bool _signedIn = false;
   bool _running = false;
+
+  /// A call that never answers would otherwise block the sync.
+  static const _timeout = Duration(seconds: 15);
 
   static bool get supported =>
       !kIsWeb &&
       defaultTargetPlatform == TargetPlatform.android &&
       _playGamesIds.isNotEmpty;
 
-  /// Every Play Games call gets a deadline: a call that never answers
-  /// would otherwise stop the sync for the rest of the session.
-  static const _timeout = Duration(seconds: 15);
-
-  Future<bool> _signIn() async {
-    _signedIn = await gs.GameAuth.isSignedIn.timeout(_timeout);
-    if (!_signedIn) {
-      await gs.GameAuth.signIn().timeout(_timeout);
-      _signedIn = await gs.GameAuth.isSignedIn.timeout(_timeout);
+  /// What Play Games should have: "<id>" for unlocks, "<id>:<steps>" for
+  /// progress of the incremental ones.
+  static Set<String> _wanted(Map<Achievement, DateTime> unlocked, int games) {
+    final wanted = <String>{};
+    for (final a in _playGamesIds.keys) {
+      final steps = _incrementalSteps[a];
+      if (steps != null) {
+        if (games > 0) wanted.add('${a.id}:${games.clamp(0, steps)}');
+      } else if (unlocked.containsKey(a)) {
+        wanted.add(a.id);
+      }
     }
-    return _signedIn;
+    return wanted;
   }
 
-  Future<void> sync(Map<Achievement, DateTime> unlocked, int rankedGames) async {
+  Future<void> sync({
+    required SupabaseClient client,
+    required String userId,
+    required Map<Achievement, DateTime> unlocked,
+    required int rankedGames,
+  }) async {
     if (!supported || _running) return;
+    final prefs = SharedPreferencesAsync();
+    final key = 'play_games.sent.$userId';
+    final sent = (await prefs.getStringList(key) ?? const []).toSet();
+    final pending = _wanted(unlocked, rankedGames).difference(sent);
+    if (pending.isEmpty) return;
     _running = true;
     try {
-      if (!_signedIn && !await _signIn()) return;
+      if (!await gs.GameAuth.isSignedIn.timeout(_timeout)) {
+        await gs.GameAuth.signIn().timeout(_timeout);
+        if (!await gs.GameAuth.isSignedIn.timeout(_timeout)) return;
+      }
+      final player = await gs.Player.getPlayerID().timeout(_timeout);
+      final linked = player != null &&
+          await client.rpc<bool>(
+                'link_play_games',
+                params: {'p_player': player},
+              ) ==
+              true;
+      if (!linked) {
+        debugPrint('Play Games: player not linked to this account');
+        return;
+      }
       final remote = {
         for (final item
             in await gs.Achievements.loadAchievements(
@@ -67,41 +101,34 @@ class PlayGamesSync {
                 const <gs.AchievementItemData>[])
           item.id: item,
       };
-      debugPrint(
-        'Play Games sync: ${unlocked.length} unlocked, $rankedGames games, '
-        '${remote.length} in Play Games',
-      );
-      for (final MapEntry(key: a, value: id) in _playGamesIds.entries) {
-        final item = remote[id];
-        if (item == null) {
-          debugPrint('Play Games: $id (${a.id}) not found');
-          continue;
-        }
-        if (item.unlocked) continue;
-        // Progress the server knows about, in this achievement's steps.
-        final needed = _incrementalSteps[a];
-        final earned = unlocked.containsKey(a) ||
-            (needed != null && rankedGames >= needed);
-        if (item.totalSteps > 0) {
-          final target = needed != null
-              ? rankedGames.clamp(0, item.totalSteps)
-              : (earned ? item.totalSteps : 0);
-          if (target <= item.completedSteps) continue;
-          await _send(
-            '${a.id} steps $target/${item.totalSteps}',
-            () => gs.Achievements.setSteps(
-              achievement: gs.Achievement(androidID: id, steps: target),
-            ),
-          );
-        } else if (earned) {
-          await _send(
-            '${a.id} unlock',
-            () => gs.Achievements.unlock(
+      for (final entry in pending) {
+        final parts = entry.split(':');
+        final a = Achievement.byId(parts.first);
+        final id = a == null ? null : _playGamesIds[a];
+        final item = id == null ? null : remote[id];
+        if (a == null || id == null || item == null) continue;
+        final target = parts.length > 1 ? int.parse(parts[1]) : null;
+        final done = item.unlocked ||
+            (item.totalSteps > 0 &&
+                item.completedSteps >= (target ?? item.totalSteps));
+        if (done || await _send(entry, () async {
+          if (item.totalSteps > 0) {
+            await gs.Achievements.setSteps(
+              achievement: gs.Achievement(
+                androidID: id,
+                steps: (target ?? item.totalSteps).clamp(0, item.totalSteps),
+              ),
+            );
+          } else if (target == null || target >= _incrementalSteps[a]!) {
+            await gs.Achievements.unlock(
               achievement: gs.Achievement(androidID: id),
-            ),
-          );
+            );
+          }
+        })) {
+          sent.add(entry);
         }
       }
+      await prefs.setStringList(key, sent.toList());
     } on Object catch (e) {
       // No Play Games on the device, or the player declined: not an error.
       debugPrint('Play Games sync skipped: $e');
@@ -111,27 +138,25 @@ class PlayGamesSync {
     }
   }
 
-  /// Sends one update; a failure doesn't stop the others and is retried on
-  /// the next sync. Play Games often answers CLIENT_RECONNECT_REQUIRED to
-  /// the first call after a pause; checking the sign-in reconnects it.
-  Future<void> _send(String what, Future<Object?> Function() call) async {
+  /// One update; Play Games often answers CLIENT_RECONNECT_REQUIRED to the
+  /// first call after a pause, and checking the sign-in reconnects it.
+  Future<bool> _send(String what, Future<void> Function() call) async {
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
         await call().timeout(_timeout);
-        debugPrint('Play Games: $what ok');
-        return;
+        return true;
       } on Object catch (e) {
         debugPrint('Play Games: $what failed: $e');
         CrashReporting.log('Play Games $what failed: $e');
-        if (!'$e'.contains('RECONNECT')) return;
+        if (!'$e'.contains('RECONNECT')) return false;
         try {
           await gs.GameAuth.isSignedIn.timeout(_timeout);
-        } on Object catch (e) {
-          debugPrint('Play Games: reconnect failed: $e');
-          return;
+        } on Object {
+          return false;
         }
       }
     }
+    return false;
   }
 }
 
@@ -141,7 +166,15 @@ final _playGames = PlayGamesSync();
 /// achievements are reloaded (e.g. after a game).
 final playGamesSyncProvider = FutureProvider.autoDispose<void>((ref) async {
   if (!PlayGamesSync.supported) return;
+  final client = ref.watch(supabaseClientProvider);
+  final user = ref.watch(currentUserProvider).value;
+  if (client == null || user == null || user.isGuest) return;
   final unlocked = await ref.watch(unlockedAchievementsProvider.future);
   final games = await ref.watch(rankedGamesCountProvider.future);
-  await _playGames.sync(unlocked, games);
+  await _playGames.sync(
+    client: client,
+    userId: user.id,
+    unlocked: unlocked,
+    rankedGames: games,
+  );
 });
