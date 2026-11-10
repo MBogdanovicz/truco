@@ -50,24 +50,60 @@ class PlayGamesSync {
         }
         if (!_signedIn) return;
       }
+      debugPrint(
+        'Play Games sync: ${unlocked.length} unlocked, $rankedGames games',
+      );
       for (final MapEntry(key: a, value: id) in _playGamesIds.entries) {
         final steps = _incrementalSteps[a];
         if (steps != null) {
           final done = rankedGames.clamp(0, steps);
-          final key = '$id:$done';
-          if (done == 0 || !_sent.add(key)) continue;
-          await gs.Achievements.setSteps(
-            achievement: gs.Achievement(androidID: id, steps: done),
-          );
-        } else if (unlocked.containsKey(a) && _sent.add(id)) {
-          await gs.Achievements.unlock(
-            achievement: gs.Achievement(androidID: id),
-          );
+          if (done == 0) continue;
+          await _send('$id:$done', () async {
+            try {
+              await gs.Achievements.setSteps(
+                achievement: gs.Achievement(androidID: id, steps: done),
+              );
+            } on Object {
+              // Registered as a normal achievement in Play Console.
+              if (done < steps) rethrow;
+              await gs.Achievements.unlock(
+                achievement: gs.Achievement(androidID: id),
+              );
+            }
+          });
+        } else if (unlocked.containsKey(a)) {
+          await _send(id, () async {
+            try {
+              await gs.Achievements.unlock(
+                achievement: gs.Achievement(androidID: id),
+              );
+            } on Object {
+              // Registered as incremental in Play Console: fill every step
+              // (Play Games caps it at the total).
+              await gs.Achievements.setSteps(
+                achievement: gs.Achievement(androidID: id, steps: 10000),
+              );
+            }
+          });
         }
       }
     } on Object catch (e) {
       // No Play Games on the device, or the player declined: not an error.
+      debugPrint('Play Games sync skipped: $e');
       CrashReporting.log('Play Games sync skipped: $e');
+    }
+  }
+
+  /// Sends one update; one failure doesn't stop the others, and a failed
+  /// one is retried on the next sync.
+  Future<void> _send(String key, Future<void> Function() call) async {
+    if (_sent.contains(key)) return;
+    try {
+      await call();
+      _sent.add(key);
+    } on Object catch (e) {
+      debugPrint('Play Games: $key failed: $e');
+      CrashReporting.log('Play Games $key failed: $e');
     }
   }
 }
