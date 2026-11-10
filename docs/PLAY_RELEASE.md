@@ -31,3 +31,12 @@ Give the e-mail and password in Play Console → App access.
 
 - Privacy: https://truco.mytrophies.app/privacy/ (`app/web/privacy/`)
 - Terms: https://truco.mytrophies.app/terms/ (`app/web/terms/`)
+
+## Updates and release notes
+
+- On the home screen, once per session, `StartupChecks` asks Google Play for
+  a newer version (in-app update, store installs only) and then shows the
+  unseen entries of `lib/features/startup/release_notes.dart`.
+- For each release with user-visible changes, add a `ReleaseNote` with the
+  next id (Portuguese), and reuse the text in the Play Console release notes.
+- Fresh installs don't see old notes; they start from the latest id.
