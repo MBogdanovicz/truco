@@ -50,6 +50,12 @@ class MatchState {
     return null;
   }
 
+  /// Won 12 x 0: by tradition the losers pass under the table.
+  bool get isShutout {
+    final w = winner;
+    return w != null && scoreOf(w.other) == 0;
+  }
+
   bool get isFinished => winner != null;
 
   /// Exactly one team is one point away from winning.

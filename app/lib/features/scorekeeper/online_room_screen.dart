@@ -673,6 +673,25 @@ class _FinishedCard extends StatelessWidget {
                 '${tally.gamesPlayed > 1 ? '  ·  Série ${tally.winsA} × ${tally.winsB}' : ''}',
                 textAlign: TextAlign.center,
               ),
+              if (state.isShutout) ...[
+                const SizedBox(height: 12),
+                Text(
+                  switch (myTeam) {
+                    null =>
+                      'Doze a zero! ${snap.teamNames[winner.other]} passa por '
+                          'baixo da mesa!',
+                    _ when myTeam == winner => 'Uh! Doze a zero!',
+                    _ => 'Passa por baixo da mesa!',
+                  },
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: myTeam != winner.other
+                        ? AppColors.gold
+                        : theme.colorScheme.error,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               for (final t in Team.values)
                 Row(

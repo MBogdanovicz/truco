@@ -35,6 +35,8 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
       message:
           '${session.state.scoreOf(Team.a)} × ${session.state.scoreOf(Team.b)}'
           '${tally.gamesPlayed > 1 ? '\nSérie: ${tally.winsA} × ${tally.winsB}' : ''}'
+          '${session.state.isShutout ? '\n\nUh! Doze a zero!\n'
+                    '${session.setup.teamNames[winner.other]} passa por baixo da mesa!' : ''}'
           '\n\nVamos de revanche?',
       barrierDismissible: false,
       actions: const [
