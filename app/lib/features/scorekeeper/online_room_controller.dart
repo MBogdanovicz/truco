@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/achievements_repository.dart';
 import '../../data/auth_repository.dart';
 import '../../data/ids.dart';
 import '../../data/last_room_repository.dart';
@@ -259,6 +260,15 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
             ranked: game.ranked,
             groupId: game.group?.id,
           );
+      // A ranked game counts once both teams confirmed it; give the other
+      // devices a moment, then reload achievements (and Play Games).
+      if (game.ranked) {
+        unawaited(
+          Future<void>.delayed(const Duration(seconds: 8), () {
+            if (ref.mounted) ref.invalidate(unlockedAchievementsProvider);
+          }),
+        );
+      }
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
 import '../../data/auth_repository.dart';
+import '../../data/play_games.dart';
 import '../../data/entitlements.dart';
 import '../../data/last_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
@@ -22,6 +23,8 @@ class HomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider).value ?? auth.currentUser;
     final ongoing = ref.watch(scorekeeperControllerProvider);
     final room = ref.watch(onlineRoomControllerProvider);
+    // Mirrors achievements to Google Play Games (Android only).
+    ref.watch(playGamesSyncProvider);
     final lastRoom = ref.watch(lastRoomCodeProvider).value;
     final hasAccount = user != null && !user.isGuest;
     final premium = ref.watch(entitlementsProvider).value?.isPremium ?? false;

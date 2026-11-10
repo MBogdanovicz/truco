@@ -86,4 +86,6 @@ dependencies {
     // Nearby Connections: offline scorekeeper rooms between Android phones.
     implementation("com.google.android.gms:play-services-nearby:19.3.0")
     implementation("androidx.core:core-ktx:1.13.1")
+    // Google Play Games: PlayGamesSdk.initialize in MainActivity.
+    implementation("com.google.android.gms:play-services-games-v2:21.0.0")
 }

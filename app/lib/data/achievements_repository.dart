@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/achievements.dart';
 import 'auth_repository.dart';
@@ -19,3 +20,19 @@ final unlockedAchievementsProvider =
               DateTime.parse(r['unlocked_at'] as String).toLocal(),
       };
     });
+
+/// Confirmed ranked games the signed-in player took part in (the progress
+/// of the "Veterano" achievements).
+final rankedGamesCountProvider = FutureProvider.autoDispose<int>((ref) async {
+  final client = ref.watch(supabaseClientProvider);
+  final user = ref.watch(currentUserProvider).value;
+  if (client == null || user == null || user.isGuest) return 0;
+  final res = await client
+      .from('match_players')
+      .select('match_id, matches!inner(id)')
+      .eq('user_id', user.id)
+      .eq('matches.is_ranked', true)
+      .eq('matches.ratings_applied', true)
+      .count(CountOption.exact);
+  return res.count;
+});
