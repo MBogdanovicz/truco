@@ -122,19 +122,27 @@ class PremiumRepository {
     );
   }
 
-  /// Asks the server to check the purchase with Google and turn premium on.
-  /// Returns true once premium is granted (false while Google says pending).
+  /// Asks the server to check the purchase with Google, turn premium on and
+  /// consume the purchase (so this Google account can buy again for another
+  /// e-mail). `granted` is false while Google says pending; `consumed` false
+  /// means the app must acknowledge it itself.
   ///
   /// Throws [PurchaseOwnedByAnotherAccount] when this Google Play purchase
   /// already unlocked premium for another e-mail.
-  Future<bool> verify(String productId, String purchaseToken) async {
+  Future<({bool granted, bool consumed})> verify(
+    String productId,
+    String purchaseToken,
+  ) async {
     try {
       final res = await _client.functions.invoke(
         'verify-purchase',
         body: {'productId': productId, 'purchaseToken': purchaseToken},
       );
       final data = res.data;
-      return data is Map && data['status'] == 'premium';
+      return (
+        granted: data is Map && data['status'] == 'premium',
+        consumed: data is Map && data['consumed'] == true,
+      );
     } on FunctionException catch (e) {
       final details = e.details;
       if (e.status == 409 &&
@@ -234,8 +242,11 @@ class PremiumStore extends Notifier<StoreStatus> {
   Future<void> buy(ProductDetails product) async {
     state = StoreStatus.buying;
     try {
-      final launched = await InAppPurchase.instance.buyNonConsumable(
+      // Consumable: the server consumes it once premium is on the account,
+      // so the same Google account can buy again for another e-mail.
+      final launched = await InAppPurchase.instance.buyConsumable(
         purchaseParam: PurchaseParam(productDetails: product),
+        autoConsume: false,
       );
       // Not launched usually means this Google account already owns it
       // (bought with another e-mail, or on another phone): look it up.
@@ -296,13 +307,14 @@ class PremiumStore extends Notifier<StoreStatus> {
     if (repo == null) return;
     state = StoreStatus.verifying;
     try {
-      final granted = await repo.verify(
+      final (:granted, :consumed) = await repo.verify(
         p.productID,
         p.verificationData.serverVerificationData,
       );
-      // Only acknowledge once the server recorded it: an unacknowledged
-      // purchase is refunded by Google after 3 days.
-      if (granted && p.pendingCompletePurchase) {
+      // The server consumes the purchase (which also acknowledges it). If
+      // it could not, acknowledge here once premium is recorded: an
+      // unacknowledged purchase is refunded by Google after 3 days.
+      if (granted && !consumed && p.pendingCompletePurchase) {
         await InAppPurchase.instance.completePurchase(p);
       }
       ref

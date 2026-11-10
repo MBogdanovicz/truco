@@ -20,7 +20,7 @@ and championships.
 2. It sends the purchase token to the `verify-purchase` Edge Function
    (`supabase/functions/verify-purchase`), which asks the Play Developer API
    whether the purchase is real and completed, records it with
-   `grant_premium` and acknowledges it.
+   `grant_premium` and consumes it.
 3. Only then the app completes the purchase. A purchase that is never
    acknowledged (for example an invite purchase with no pending invite) is
    refunded by Google after 3 days.
@@ -61,6 +61,9 @@ is enforced by the server as soon as the migration runs.
    being charged.
 7. Flip `Entitlements.gatesEnabled` to true (done).
 
-A Google Play purchase unlocks one app account. If the same Google account
-signs in with another e-mail, `verify-purchase` answers 409 `token_used` and
-the Premium screen explains it.
+Purchases are bought as consumables (`buyConsumable(autoConsume: false)`):
+`verify-purchase` records the token on the app account and then consumes it
+(falling back to acknowledging). Premium lives on the app account, so the same
+Google account can buy again for another e-mail. A token already recorded for
+another account answers 409 `token_used` (and is consumed too), and the
+Premium screen says to buy again for this e-mail.

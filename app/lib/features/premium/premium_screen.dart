@@ -176,9 +176,9 @@ class _Buy extends ConsumerWidget {
               ),
             if (status == StoreStatus.otherAccount)
               const _Note(
-                'Esta conta do Google Play já comprou o Premium para outro '
-                'e-mail. Entre no app com aquele e-mail para usar o Premium, '
-                'ou compre com outra conta do Google Play.',
+                'Essa compra do Google Play já liberou o Premium para outro '
+                'e-mail, que continua Premium. Para este e-mail, toque em '
+                'Comprar de novo.',
               ),
             const SizedBox(height: 8),
             AppTextButton(

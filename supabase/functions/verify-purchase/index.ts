@@ -3,8 +3,11 @@
 //
 // The app calls this right after a purchase (and on "restore purchases").
 // It asks Google whether the token is a real, completed purchase of our
-// product, acknowledges it (unacknowledged purchases are refunded after 3
-// days) and records it with public.grant_premium, which is idempotent.
+// product, records it with public.grant_premium (idempotent) and then
+// consumes it. Premium lives on the app account, so consuming lets the same
+// Google account buy again for another e-mail. Consuming also counts as the
+// acknowledgement Google needs (unacknowledged purchases are refunded after
+// 3 days); if it fails we fall back to acknowledging.
 //
 // Secrets (supabase secrets set ...):
 //   GOOGLE_SERVICE_ACCOUNT_JSON  key of a service account with access to the
@@ -82,6 +85,24 @@ async function googleAccessToken(): Promise<string> {
   return (await res.json()).access_token;
 }
 
+/** Consumes the purchase (or at least acknowledges it). True if consumed. */
+async function finish(
+  base: string,
+  token: string,
+  purchase: { consumptionState?: number; acknowledgementState?: number },
+): Promise<boolean> {
+  if (purchase.consumptionState === 1) return true;
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const consume = await fetch(`${base}:consume`, { method: "POST", headers });
+  if (consume.ok) return true;
+  console.error("consume failed", consume.status, await consume.text());
+  if (purchase.acknowledgementState === 0) {
+    const ack = await fetch(`${base}:acknowledge`, { method: "POST", headers, body: "{}" });
+    if (!ack.ok) console.error("acknowledge failed", ack.status, await ack.text());
+  }
+  return false;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply(405, { error: "method_not_allowed" });
@@ -128,21 +149,20 @@ Deno.serve(async (req) => {
       p_token: purchaseToken,
       p_order: purchase.orderId ?? null,
     });
+    let known: string | undefined;
     if (error) {
-      const known = ["token_used", "no_invite"].find((e) => error.message.includes(e));
-      if (known) return reply(409, { error: known });
-      throw new Error(`grant_premium: ${error.message}`);
+      known = ["token_used", "no_invite"].find((e) => error.message.includes(e));
+      if (!known) throw new Error(`grant_premium: ${error.message}`);
     }
 
-    if (purchase.acknowledgementState === 0) {
-      const ack = await fetch(`${base}:acknowledge`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (!ack.ok) console.error("acknowledge failed", ack.status, await ack.text());
+    // A token already recorded (for this or another account) is safe to
+    // consume: its premium stays on the account that redeemed it.
+    let consumed = false;
+    if (!error || known === "token_used") {
+      consumed = await finish(base, token, purchase);
     }
-    return reply(200, { status: "premium" });
+    if (known) return reply(409, { error: known, consumed });
+    return reply(200, { status: "premium", consumed });
   } catch (e) {
     console.error(e);
     return reply(500, { error: "server_error" });
