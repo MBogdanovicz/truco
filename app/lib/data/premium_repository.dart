@@ -43,6 +43,11 @@ class ReceivedInvite {
   final String? inviterName;
 }
 
+/// The Google Play purchase belongs to another account of the app.
+class PurchaseOwnedByAnotherAccount implements Exception {
+  const PurchaseOwnedByAnotherAccount();
+}
+
 class InviteError implements Exception {
   const InviteError(this.code);
 
@@ -119,13 +124,26 @@ class PremiumRepository {
 
   /// Asks the server to check the purchase with Google and turn premium on.
   /// Returns true once premium is granted (false while Google says pending).
+  ///
+  /// Throws [PurchaseOwnedByAnotherAccount] when this Google Play purchase
+  /// already unlocked premium for another e-mail.
   Future<bool> verify(String productId, String purchaseToken) async {
-    final res = await _client.functions.invoke(
-      'verify-purchase',
-      body: {'productId': productId, 'purchaseToken': purchaseToken},
-    );
-    final data = res.data;
-    return data is Map && data['status'] == 'premium';
+    try {
+      final res = await _client.functions.invoke(
+        'verify-purchase',
+        body: {'productId': productId, 'purchaseToken': purchaseToken},
+      );
+      final data = res.data;
+      return data is Map && data['status'] == 'premium';
+    } on FunctionException catch (e) {
+      final details = e.details;
+      if (e.status == 409 &&
+          details is Map &&
+          details['error'] == 'token_used') {
+        throw const PurchaseOwnedByAnotherAccount();
+      }
+      rethrow;
+    }
   }
 }
 
@@ -159,7 +177,22 @@ final boughtFullPriceProvider = FutureProvider.autoDispose<bool>((ref) async {
 });
 
 /// State of the Play Store purchase flow.
-enum StoreStatus { idle, buying, verifying, done, failed }
+enum StoreStatus {
+  idle,
+  buying,
+  verifying,
+
+  /// Looking for past purchases of this Google account.
+  restoring,
+  done,
+  failed,
+
+  /// Restore found no premium purchase on this Google account.
+  nothingToRestore,
+
+  /// This Google account's purchase already unlocked another e-mail.
+  otherAccount,
+}
 
 /// Google Play billing (Android only). Listens to purchase updates for the
 /// whole app session, so purchases finished while the app was closed are
@@ -172,6 +205,11 @@ class PremiumStore extends Notifier<StoreStatus> {
 
   @override
   StoreStatus build() {
+    // A new sign-in starts with a clean slate (no spinner or message left
+    // over from the previous account).
+    ref.listen(currentUserProvider.select((u) => u.value?.id), (_, _) {
+      state = StoreStatus.idle;
+    });
     if (isSupported) {
       _sub = InAppPurchase.instance.purchaseStream.listen(
         _onPurchases,
@@ -196,9 +234,12 @@ class PremiumStore extends Notifier<StoreStatus> {
   Future<void> buy(ProductDetails product) async {
     state = StoreStatus.buying;
     try {
-      await InAppPurchase.instance.buyNonConsumable(
+      final launched = await InAppPurchase.instance.buyNonConsumable(
         purchaseParam: PurchaseParam(productDetails: product),
       );
+      // Not launched usually means this Google account already owns it
+      // (bought with another e-mail, or on another phone): look it up.
+      if (!launched) await restore();
     } on Object catch (e, st) {
       CrashReporting.recordError(e, st, reason: 'buy ${product.id}');
       state = StoreStatus.failed;
@@ -206,9 +247,34 @@ class PremiumStore extends Notifier<StoreStatus> {
   }
 
   /// Re-delivers past purchases (e.g. after reinstalling the app).
-  Future<void> restore() => InAppPurchase.instance.restorePurchases();
+  Future<void> restore() async {
+    state = StoreStatus.restoring;
+    try {
+      await InAppPurchase.instance.restorePurchases();
+    } on Object catch (e, st) {
+      CrashReporting.recordError(e, st, reason: 'restore');
+      state = StoreStatus.failed;
+      return;
+    }
+    // Restored purchases arrive on the stream; if none did, say so.
+    await Future<void>.delayed(const Duration(seconds: 4));
+    if (state == StoreStatus.restoring) state = StoreStatus.nothingToRestore;
+  }
 
   Future<void> _onPurchases(List<PurchaseDetails> purchases) async {
+    if (state == StoreStatus.buying &&
+        purchases.isNotEmpty &&
+        purchases.every((p) => !PremiumProducts.all.contains(p.productID))) {
+      // Errors and cancels from the billing flow may come without a product.
+      final p = purchases.first;
+      state = p.status == PurchaseStatus.canceled
+          ? StoreStatus.idle
+          : StoreStatus.failed;
+      if (p.status == PurchaseStatus.error) {
+        CrashReporting.log('Purchase error: ${p.error?.message}');
+      }
+      return;
+    }
     for (final p in purchases) {
       if (!PremiumProducts.all.contains(p.productID)) continue;
       switch (p.status) {
@@ -244,6 +310,9 @@ class PremiumStore extends Notifier<StoreStatus> {
         ..invalidate(boughtFullPriceProvider)
         ..invalidate(receivedInviteProvider);
       state = granted ? StoreStatus.done : StoreStatus.buying;
+    } on PurchaseOwnedByAnotherAccount {
+      CrashReporting.log('Purchase ${p.productID} belongs to another account');
+      state = StoreStatus.otherAccount;
     } on Object catch (e, st) {
       CrashReporting.recordError(e, st, reason: 'verify ${p.productID}');
       state = StoreStatus.failed;

@@ -9,9 +9,9 @@ class Entitlements {
 
   static const free = Entitlements(isPremium: false);
 
-  /// Premium gates only apply once the paid tier can actually be bought;
-  /// until then every feature stays open (and testable).
-  static const gatesEnabled = false;
+  /// Premium gates are on since the purchase works end to end (2026-11-10).
+  /// Setting this to false opens every feature again.
+  static const gatesEnabled = true;
 
   /// Groups a free account may be in, created or joined (enforced by the
   /// server in `create_group` and `join_group`).

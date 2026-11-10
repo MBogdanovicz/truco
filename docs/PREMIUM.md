@@ -28,8 +28,8 @@ and championships.
 The invite product is only offered when `my_premium_invite()` finds a
 pending invite for the user's e-mail; `grant_premium` checks it again.
 
-Client-side gates (`lib/data/entitlements.dart`) stay off
-(`gatesEnabled = false`) until the purchase works end to end. The group limit
+Client-side gates (`lib/data/entitlements.dart`, `gatesEnabled`) are on
+since the purchase was tested end to end on 2026-11-10. The group limit
 is enforced by the server as soon as the migration runs.
 
 ## Setup checklist
@@ -59,4 +59,8 @@ is enforced by the server as soon as the migration runs.
    `supabase secrets set GOOGLE_SERVICE_ACCOUNT_JSON="$(cat key.json)"`.
 6. Add test accounts as license testers in Play Console to buy without
    being charged.
-7. Flip `Entitlements.gatesEnabled` to true.
+7. Flip `Entitlements.gatesEnabled` to true (done).
+
+A Google Play purchase unlocks one app account. If the same Google account
+signs in with another e-mail, `verify-purchase` answers 409 `token_used` and
+the Premium screen explains it.

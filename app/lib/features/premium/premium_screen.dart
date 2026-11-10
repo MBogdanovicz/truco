@@ -128,7 +128,9 @@ class _Buy extends ConsumerWidget {
     final status = ref.watch(premiumStoreProvider);
     final store = ref.read(premiumStoreProvider.notifier);
     final busy =
-        status == StoreStatus.buying || status == StoreStatus.verifying;
+        status == StoreStatus.buying ||
+        status == StoreStatus.verifying ||
+        status == StoreStatus.restoring;
 
     return products.when(
       loading: () => const Center(child: AppProgress()),
@@ -160,13 +162,29 @@ class _Buy extends ConsumerWidget {
               ),
             if (status == StoreStatus.verifying)
               const _Note('Confirmando a compra…'),
+            if (status == StoreStatus.restoring)
+              const _Note('Procurando compras desta conta do Google Play…'),
             if (status == StoreStatus.failed)
               const _Note(
                 'A compra não foi concluída. Se o valor foi cobrado, toque em '
                 '"Restaurar compra".',
               ),
+            if (status == StoreStatus.nothingToRestore)
+              const _Note(
+                'Nenhuma compra do Premium encontrada nesta conta do Google '
+                'Play.',
+              ),
+            if (status == StoreStatus.otherAccount)
+              const _Note(
+                'Esta conta do Google Play já comprou o Premium para outro '
+                'e-mail. Entre no app com aquele e-mail para usar o Premium, '
+                'ou compre com outra conta do Google Play.',
+              ),
             const SizedBox(height: 8),
-            AppTextButton(label: 'Restaurar compra', onPressed: store.restore),
+            AppTextButton(
+              label: 'Restaurar compra',
+              onPressed: busy ? null : store.restore,
+            ),
           ],
         );
       },
