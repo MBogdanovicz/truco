@@ -14,4 +14,11 @@ const releaseNotes = <ReleaseNote>[
     'Com a mesma conta do Google, dá para comprar o Premium para mais de '
         'um e-mail.',
   ]),
+  ReleaseNote(2, [
+    'Conquistas! Ganhe nas partidas rankeadas e veja no Google Play Games.',
+    'Ranking em tabela, com os 12 x 0 aplicados e tomados.',
+    'Doze a zero no fim da partida: quem perde passa por baixo da mesa!',
+    'O link de convite de sala ou grupo abre direto no app.',
+    'Escolha de grupo com busca e verificação de segurança no login.',
+  ]),
 ];
