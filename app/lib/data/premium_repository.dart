@@ -69,7 +69,8 @@ class PremiumRepository {
         .from('premium_purchases')
         .select('product_id')
         .eq('user_id', _uid)
-        .eq('product_id', PremiumProducts.full);
+        .eq('product_id', PremiumProducts.full)
+        .isFilter('revoked_at', null);
     return rows.isNotEmpty;
   }
 
