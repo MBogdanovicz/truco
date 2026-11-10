@@ -172,8 +172,9 @@ class _Buy extends ConsumerWidget {
               ),
             if (status == StoreStatus.nothingToRestore)
               const _Note(
-                'Nenhuma compra do Premium encontrada nesta conta do Google '
-                'Play.',
+                'Nenhuma compra pendente nesta conta do Google Play. Cada '
+                'compra fica no e-mail que a fez: entre com ele, ou toque em '
+                'Comprar para este e-mail.',
               ),
             if (status == StoreStatus.otherAccount)
               const _Note(
