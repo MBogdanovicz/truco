@@ -40,6 +40,11 @@ const _incrementalSteps = <Achievement, int>{
 class PlayGamesSync {
   bool _running = false;
 
+  /// What this app run already tried to send, so a retry (and Google's
+  /// banners) happens only when something new shows up, not on every
+  /// session refresh.
+  final _tried = <String>{};
+
   /// A call that never answers would otherwise block the sync.
   static const _timeout = Duration(seconds: 15);
 
@@ -74,7 +79,8 @@ class PlayGamesSync {
     final key = 'play_games.sent.$userId';
     final sent = (await prefs.getStringList(key) ?? const []).toSet();
     final pending = _wanted(unlocked, rankedGames).difference(sent);
-    if (pending.isEmpty) return;
+    final attempt = '$userId|${(pending.toList()..sort()).join(',')}';
+    if (pending.isEmpty || !_tried.add(attempt)) return;
     _running = true;
     try {
       if (!await gs.GameAuth.isSignedIn.timeout(_timeout)) {
@@ -167,13 +173,19 @@ final _playGames = PlayGamesSync();
 final playGamesSyncProvider = FutureProvider.autoDispose<void>((ref) async {
   if (!PlayGamesSync.supported) return;
   final client = ref.watch(supabaseClientProvider);
-  final user = ref.watch(currentUserProvider).value;
-  if (client == null || user == null || user.isGuest) return;
+  // Only the account matters: the session refreshes its token now and then,
+  // and that must not start another sync.
+  final userId = ref.watch(
+    currentUserProvider.select(
+      (u) => u.value == null || u.value!.isGuest ? null : u.value!.id,
+    ),
+  );
+  if (client == null || userId == null) return;
   final unlocked = await ref.watch(unlockedAchievementsProvider.future);
   final games = await ref.watch(rankedGamesCountProvider.future);
   await _playGames.sync(
     client: client,
-    userId: user.id,
+    userId: userId,
     unlocked: unlocked,
     rankedGames: games,
   );
