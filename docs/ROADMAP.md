@@ -21,7 +21,19 @@ M2 is built first because it is useful on its own and exercises the domain layer
 * Premium tier: in progress, see docs/PREMIUM.md (one-time purchase R$ 7,99, invites R$ 1,99). AdMob interstitial before each game on Android is in (2026-11-10).
 * PWA payments.
 * PWA ads for free accounts (AdSense / H5 Games Ads), revisit once the truco game is playable on the web: the site has too little content for AdSense approval today (decided 2026-11-10). Until then the PWA shows no ads.
-* Phase 2: the truco game (engine, online/local play, ranked/friendly, championships).
+
+## Phase 2 – The truco game
+
+Order agreed with Marcelo on 2026-11-10. Only Paulista scoring (1/3/6/9/12, mão de onze); Mineiro scoring was left
+out on purpose. Table variations are options on top of it.
+
+| # | Milestone | Scope |
+|---|-----------|-------|
+| G1 ✅ | Local game vs computer | Engine (`domain/game/`), bots easy/medium/hard, card table, rules screen, variations (fixed or flipped manilhas, covered card, mão de ferro). Friendly only. |
+| G2 | Online game | Rooms like the scorekeeper (bots fill empty seats), authoritative host/server hiding hands, ranked only with 4 humans, ranking filter game / scorekeeper / both. |
+| G3 | Social | "Intimar" button (push to group members), game achievements, perks unlocked by achievements (decks, table themes). |
+| G4 | Learning & custom rules | More custom rule options; "modo professor": training scenarios and tips from the user's own plays. |
+| Later | Nearby game, championships | Nearby (Bluetooth) game is low priority: people at the same table usually use a real deck. |
 
 ## Open items
 

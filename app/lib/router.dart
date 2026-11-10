@@ -8,6 +8,9 @@ import 'features/auth/onboarding_screen.dart';
 import 'features/groups/group_detail_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/groups/join_group_screen.dart';
+import 'features/game/game_setup_screen.dart';
+import 'features/game/game_table_screen.dart';
+import 'features/game/rules_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/premium/premium_screen.dart';
 import 'features/ranking/ranking_screen.dart';
@@ -96,10 +99,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, _) => const ScorekeeperSetupScreen(),
               ),
               // Under "Novo marcador", so going back returns there.
-              GoRoute(
-                path: 'perto',
-                builder: (_, _) => const NearbyScreen(),
-              ),
+              GoRoute(path: 'perto', builder: (_, _) => const NearbyScreen()),
             ],
           ),
           GoRoute(
@@ -115,6 +115,22 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'marcador/partida',
             builder: (_, _) => const ScoreboardScreen(),
+          ),
+          GoRoute(
+            path: 'jogo',
+            builder: (_, _) => const GameSetupScreen(),
+            routes: [
+              GoRoute(
+                path: 'partida',
+                builder: (_, _) => const GameTableScreen(),
+              ),
+              GoRoute(
+                path: 'regras',
+                builder: (_, state) => RulesScreen(
+                  fixedManilhas: state.uri.queryParameters['fixas'] == '1',
+                ),
+              ),
+            ],
           ),
           GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
           GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
