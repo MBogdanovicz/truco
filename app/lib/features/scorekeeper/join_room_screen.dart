@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/ads.dart';
 import '../../data/last_room_repository.dart';
 import '../../data/online_room_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
@@ -50,6 +51,8 @@ class _JoinState extends ConsumerState<JoinRoomScreen> {
       _error = null;
     });
     try {
+      await Ads.beforeGame(ref);
+      if (!mounted) return;
       await ref.read(onlineRoomControllerProvider.notifier).join(code);
       if (mounted) context.go('/marcador/sala');
     } on RoomNotFound {

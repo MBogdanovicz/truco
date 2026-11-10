@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env.dart';
+import 'data/ads.dart';
 import 'data/crash_reporting.dart';
 import 'data/result_uploader.dart';
 
@@ -30,6 +31,7 @@ Future<void> main() async {
   // Upload games finished while offline, now and whenever the app comes
   // back to the foreground (the internet may be back by then).
   unawaited(container.read(resultUploaderProvider).flush());
+  unawaited(Ads.init());
   AppLifecycleListener(
     onResume: () => unawaited(
       container.read(resultUploaderProvider).flush().catchError((_) {}),

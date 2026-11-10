@@ -60,6 +60,7 @@ jobs:
             flutter build appbundle --release \
               --dart-define-from-file=config/supabase.json \
               --dart-define=APP_COMMIT=${GITHUB_SHA::7} \
+              --dart-define=ADMOB_REAL=true \
               --build-number=$(git rev-list --count HEAD)
           }
           build || { echo "Retrying in 30 s"; sleep 30; build; }

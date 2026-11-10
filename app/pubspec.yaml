@@ -52,6 +52,8 @@ dependencies:
   web: ^1.1.1
   # Achievements in Google Play Games (Android).
   games_services: ^5.3.0
+  # Ad before each game for free accounts (Android).
+  google_mobile_ads: ^9.2.0
 
 dev_dependencies:
   flutter_test:

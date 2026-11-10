@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
+import '../../data/ads.dart';
 import '../../data/groups_repository.dart';
 import '../../domain/scorekeeper/match_engine.dart';
 import '../../domain/scorekeeper/match_record.dart';
@@ -645,7 +646,7 @@ class _ConnectionLost extends StatelessWidget {
   );
 }
 
-class _FinishedCard extends StatelessWidget {
+class _FinishedCard extends ConsumerWidget {
   const _FinishedCard({
     required this.room,
     required this.snap,
@@ -657,7 +658,7 @@ class _FinishedCard extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final state = snap.state;
     final winner = state.winner!;
     final tally = snap.series.recordWin(winner);
@@ -731,7 +732,12 @@ class _FinishedCard extends StatelessWidget {
               if (myTeam != null)
                 AppButton(
                   label: iVoted ? 'Aguardando a outra dupla' : 'Revanche',
-                  onPressed: iVoted ? null : room.voteRematch,
+                  onPressed: iVoted
+                      ? null
+                      : () async {
+                          await Ads.beforeGame(ref);
+                          await room.voteRematch();
+                        },
                 ),
               if (room.canMark(winner))
                 AppTextButton(

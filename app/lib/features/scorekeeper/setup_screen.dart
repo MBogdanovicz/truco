@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/ads.dart';
 import '../../data/auth_repository.dart';
 import '../../domain/scorekeeper/match_record.dart';
 import '../../domain/scorekeeper/team.dart';
@@ -43,7 +44,9 @@ class _SetupState extends ConsumerState<ScorekeeperSetupScreen> {
     super.dispose();
   }
 
-  void _start() {
+  Future<void> _start() async {
+    await Ads.beforeGame(ref);
+    if (!mounted) return;
     final me = ref.read(authRepositoryProvider).currentUser;
     final seats = <Seat>[];
     for (var i = 0; i < 4; i++) {

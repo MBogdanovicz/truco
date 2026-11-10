@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/ads.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
@@ -54,6 +55,7 @@ class _ScoreboardState extends ConsumerState<ScoreboardScreen> {
     final controller = ref.read(scorekeeperControllerProvider.notifier);
     switch (choice) {
       case _EndChoice.rematch:
+        await Ads.beforeGame(ref);
         await controller.rematch();
       case _EndChoice.end:
         await controller.end();

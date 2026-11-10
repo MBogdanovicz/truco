@@ -43,6 +43,7 @@ is enforced by the server as soon as the migration runs.
    cd app && TRUCO_PLAY_SIGNING=1 flutter build appbundle --release \
      --dart-define-from-file=config/supabase.json \
      --dart-define=APP_COMMIT=$(git rev-parse --short=7 HEAD) \
+     --dart-define=ADMOB_REAL=true \
      --build-number=$(git rev-list --count HEAD)
    ```
 
