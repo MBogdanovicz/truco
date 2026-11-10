@@ -202,6 +202,7 @@ class TrucoGame {
   PendingRaise? _pending;
   Team? _decisionTeam;
   bool _iron = false;
+  bool _bothAtDecision = false;
   Team? _winner;
 
   int get dealer => _dealer;
@@ -216,6 +217,10 @@ class TrucoGame {
   /// Team whose raise was the last one accepted this hand.
   Team? get lastRaiser => _lastRaiser;
   bool get iron => _iron;
+
+  /// Both teams at [TrucoRules.decisionScore] (11 × 11): no raises and
+  /// nobody sees the partner's cards, with or without the mão de ferro.
+  bool get bothAtDecision => _bothAtDecision;
   Team? get winner => _winner;
   List<RoundResult> get rounds => List.unmodifiable(_rounds);
   List<Play> get currentPlays => List.unmodifiable(_current);
@@ -279,7 +284,8 @@ class TrucoGame {
       for (final t in Team.values)
         if (scores[t] == rules.decisionScore) t,
     ];
-    _iron = atDecision.length == 2 && rules.ironHand;
+    _bothAtDecision = atDecision.length == 2;
+    _iron = _bothAtDecision && rules.ironHand;
     _decisionTeam = atDecision.length == 1 ? atDecision.single : null;
     _phase = _decisionTeam != null ? GamePhase.decision : GamePhase.playing;
     events.add(
@@ -329,7 +335,7 @@ class TrucoGame {
       _phase == GamePhase.playing &&
       seat == _turn &&
       _decisionTeam == null &&
-      !_iron &&
+      !_bothAtDecision &&
       _lastRaiser != teamOfSeat(seat) &&
       _stakeLevel + 1 < rules.stakes.length;
 
@@ -515,13 +521,11 @@ class PlayerView {
   List<Card>? get partnerHand {
     final g = _game;
     final r = g.rules;
-    if (g.iron) return null;
+    if (g.bothAtDecision) return null;
     final visible =
         g.decisionTeam == team ||
         (g.decisionTeam != null && r.bothTeamsSeeOnDecision) ||
-        (r.seePartnerOnRaise &&
-            g.phase == GamePhase.raisePending &&
-            g.pending!.team != team);
+        partnerShownForRaise;
     final partnerCards = g.handOf(partnerOf(seat));
     if (visible) return partnerCards;
     if (r.dealerSeesPartnerThirdCard && g.dealer == seat) {
@@ -530,6 +534,13 @@ class PlayerView {
     }
     return null;
   }
+
+  /// The partner's cards are open because this team must answer a raise.
+  bool get partnerShownForRaise =>
+      _game.rules.seePartnerOnRaise &&
+      !_game.bothAtDecision &&
+      _game.phase == GamePhase.raisePending &&
+      _game.pending!.team != team;
 
   int strength(Card c) => _game.rules.strength(c, vira: _game.vira);
   int strengthOf(Play p) => _game.strengthOf(p);

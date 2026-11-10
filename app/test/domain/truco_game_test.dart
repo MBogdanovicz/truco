@@ -152,6 +152,11 @@ void main() {
       expect(g.iron, isFalse);
       expect(g.phase, GamePhase.playing);
       expect(g.viewFor(0).hand, hasLength(3));
+      // Still no truco and no peeking at the partner at 11 × 11.
+      expect(g.canRaise(g.turn), isFalse);
+      for (var seat = 0; seat < 4; seat++) {
+        expect(g.viewFor(seat).partnerHand, isNull);
+      }
     });
 
     test('11 x 11 is a mão de ferro: blind, worth 1', () {

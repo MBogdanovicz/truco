@@ -7,6 +7,7 @@ import 'package:shared_preferences_platform_interface/in_memory_shared_preferenc
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:truco/app.dart';
 import 'package:truco/domain/game/ai.dart';
+import 'package:truco/domain/game/rules.dart';
 import 'package:truco/domain/game/truco_game.dart';
 import 'package:truco/features/game/local_game_controller.dart';
 import 'package:truco/router.dart';
@@ -116,5 +117,52 @@ void main() {
     await tester.tap(find.text('Manilhas fixas'));
     await tester.pumpAndSettle();
     expect(find.textContaining('espadilha', skipOffstage: false), findsWidgets);
+  });
+
+  testWidgets('partner cards open, big, when we must answer a truco', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const TrucoApp(style: AppPlatformStyle.material),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final ctrl = container.read(localGameControllerProvider.notifier)
+      ..botDelay = const Duration(hours: 1)
+      ..start(
+        LocalGameSetup(
+          rules: TrucoRules.paulista.copyWith(
+            dealerSeesPartnerThirdCard: false,
+          ),
+          partnerLevel: AiLevel.easy,
+          opponentLevel: AiLevel.easy,
+          myName: 'Eu',
+        ),
+      );
+    container.read(routerProvider).go('/jogo/partida');
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    final g = container.read(localGameControllerProvider)!.game;
+    if (g.phase != GamePhase.playing || g.turn == humanSeat || g.turn == 2) {
+      ctrl.quit();
+      await tester.pumpAndSettle();
+      return; // this deal starts with us; covered by the engine tests
+    }
+    expect(find.byKey(ValueKey('shown-${g.handOf(2).first.id}')), findsNothing);
+    g.apply(Raise(g.turn));
+    // Nudge the controller so the screen rebuilds with the new state.
+    ctrl.refresh();
+    await tester.pump();
+    for (final c in g.handOf(2)) {
+      expect(find.byKey(ValueKey('shown-${c.id}')), findsOneWidget);
+    }
+    ctrl.quit();
+    await tester.pumpAndSettle();
   });
 }

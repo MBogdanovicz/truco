@@ -134,6 +134,7 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
                 seat: 2,
                 active: active == 2,
                 backWidth: small,
+                revealWidth: cw * 0.7,
               ),
             ),
             Align(
@@ -358,11 +359,6 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
         break;
     }
 
-    // Whenever the rules let us see the partner's cards (mão de onze,
-    // answering a truco, pé in the third round).
-    final partner = v.partnerHand;
-    if (partner != null && partner.isNotEmpty) extra = _partnerCards(v);
-
     return AnimatedSize(
       duration: const Duration(milliseconds: 150),
       child: Padding(
@@ -392,34 +388,6 @@ class _GameTableState extends ConsumerState<GameTableScreen> {
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _partnerCards(PlayerView v) {
-    final cards = v.partnerHand ?? const <deck.Card>[];
-    return Padding(
-      key: const ValueKey('partner-cards'),
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            cards.length == 1 ? 'Carta do\nparceiro' : 'Cartas do\nparceiro',
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          const SizedBox(width: 8),
-          for (final c in cards)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: PlayingCardView(
-                card: c,
-                width: 34,
-                manilha: v.rules.isManilha(c, vira: v.vira),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -619,6 +587,7 @@ class _SeatBadge extends StatelessWidget {
     required this.seat,
     required this.active,
     required this.backWidth,
+    this.revealWidth,
   });
 
   final LocalGameSession session;
@@ -626,13 +595,21 @@ class _SeatBadge extends StatelessWidget {
   final bool active;
   final double backWidth;
 
+  /// Size of the partner's cards when they are shown because our team must
+  /// answer a truco (as big as the vira, to catch the eye).
+  final double? revealWidth;
+
   @override
   Widget build(BuildContext context) {
     final g = session.game;
     final said = session.speech[seat];
     // The pé (last to play this round) gets an orange tag and outline.
     final foot = g.foot == seat && g.phase != GamePhase.gameOver;
-    final count = g.handOf(seat).length;
+    // The partner's cards we may see are face up in their hand.
+    final view = session.view;
+    final shown = seat == 2 ? (view.partnerHand ?? const []) : const [];
+    final big =
+        shown.isNotEmpty && view.partnerShownForRaise && revealWidth != null;
     final name = Container(
       padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
       decoration: BoxDecoration(
@@ -701,12 +678,20 @@ class _SeatBadge extends StatelessWidget {
         children: [
           if (seat != 0)
             Row(
+              key: ValueKey('hand-$seat'),
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (var i = 0; i < count; i++)
+                for (final c in g.handOf(seat))
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 1),
-                    child: CardBack(width: backWidth),
+                    child: shown.contains(c)
+                        ? PlayingCardView(
+                            key: ValueKey('shown-${c.id}'),
+                            card: c,
+                            width: big ? revealWidth! : backWidth,
+                            manilha: g.rules.isManilha(c, vira: g.vira),
+                          )
+                        : CardBack(width: backWidth),
                   ),
               ],
             ),

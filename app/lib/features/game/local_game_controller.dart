@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/game/ai.dart';
@@ -147,6 +148,10 @@ class LocalGameController extends Notifier<LocalGameSession?> {
     );
     _afterChange();
   }
+
+  /// Re-reads the engine after a test changed it directly.
+  @visibleForTesting
+  void refresh() => _afterChange();
 
   void quit() {
     _timer?.cancel();
