@@ -132,9 +132,11 @@ class PlayGamesSync {
           }
         })) {
           sent.add(entry);
+          // Saved at once: a later failure or the app closing must not
+          // send (and show) this one again.
+          await prefs.setStringList(key, sent.toList());
         }
       }
-      await prefs.setStringList(key, sent.toList());
     } on Object catch (e) {
       // No Play Games on the device, or the player declined: not an error.
       debugPrint('Play Games sync skipped: $e');
@@ -144,25 +146,18 @@ class PlayGamesSync {
     }
   }
 
-  /// One update; Play Games often answers CLIENT_RECONNECT_REQUIRED to the
-  /// first call after a pause, and checking the sign-in reconnects it.
+  /// One update. Play Games answers CLIENT_RECONNECT_REQUIRED to most calls
+  /// after a pause but still applies them (the banner shows up), so that
+  /// answer counts as sent; retrying only showed the banner again.
   Future<bool> _send(String what, Future<void> Function() call) async {
-    for (var attempt = 0; attempt < 3; attempt++) {
-      try {
-        await call().timeout(_timeout);
-        return true;
-      } on Object catch (e) {
-        debugPrint('Play Games: $what failed: $e');
-        CrashReporting.log('Play Games $what failed: $e');
-        if (!'$e'.contains('RECONNECT')) return false;
-        try {
-          await gs.GameAuth.isSignedIn.timeout(_timeout);
-        } on Object {
-          return false;
-        }
-      }
+    try {
+      await call().timeout(_timeout);
+      return true;
+    } on Object catch (e) {
+      debugPrint('Play Games: $what failed: $e');
+      CrashReporting.log('Play Games $what failed: $e');
+      return '$e'.contains('RECONNECT');
     }
-    return false;
   }
 }
 
