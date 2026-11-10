@@ -28,4 +28,8 @@ const releaseNotes = <ReleaseNote>[
     'Aviso claro ao tentar entrar na própria sala com a mesma conta em '
         'outro aparelho.',
   ]),
+  ReleaseNote(4, [
+    'A versão grátis agora mostra um anúncio antes das partidas. Com o '
+        'Premium, nenhum anúncio.',
+  ]),
 ];
