@@ -21,4 +21,11 @@ const releaseNotes = <ReleaseNote>[
     'O link de convite de sala ou grupo abre direto no app.',
     'Escolha de grupo com busca e verificação de segurança no login.',
   ]),
+  ReleaseNote(3, [
+    'Conquistas no Google Play Games sem avisos repetidos, só na conta do '
+        'Google ligada à sua conta do app.',
+    'Ranking com o saldo médio de pontos por partida.',
+    'Aviso claro ao tentar entrar na própria sala com a mesma conta em '
+        'outro aparelho.',
+  ]),
 ];
