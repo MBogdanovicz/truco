@@ -24,7 +24,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   static const _kIron = 'game.ironHand';
   static const _kSeeOnRaise = 'game.seePartnerOnRaise';
   static const _kSeeOnDecision = 'game.bothTeamsSeeOnDecision';
-  static const _kFoot = 'game.footSeesPartnerLastCard';
+  static const _kFoot = 'game.dealerSeesPartnerThirdCard';
   static const _kPartner = 'game.partner';
   static const _kOpponents = 'game.opponents';
 
@@ -41,7 +41,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
     ironHand: _iron,
     seePartnerOnRaise: _seeOnRaise,
     bothTeamsSeeOnDecision: _seeOnDecision,
-    footSeesPartnerLastCard: _foot,
+    dealerSeesPartnerThirdCard: _foot,
   );
   AiLevel _partner = AiLevel.medium;
   AiLevel _opponents = AiLevel.medium;
@@ -178,9 +178,9 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
               ),
             ),
             AppTile(
-              title: 'Pé vê a última carta do parceiro',
+              title: 'Quem dá vê a 3ª carta do parceiro',
               subtitle:
-                  'Na 3ª rodada, quem joga por último vê a carta do '
+                  'Quem dá as cartas vê a terceira carta entregue ao '
                   'parceiro.',
               trailing: AppSwitch(
                 value: _foot,

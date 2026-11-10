@@ -317,8 +317,8 @@ deferred until after Phase 1. AdMob does not support Flutter Web, so the PWA fre
 * `rules.dart`: `TrucoRules`. Paulista is the only preset (stakes 1/3/6/9/12, mão de onze worth 3, game to 12).
   Variations are fields (`copyWith`): `manilhaMode` (`vira` = flipped card decides the manilha rank, `fixed` =
   4♣ 7♥ A♠ 7♦), `allowCoveredCard`, `ironHand`, and what partners may see: `seePartnerOnRaise` (the team answering
-  a raise), `bothTeamsSeeOnDecision` (mão de onze, never in a mão de ferro), `footSeesPartnerLastCard` (the "pé",
-  last to play the round, in round 3). `TrucoGame.foot` is the pé of the current round. The engine reads stakes and the decision score from the rules, so
+  a raise), `bothTeamsSeeOnDecision` (mão de onze, never in a mão de ferro), `dealerSeesPartnerThirdCard` (the dealer
+  sees the third card dealt to the partner). `TrucoGame.foot` is the pé of the current round. The engine reads stakes and the decision score from the rules, so
   other scorings could come back as custom rules without engine changes.
 * `truco_game.dart`: `TrucoGame`, a mutable, deterministic state machine (seeded shuffles). Seats 0..3 in playing
   order (counter-clockwise); 0/2 are team A. Phases: `decision` (mão de onze), `playing`, `raisePending`,

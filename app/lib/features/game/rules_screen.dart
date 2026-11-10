@@ -99,10 +99,10 @@ class _RulesScreenState extends State<RulesScreen> {
         ],
       ),
       (
-        'Pé',
+        'Quem dá as cartas',
         [
-          'Opcional: na terceira rodada, o pé pode ver a última carta do '
-              'parceiro.',
+          'Opcional: quem dá as cartas pode ver a terceira carta que entrega '
+              'ao parceiro.',
         ],
       ),
     ];

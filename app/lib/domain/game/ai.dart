@@ -204,11 +204,16 @@ class TrucoBot {
       var k = 0;
       final hands = List<List<int>>.generate(4, (s) {
         if (s == v.seat) return [for (final c in v.hand) v.strength(c)];
-        if (s == partner && partnerHand != null) {
-          return [for (final c in partnerHand) v.strength(c)];
-        }
-        final n = v.handCountOf(s);
-        final h = [for (var j = 0; j < n; j++) v.strength(pool[k + j])];
+        // Partner cards we may see (all, or just one when we dealt); the
+        // rest are drawn at random like everyone else's.
+        final seen = s == partner
+            ? (partnerHand ?? const <Card>[])
+            : const <Card>[];
+        final n = v.handCountOf(s) - seen.length;
+        final h = [
+          for (final c in seen) v.strength(c),
+          for (var j = 0; j < n; j++) v.strength(pool[k + j]),
+        ];
         k += n;
         return h;
       });

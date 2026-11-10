@@ -287,21 +287,27 @@ void main() {
       }
     });
 
-    test('the pé sees the partner\'s last card in the third round', () {
-      var checked = 0;
-      for (var seed = 0; seed < 40 && checked < 3; seed++) {
-        final g = fresh(TrucoRules.paulista, seed);
-        while (g.phase == GamePhase.playing && g.rounds.length < 2) {
-          g.apply(PlayCard(g.turn, g.handOf(g.turn).first));
-        }
-        if (g.phase != GamePhase.playing) continue;
-        checked++;
-        final foot = g.foot;
-        expect(g.viewFor(foot).partnerHand, hasLength(1));
-        expect(g.viewFor(partnerOf(foot)).partnerHand, isNull);
-        expect(g.viewFor(nextSeat(foot)).partnerHand, isNull);
+    test('the dealer sees the third card dealt to the partner', () {
+      final g = fresh(TrucoRules.paulista, 9);
+      final dealer = g.dealer;
+      final partner = partnerOf(dealer);
+      final third = g.dealtTo(partner)[2];
+      expect(g.viewFor(dealer).partnerHand, [third]);
+      expect(g.viewFor(partner).partnerHand, isNull);
+      expect(g.viewFor(nextSeat(dealer)).partnerHand, isNull);
+      // Once the partner plays it, it is simply on the table.
+      while (g.handOf(partner).contains(third) &&
+          g.phase == GamePhase.playing) {
+        final s = g.turn;
+        final card = s == partner ? third : g.handOf(s).first;
+        g.apply(PlayCard(s, card));
       }
-      expect(checked, greaterThan(0));
+      expect(g.viewFor(dealer).partnerHand, isNull);
+      final off = fresh(
+        TrucoRules.paulista.copyWith(dealerSeesPartnerThirdCard: false),
+        9,
+      );
+      expect(off.viewFor(off.dealer).partnerHand, isNull);
     });
   });
 }

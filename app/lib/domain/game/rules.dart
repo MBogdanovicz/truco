@@ -30,7 +30,7 @@ class TrucoRules {
     this.ironHand = true,
     this.seePartnerOnRaise = true,
     this.bothTeamsSeeOnDecision = true,
-    this.footSeesPartnerLastCard = true,
+    this.dealerSeesPartnerThirdCard = true,
   });
 
   /// Stable id ("paulista"), stored with results.
@@ -67,8 +67,9 @@ class TrucoRules {
   /// at 11 always does). Never in a mão de ferro.
   final bool bothTeamsSeeOnDecision;
 
-  /// In the third round the "pé" (last to play) sees the partner's last card.
-  final bool footSeesPartnerLastCard;
+  /// Whoever deals sees the third card dealt to their partner (for the whole
+  /// hand, while the partner still holds it).
+  final bool dealerSeesPartnerThirdCard;
 
   int get baseValue => stakes.first;
 
@@ -93,7 +94,7 @@ class TrucoRules {
     bool? ironHand,
     bool? seePartnerOnRaise,
     bool? bothTeamsSeeOnDecision,
-    bool? footSeesPartnerLastCard,
+    bool? dealerSeesPartnerThirdCard,
   }) => TrucoRules(
     id: id,
     name: name,
@@ -107,8 +108,8 @@ class TrucoRules {
     seePartnerOnRaise: seePartnerOnRaise ?? this.seePartnerOnRaise,
     bothTeamsSeeOnDecision:
         bothTeamsSeeOnDecision ?? this.bothTeamsSeeOnDecision,
-    footSeesPartnerLastCard:
-        footSeesPartnerLastCard ?? this.footSeesPartnerLastCard,
+    dealerSeesPartnerThirdCard:
+        dealerSeesPartnerThirdCard ?? this.dealerSeesPartnerThirdCard,
   );
 
   /// Short description of the options, e.g. for results and the rules page.

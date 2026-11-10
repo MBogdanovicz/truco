@@ -509,9 +509,9 @@ class PlayerView {
 
   int get foot => _game.foot;
 
-  /// The partner's cards when the rules let this seat see them: in a mão de
-  /// onze, when answering a raise, or as the pé in the third round. Never in
-  /// a mão de ferro.
+  /// The partner's cards when the rules let this seat see them: all of them
+  /// in a mão de onze or when answering a raise; just the third card dealt to
+  /// the partner when this seat dealt. Never in a mão de ferro.
   List<Card>? get partnerHand {
     final g = _game;
     final r = g.rules;
@@ -521,13 +521,14 @@ class PlayerView {
         (g.decisionTeam != null && r.bothTeamsSeeOnDecision) ||
         (r.seePartnerOnRaise &&
             g.phase == GamePhase.raisePending &&
-            g.pending!.team != team) ||
-        (r.footSeesPartnerLastCard &&
-            g.rounds.length == 2 &&
-            (g.phase == GamePhase.playing ||
-                g.phase == GamePhase.raisePending) &&
-            g.foot == seat);
-    return visible ? g.handOf(partnerOf(seat)) : null;
+            g.pending!.team != team);
+    final partnerCards = g.handOf(partnerOf(seat));
+    if (visible) return partnerCards;
+    if (r.dealerSeesPartnerThirdCard && g.dealer == seat) {
+      final third = g.dealtTo(partnerOf(seat))[2];
+      if (partnerCards.contains(third)) return [third];
+    }
+    return null;
   }
 
   int strength(Card c) => _game.rules.strength(c, vira: _game.vira);

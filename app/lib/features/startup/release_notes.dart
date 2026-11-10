@@ -45,7 +45,7 @@ const releaseNotes = <ReleaseNote>[
         'parceiro e dos adversários (fácil, médio ou difícil).',
     'Variações de regra: manilha virada ou fixa, carta coberta, mão de '
         'ferro, ver as cartas do parceiro ao receber truco ou na mão de onze, '
-        'e o pé ver a última carta do parceiro.',
+        'e quem dá ver a 3ª carta do parceiro.',
     'Tela com as regras do truco.',
   ]),
 ];
