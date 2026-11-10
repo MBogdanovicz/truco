@@ -43,12 +43,16 @@ class AchievementsScreen extends ConsumerWidget {
                         ? AppColors.gold
                         : theme.disabledColor,
                   ),
-                  title: a.title,
+                  // Secret ones stay a mystery until unlocked.
+                  title: a.hidden && !unlocked.containsKey(a)
+                      ? 'Conquista secreta'
+                      : a.title,
                   subtitle: switch (unlocked[a]) {
                     final at? =>
                       '${a.description}\nConquistada em '
                           '${at.day.toString().padLeft(2, '0')}/'
                           '${at.month.toString().padLeft(2, '0')}/${at.year}',
+                    null when a.hidden => 'Jogue para descobrir.',
                     null => a.description,
                   },
                   enabled: unlocked.containsKey(a),

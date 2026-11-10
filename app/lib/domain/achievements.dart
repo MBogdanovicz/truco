@@ -10,11 +10,17 @@ enum Achievement {
   veteran10('veteran_10', 'Veterano', 'Jogue 10 partidas rankeadas.'),
   veteran50('veteran_50', 'Veterano de mesa', 'Jogue 50 partidas rankeadas.'),
   veteran100('veteran_100', 'Lenda do truco', 'Jogue 100 partidas rankeadas.'),
-  shutout('shutout', 'Uh! Doze a zero!', 'Vença uma partida por 12 x 0.'),
+  shutout(
+    'shutout',
+    'Uh! Doze a zero!',
+    'Vença uma partida por 12 x 0.',
+    hidden: true,
+  ),
   comeback(
     'comeback',
     'Virada histórica',
     'Vença depois de estar perdendo por 8 pontos ou mais.',
+    hidden: true,
   ),
   streak5('streak_5', 'Embalado', 'Vença 5 partidas rankeadas seguidas.'),
   loyalPartner(
@@ -26,6 +32,7 @@ enum Achievement {
     'revenge',
     'Revanche',
     'Vença a dupla que ganhou de você na partida anterior.',
+    hidden: true,
   ),
   groupGame(
     'group_game',
@@ -33,11 +40,19 @@ enum Achievement {
     'Jogue uma partida rankeada valendo para um grupo.',
   );
 
-  const Achievement(this.id, this.title, this.description);
+  const Achievement(
+    this.id,
+    this.title,
+    this.description, {
+    this.hidden = false,
+  });
 
   final String id;
   final String title;
   final String description;
+
+  /// Secret until unlocked, like in Google Play Games: a surprise.
+  final bool hidden;
 
   static Achievement? byId(String id) {
     for (final a in values) {
