@@ -608,8 +608,12 @@ class _SeatBadge extends StatelessWidget {
     // The partner's cards we may see are face up in their hand.
     final view = session.view;
     final shown = seat == 2 ? (view.partnerHand ?? const []) : const [];
+    // Big (vira-sized) while a decision depends on them: answering a raise
+    // or deciding the mão de onze.
     final big =
-        shown.isNotEmpty && view.partnerShownForRaise && revealWidth != null;
+        shown.isNotEmpty &&
+        revealWidth != null &&
+        (view.partnerShownForRaise || view.phase == GamePhase.decision);
     final name = Container(
       padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
       decoration: BoxDecoration(
