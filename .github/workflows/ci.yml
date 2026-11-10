@@ -6,7 +6,11 @@ on:
   pull_request:
 
 permissions:
-  contents: write  # publishes the test APK as the "android-latest" release
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   app:
@@ -23,28 +27,22 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
-      - name: Build PWA
-        run: flutter build web --release --no-web-resources-cdn --dart-define-from-file=config/supabase.json --dart-define=APP_COMMIT=${GITHUB_SHA::7}
+      # The web build is done (and deployed) by pwa.yml.
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
+      # Caches Gradle and the Android plugins, so a hiccup on Google's Maven
+      # (e.g. "Plugin com.android.application was not found") no longer
+      # breaks the build.
+      - uses: gradle/actions/setup-gradle@v5
       - name: Build Android APK
-        run: flutter build apk --release --dart-define-from-file=config/supabase.json --dart-define=APP_COMMIT=${GITHUB_SHA::7}
+        # Retries once for network errors while downloading dependencies.
+        run: |
+          build() { flutter build apk --release --dart-define-from-file=config/supabase.json --dart-define=APP_COMMIT=${GITHUB_SHA::7}; }
+          build || { echo "Retrying in 30 s"; sleep 30; build; }
       - uses: actions/upload-artifact@v7
         with:
           name: truco-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
-      # The site links to this file for Android visitors (Env.androidApkUrl).
-      - name: Publish the test APK
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cp build/app/outputs/flutter-apk/app-release.apk truco.apk
-          gh release view android-latest >/dev/null 2>&1 || \
-            gh release create android-latest --prerelease \
-              --title "Android (teste)" \
-              --notes "Versão de teste mais recente do app Android (atualizada a cada mudança)."
-          gh release upload android-latest truco.apk --clobber

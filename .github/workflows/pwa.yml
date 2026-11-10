@@ -54,3 +54,7 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          # GitHub Pages sometimes stays in "syncing_files" for over 10 min
+          # (the default timeout).
+          timeout: 1800000
