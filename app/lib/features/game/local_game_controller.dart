@@ -100,8 +100,9 @@ class LocalGameController extends Notifier<GameTableModel?> {
 
   // ---------------------------------------------------- human actions --
 
-  void playCard(Card card, {bool covered = false}) =>
-      _human((s) => s.act(humanSeat, PlayCard(humanSeat, card, covered: covered)));
+  void playCard(Card card, {bool covered = false}) => _human(
+    (s) => s.act(humanSeat, PlayCard(humanSeat, card, covered: covered)),
+  );
 
   /// "Mão de ferro": the human picks a face-down card by position.
   void playBlind(int index) => _human((s) => s.actBlind(humanSeat, index));
@@ -137,11 +138,6 @@ class LocalGameController extends Notifier<GameTableModel?> {
         view.winner != null) {
       _wins = {..._wins, view.winner!: _wins[view.winner!]! + 1};
     }
-    state = GameTableModel(
-      view: view,
-      names: _names,
-      wins: _wins,
-      busy: busy,
-    );
+    state = GameTableModel(view: view, names: _names, wins: _wins, busy: busy);
   }
 }

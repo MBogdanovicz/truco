@@ -85,10 +85,7 @@ void main() {
           expect(find.text('Revanche'), findsOneWidget);
           await tester.tap(find.text('Revanche'));
           await tester.pump();
-          expect(
-            ctrl.session!.game.phase,
-            isNot(GamePhase.gameOver),
-          );
+          expect(ctrl.session!.game.phase, isNot(GamePhase.gameOver));
           ctrl.quit();
           await tester.pumpAndSettle();
         },

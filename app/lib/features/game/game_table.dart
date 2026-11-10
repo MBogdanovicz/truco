@@ -235,8 +235,7 @@ class _GameTableState extends State<GameTable> {
 
   int? _activeSeat() => switch (v.phase) {
     GamePhase.playing => v.turn,
-    GamePhase.raisePending =>
-      v.mustAnswer ? v.me : nextSeat(v.pending!.seat),
+    GamePhase.raisePending => v.mustAnswer ? v.me : nextSeat(v.pending!.seat),
     GamePhase.decision =>
       v.mustAnswer
           ? v.me
@@ -269,9 +268,8 @@ class _GameTableState extends State<GameTable> {
               children: [
                 Text(
                   won ? 'Vocês venceram!' : 'Eles venceram',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineSmall?.copyWith(color: Colors.black),
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(color: Colors.black),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -536,11 +534,7 @@ class _TopBar extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Row(
                 children: [
-                  _ScorePill(
-                    'Nós',
-                    view.scoreOf(view.team),
-                    AppColors.teamA,
-                  ),
+                  _ScorePill('Nós', view.scoreOf(view.team), AppColors.teamA),
                   const SizedBox(width: 8),
                   _ScorePill(
                     'Eles',

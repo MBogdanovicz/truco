@@ -266,9 +266,7 @@ class TableView {
     final pending = (j['pending'] as List?)?.cast<int>();
     return TableView(
       me: j['me']! as int,
-      rules: TrucoRules.fromJson(
-        (j['rules']! as Map).cast<String, Object?>(),
-      ),
+      rules: TrucoRules.fromJson((j['rules']! as Map).cast<String, Object?>()),
       phase: GamePhase.values.byName(j['phase']! as String),
       turn: j['turn']! as int,
       dealer: j['dealer']! as int,
@@ -301,7 +299,9 @@ class TableView {
       canRaise: j['canRaise'] == true,
       mustAnswer: j['mustAnswer'] == true,
       myTurn: j['myTurn'] == true,
-      winner: j['winner'] == null ? null : Team.fromName(j['winner']! as String),
+      winner: j['winner'] == null
+          ? null
+          : Team.fromName(j['winner']! as String),
       speech: {
         for (final e in ((j['speech'] as Map?) ?? const {}).entries)
           int.parse(e.key as String): e.value as String,
