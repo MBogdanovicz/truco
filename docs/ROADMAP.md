@@ -18,8 +18,9 @@ M2 is built first because it is useful on its own and exercises the domain layer
 
 ## Later
 
-* Premium tier: in progress, see docs/PREMIUM.md (one-time purchase R$ 7,99, invites R$ 1,99). Remaining: Play Console setup, AdMob ads for free users.
+* Premium tier: in progress, see docs/PREMIUM.md (one-time purchase R$ 7,99, invites R$ 1,99). AdMob interstitial before each game on Android is in (2026-11-10).
 * PWA payments.
+* PWA ads for free accounts (AdSense / H5 Games Ads), revisit once the truco game is playable on the web: the site has too little content for AdSense approval today (decided 2026-11-10). Until then the PWA shows no ads.
 * Phase 2: the truco game (engine, online/local play, ranked/friendly, championships).
 
 ## Open items
