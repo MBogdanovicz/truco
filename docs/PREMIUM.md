@@ -46,6 +46,9 @@ is enforced by the server as soon as the migration runs.
      --build-number=$(git rev-list --count HEAD)
    ```
 
+   Without the Mac: Actions > "Play release" > Run workflow builds the same
+   signed AAB (see the secrets listed in `.github/workflows/release.yml`).
+
    Sideloaded test APKs keep the committed test key, so the test phones can
    still update in place (a phone with the Play version must uninstall it
    first, the signatures differ).

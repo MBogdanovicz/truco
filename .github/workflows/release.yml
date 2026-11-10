@@ -1,0 +1,75 @@
+name: Play release
+
+# Builds the signed Play Store bundle (AAB) without the Mac.
+# Run it from Actions > Play release > Run workflow; the AAB is attached
+# to the run as the "truco-aab" artifact.
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   TRUCO_UPLOAD_KEYSTORE_BASE64  base64 of the upload keystore (.jks, alias "upload")
+#   TRUCO_UPLOAD_KEY_PASSWORD     its password (store and key use the same one)
+#   GOOGLE_SERVICES_JSON_BASE64   base64 of google-services.json (optional;
+#                                 without it Crashlytics is left out)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The versionCode is the commit count, so the full history is needed.
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v5
+      - name: Signing files
+        env:
+          KEYSTORE: ${{ secrets.TRUCO_UPLOAD_KEYSTORE_BASE64 }}
+          PASSWORD: ${{ secrets.TRUCO_UPLOAD_KEY_PASSWORD }}
+          GOOGLE_SERVICES: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          test -n "$KEYSTORE" && test -n "$PASSWORD" || { echo "Signing secrets are missing"; exit 1; }
+          printf '%s' "$KEYSTORE" | base64 --decode > android/app/upload.jks
+          printf 'storeFile=upload.jks\nkeyAlias=upload\nstorePassword=%s\nkeyPassword=%s\n' \
+            "$PASSWORD" "$PASSWORD" > android/key.properties
+          if [ -n "$GOOGLE_SERVICES" ]; then
+            printf '%s' "$GOOGLE_SERVICES" | base64 --decode > android/app/google-services.json
+          fi
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build AAB
+        env:
+          TRUCO_PLAY_SIGNING: '1'
+        run: |
+          build() {
+            flutter build appbundle --release \
+              --dart-define-from-file=config/supabase.json \
+              --dart-define=APP_COMMIT=${GITHUB_SHA::7} \
+              --build-number=$(git rev-list --count HEAD)
+          }
+          build || { echo "Retrying in 30 s"; sleep 30; build; }
+          cp build/app/outputs/bundle/release/app-release.aab \
+            "truco-$(git rev-list --count HEAD)-${GITHUB_SHA::7}.aab"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: truco-aab
+          path: app/truco-*.aab
+          retention-days: 30
+      - name: Remove signing files
+        if: always()
+        run: rm -f android/app/upload.jks android/key.properties android/app/google-services.json
