@@ -54,10 +54,24 @@ class OnlineRoomRepository {
   }
 
   Future<String> findOpenRoom(String code) async {
-    final id = await _client.rpc<String?>(
-      'find_open_room',
-      params: {'p_code': code.trim().toUpperCase()},
-    );
+    final normalized = code.trim().toUpperCase();
+    String? id;
+    try {
+      id = await _client.rpc<String?>(
+        'find_open_room',
+        params: {'p_code': normalized},
+      );
+    } on PostgrestException catch (e) {
+      // The function not deployed yet (PGRST202): read the table instead.
+      if (e.code != 'PGRST202') rethrow;
+      final row = await _client
+          .from('rooms')
+          .select('id')
+          .eq('code', normalized)
+          .isFilter('closed_at', null)
+          .maybeSingle();
+      id = row?['id'] as String?;
+    }
     if (id == null) throw RoomNotFound();
     return id;
   }
