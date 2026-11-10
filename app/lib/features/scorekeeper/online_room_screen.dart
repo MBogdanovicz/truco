@@ -753,22 +753,25 @@ class _RoomSettings extends ConsumerWidget {
       );
       return;
     }
-    final picked = await showAppDialog<RoomGroup?>(
+    final current = snap.group?.id;
+    final picked = await showAppPicker<String?>(
       context,
       title: 'Contar para o ranking de qual grupo?',
       message:
           'Aparecem só os grupos dos quais todos os jogadores da sala são '
           'membros. A partida sempre conta também para o ranking geral.',
-      actions: [
-        const AppDialogAction(label: 'Nenhum grupo', value: null),
-        for (final g in groups)
-          AppDialogAction(
-            label: g.name,
-            value: RoomGroup(id: g.id, name: g.name),
-          ),
+      selected: current,
+      options: [
+        const AppPickerOption(label: 'Nenhum grupo', value: null),
+        for (final g in groups) AppPickerOption(label: g.name, value: g.id),
       ],
     );
-    if (picked != snap.group) await room.setGroup(picked);
+    // Dismissed: keep the current choice.
+    if (picked == null || picked.value == current) return;
+    final group = groups.where((g) => g.id == picked.value).firstOrNull;
+    await room.setGroup(
+      group == null ? null : RoomGroup(id: group.id, name: group.name),
+    );
   }
 
   @override

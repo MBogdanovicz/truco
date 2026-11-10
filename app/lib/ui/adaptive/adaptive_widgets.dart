@@ -963,3 +963,139 @@ class AppSwitch extends StatelessWidget {
         )
       : Switch(value: value, onChanged: onChanged);
 }
+
+/// One choice in [showAppPicker].
+class AppPickerOption<T> {
+  const AppPickerOption({required this.label, required this.value, this.subtitle});
+
+  final String label;
+  final String? subtitle;
+  final T value;
+}
+
+/// Lets the user pick one option from a list that may be long: a bottom
+/// sheet that scrolls, with a search field when there are many options.
+/// Returns null when dismissed, so "no choice" can still be an option.
+Future<({T value})?> showAppPicker<T>(
+  BuildContext context, {
+  required String title,
+  String? message,
+  required List<AppPickerOption<T>> options,
+  T? selected,
+}) => showModalBottomSheet<({T value})>(
+  context: context,
+  isScrollControlled: true,
+  showDragHandle: true,
+  useSafeArea: true,
+  builder: (ctx) => _AppPicker<T>(
+    title: title,
+    message: message,
+    options: options,
+    selected: selected,
+  ),
+);
+
+class _AppPicker<T> extends StatefulWidget {
+  const _AppPicker({
+    required this.title,
+    required this.message,
+    required this.options,
+    required this.selected,
+  });
+
+  final String title;
+  final String? message;
+  final List<AppPickerOption<T>> options;
+  final T? selected;
+
+  @override
+  State<_AppPicker<T>> createState() => _AppPickerState<T>();
+}
+
+class _AppPickerState<T> extends State<_AppPicker<T>> {
+  /// Above this many options the list gets a search field.
+  static const _searchFrom = 7;
+
+  final _search = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final query = _search.text.trim().toLowerCase();
+    final shown = [
+      for (final o in widget.options)
+        if (query.isEmpty || o.label.toLowerCase().contains(query)) o,
+    ];
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.title, style: theme.textTheme.titleLarge),
+                  if (widget.message != null) ...[
+                    const SizedBox(height: 8),
+                    Text(widget.message!, style: theme.textTheme.bodyMedium),
+                  ],
+                  if (widget.options.length >= _searchFrom) ...[
+                    const SizedBox(height: 12),
+                    AppTextField(controller: _search, label: 'Buscar'),
+                  ],
+                ],
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: 16),
+                children: [
+                  for (final o in shown)
+                    AppTile(
+                      title: o.label,
+                      subtitle: o.subtitle,
+                      showChevron: false,
+                      trailing: o.value == widget.selected
+                          ? Icon(
+                              context.icon(AppIcon.check),
+                              color: theme.colorScheme.primary,
+                            )
+                          : null,
+                      onTap: () => Navigator.of(context).pop((value: o.value)),
+                    ),
+                  if (shown.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('Nenhum resultado.', textAlign: TextAlign.center),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
