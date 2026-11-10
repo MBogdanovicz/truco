@@ -142,7 +142,8 @@ class _Buy extends ConsumerWidget {
             map[invite != null ? PremiumProducts.invite : PremiumProducts.full];
         if (product == null) {
           return const _Note(
-            'A compra ainda não está disponível nesta versão do app.',
+            'A compra não está disponível agora. Ela só funciona no app '
+            'instalado pela Play Store.',
           );
         }
         return Column(
