@@ -15,11 +15,10 @@ class AndroidDownloadCard extends StatelessWidget {
       kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   static const subtitle =
-      'Funciona melhor e marca partidas até sem internet. '
-      'Depois de baixar, abra o arquivo para instalar.';
+      'Na Google Play. Funciona melhor e marca partidas até sem internet.';
 
   static void open() => launchUrl(
-    Uri.parse(Env.androidApkUrl),
+    Uri.parse(Env.androidStoreUrl),
     mode: LaunchMode.externalApplication,
   );
 

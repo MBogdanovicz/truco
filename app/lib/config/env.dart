@@ -25,9 +25,10 @@ abstract final class Env {
     defaultValue: 'https://truco.mytrophies.app',
   );
 
-  /// Latest Android test build, published by CI as a GitHub release asset.
-  static const androidApkUrl =
-      'https://github.com/MBogdanovicz/truco/releases/download/android-latest/truco.apk';
+  /// The app on Google Play (during closed testing it only opens for
+  /// testers).
+  static const androidStoreUrl =
+      'https://play.google.com/store/apps/details?id=app.mytrophies.truco';
 
   static String roomInviteLink(String code) =>
       '$webAppUrl/#/marcador/entrar?codigo=$code';

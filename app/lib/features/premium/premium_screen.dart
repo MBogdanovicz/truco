@@ -71,6 +71,21 @@ class PremiumScreen extends ConsumerWidget {
             style: theme.textTheme.bodyLarge,
           ),
         ),
+        if (user != null && !user.isGuest && user.email != null)
+          AppSection(
+            children: [
+              AppTile(
+                leading: AppTileIcon(
+                  AppIcon.email,
+                  color: premium ? AppColors.gold : AppColors.felt,
+                ),
+                title: user.email!,
+                subtitle: premium
+                    ? 'Premium ativo neste e-mail'
+                    : 'A compra fica neste e-mail',
+              ),
+            ],
+          ),
         AppSection(
           header: 'O que vem no Premium',
           children: [

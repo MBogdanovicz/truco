@@ -39,6 +39,9 @@ enum AppIcon {
   waiting(Icons.hourglass_empty, CupertinoIcons.hourglass),
   trophy(Icons.emoji_events, CupertinoIcons.rosette),
   palette(Icons.palette_outlined, CupertinoIcons.paintbrush),
+  email(Icons.mail_outline, CupertinoIcons.mail),
+  update(Icons.system_update, CupertinoIcons.arrow_down_circle),
+  news(Icons.new_releases_outlined, CupertinoIcons.sparkles),
   chevron(Icons.chevron_right, CupertinoIcons.chevron_forward);
 
   const AppIcon(this.material, this.cupertino);

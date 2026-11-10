@@ -12,6 +12,7 @@ import 'features/history/history_screen.dart';
 import 'features/premium/premium_screen.dart';
 import 'features/ranking/ranking_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/startup/startup_checks.dart';
 import 'features/scorekeeper/join_room_screen.dart';
 import 'features/scorekeeper/mode_screen.dart';
 import 'features/scorekeeper/nearby_screen.dart';
@@ -79,7 +80,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, _) => const HomeScreen(),
+        builder: (_, _) => const StartupChecks(child: HomeScreen()),
         routes: [
           GoRoute(
             path: 'marcador/novo',
