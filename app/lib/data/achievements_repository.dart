@@ -15,7 +15,7 @@ final unlockedAchievementsProvider =
           .eq('user_id', user.id);
       return {
         for (final r in rows)
-          if (Achievement.byId(r['achievement'] as String) case final a?)
-            a: DateTime.parse(r['unlocked_at'] as String).toLocal(),
+          ?Achievement.byId(r['achievement'] as String):
+              DateTime.parse(r['unlocked_at'] as String).toLocal(),
       };
     });
