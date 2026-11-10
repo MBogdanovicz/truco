@@ -1,10 +1,13 @@
 name: Deploy PWA
 
 # Publishes the web build to GitHub Pages at https://truco.mytrophies.app
-# (custom domain set by app/web/CNAME).
+# (custom domain set by app/web/CNAME):
+#   /       the `main` branch (what testers use, released on purpose)
+#   /beta/  the `dev` branch (work in progress, for Marcelo to try first)
+# Pages hosts a single site, so every run builds both branches.
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -19,35 +22,39 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
+          path: main
+      - uses: actions/checkout@v7
+        with:
+          ref: dev
+          path: dev
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-      - run: flutter pub get
-      - run: flutter build web --release --no-web-resources-cdn --no-tree-shake-icons --dart-define-from-file=config/supabase.json --dart-define=APP_COMMIT=${GITHUB_SHA::7}
-      # Full icon font: its URL never changes, so a cached copy from an older
-      # build must still have every icon.
-      - name: Version the entry scripts so browsers never mix cached builds
-        working-directory: app/build/web
+      - name: Build main (site root)
+        working-directory: main/app
+        run: ../../dev/.github/scripts/build-pwa.sh / main
+      - name: Build dev (/beta/)
+        working-directory: dev/app
+        run: ../.github/scripts/build-pwa.sh /beta/ dev
+      - name: Assemble the site
         run: |
-          v="${GITHUB_SHA::8}"
-          sed -i "s|\"flutter_bootstrap.js\"|\"flutter_bootstrap.js?v=$v\"|" index.html
-          sed -i "s|\"main.dart.js\"|\"main.dart.js?v=$v\"|g" flutter_bootstrap.js
-          grep -q "flutter_bootstrap.js?v=$v" index.html
-          grep -q "main.dart.js?v=$v" flutter_bootstrap.js
-      - name: Keep the App Links file (dot folders can be skipped)
-        run: |
-          mkdir -p build/web/.well-known
-          cp web/.well-known/assetlinks.json build/web/.well-known/
+          mkdir -p site
+          cp -r main/app/build/web/. site/
+          mkdir -p site/.well-known
+          cp main/app/web/.well-known/assetlinks.json site/.well-known/
+          rm -rf site/beta
+          cp -r dev/app/build/web site/beta
+          # Only the root serves the domain and the App Links file.
+          rm -rf site/beta/CNAME site/beta/.well-known
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: app/build/web
+          path: site
           include-hidden-files: true
 
   deploy:

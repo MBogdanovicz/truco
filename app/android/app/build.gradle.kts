@@ -6,9 +6,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Dev builds (TRUCO_DEV=1, from the `dev` branch) install next to the
+// tester app: other package id, "Truco β" on the launcher. They have no
+// Firebase/Crashlytics (google-services.json only knows the real package),
+// and Play Games / purchases don't work there.
+val devBuild = System.getenv("TRUCO_DEV") == "1"
+
 // Firebase Crashlytics needs android/app/google-services.json. Builds without
 // it (e.g. CI) still work; the app then just skips crash reporting.
-if (file("google-services.json").exists()) {
+if (!devBuild && file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
 }
@@ -24,7 +30,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.mytrophies.truco"
+        applicationId = if (devBuild) "app.mytrophies.truco.dev" else "app.mytrophies.truco"
+        manifestPlaceholders["appLabel"] = if (devBuild) "Truco β" else "Truco!"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -44,6 +51,7 @@ android {
         if (f.exists()) f.inputStream().use { load(it) }
     }
     val playSigning = System.getenv("TRUCO_PLAY_SIGNING") == "1"
+    check(!(playSigning && devBuild)) { "dev builds never go to the Play Store" }
 
     signingConfigs {
         // Fixed key for test builds, committed on purpose so every CI/local
