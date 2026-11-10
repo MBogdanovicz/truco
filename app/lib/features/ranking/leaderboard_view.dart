@@ -180,7 +180,7 @@ class _TableRow extends StatelessWidget {
 
   static const _pos = 30.0;
   static const _num = 30.0;
-  static const _saldo = 44.0;
+  static const _saldo = 38.0;
   static const _elo = 46.0;
   static const _rate = 42.0;
   static const _shutouts = 44.0;
@@ -268,9 +268,12 @@ class _TableRow extends StatelessWidget {
     final saldo = e == null || e.games == 0
         ? 0.0
         : (e.pointsFor - e.pointsAgainst) / e.games;
-    final saldoText = saldo.abs() < 0.05
-        ? '0'
-        : '${saldo > 0 ? '+' : '−'}${saldo.abs().toStringAsFixed(1).replaceAll('.', ',')}';
+    final rounded = saldo.round();
+    final saldoText = rounded > 0
+        ? '+$rounded'
+        : rounded < 0
+        ? '−${-rounded}'
+        : '0';
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Row(
