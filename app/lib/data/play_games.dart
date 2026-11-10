@@ -48,7 +48,7 @@ class PlayGamesSync {
       defaultTargetPlatform == TargetPlatform.android &&
       _playGamesIds.isNotEmpty;
 
-  /// What Play Games should have: "<id>" for unlocks, "<id>:<steps>" for
+  /// What Play Games should have: `id` for unlocks, `id:steps` for
   /// progress of the incremental ones.
   static Set<String> _wanted(Map<Achievement, DateTime> unlocked, int games) {
     final wanted = <String>{};

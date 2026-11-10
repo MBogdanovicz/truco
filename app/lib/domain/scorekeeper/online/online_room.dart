@@ -28,6 +28,10 @@ enum RoomNotice {
   /// This device was host, lost signal, and someone else took over; its
   /// offline changes were dropped in favour of theirs.
   replacedWhileAway,
+
+  /// The room was opened by this same account on another device: a player
+  /// can't join their own room.
+  sameAccount,
 }
 
 /// The person using this device.
@@ -396,7 +400,11 @@ class OnlineRoom {
         (message['snapshot']! as Map).cast<String, Object?>(),
       );
       if (snap.roomId != roomId) return;
-      if (snap.hostUserId == me.userId) return;
+      if (snap.hostUserId == me.userId) {
+        // Our own account hosts it on another device: we would wait forever.
+        if (_snapshot == null && !_isHost) _notices.add(RoomNotice.sameAccount);
+        return;
+      }
       final current = _snapshot;
       if (current != null && !snap.isNewerThan(current)) {
         // A heartbeat from the current host shows it is still there.

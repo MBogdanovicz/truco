@@ -34,6 +34,15 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
 
   /// The room ended (host closed it, or a whole team left): say so and go
   /// back to the home screen.
+  void _leaveTo(String location) {
+    if (_closing) return;
+    _closing = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(onlineRoomControllerProvider.notifier).leave();
+      if (mounted) context.go(location);
+    });
+  }
+
   void _onClosed() {
     if (_closing) return;
     _closing = true;
@@ -65,6 +74,9 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
     RoomNotice.replacedWhileAway:
         'Outro jogador assumiu a sala enquanto você estava sem conexão. '
         'O placar dele foi mantido.',
+    RoomNotice.sameAccount:
+        'Essa sala foi criada com a sua conta em outro aparelho. Para entrar, '
+        'use uma conta diferente.',
   };
 
   static const _rejectionText = {
@@ -141,7 +153,9 @@ class _OnlineRoomState extends ConsumerState<OnlineRoomScreen> {
       _,
       next,
     ) {
-      if (next != null) showAppToast(context, _noticeText[next.$1]!);
+      if (next == null) return;
+      showAppToast(context, _noticeText[next.$1]!);
+      if (next.$1 == RoomNotice.sameAccount) _leaveTo('/');
     });
     final view = ref.watch(onlineRoomControllerProvider);
     final snap = view?.snapshot;
