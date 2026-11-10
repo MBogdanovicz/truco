@@ -128,14 +128,21 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
           for (final e in idsByName.entries)
             if (e.value.length > 1) e.key,
         };
+        final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.medium;
         return AppSection(
+          footer: wide
+              ? 'J jogos · V vitórias · D derrotas · SP saldo de pontos · '
+                    '% aproveitamento · 12x0 aplicados/tomados'
+              : 'J jogos · V vitórias · D derrotas · SP saldo de pontos',
           children: [
+            _TableRow.header(wide: wide),
             for (var i = 0; i < list.length; i++)
-              _Row(
+              _TableRow(
                 position: i + 1,
                 entry: list[i],
                 isMe: list[i].playerIds.contains(me),
                 ambiguous: ambiguous,
+                wide: wide,
               ),
           ],
         );
@@ -149,63 +156,146 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({
+/// One line of the standings table, like a football league table.
+class _TableRow extends StatelessWidget {
+  const _TableRow({
     required this.position,
     required this.entry,
     required this.isMe,
+    required this.wide,
     this.ambiguous = const {},
   });
 
+  const _TableRow.header({required this.wide})
+    : position = 0,
+      entry = null,
+      isMe = false,
+      ambiguous = const {};
+
   final int position;
-  final LeaderboardEntry entry;
+  final LeaderboardEntry? entry;
   final bool isMe;
+  final bool wide;
   final Set<String> ambiguous;
 
-  String get _title => [
-    for (var p = 0; p < entry.names.length; p++)
-      ambiguous.contains(entry.names[p]) &&
-              p < entry.hints.length &&
-              entry.hints[p] != null
-          ? '${entry.names[p]} (${entry.hints[p]})'
-          : entry.names[p],
+  static const _pos = 30.0;
+  static const _num = 30.0;
+  static const _saldo = 38.0;
+  static const _elo = 46.0;
+  static const _rate = 42.0;
+  static const _shutouts = 44.0;
+
+  String _title(LeaderboardEntry e) => [
+    for (var p = 0; p < e.names.length; p++)
+      ambiguous.contains(e.names[p]) && p < e.hints.length && e.hints[p] != null
+          ? '${e.names[p]} (${e.hints[p]})'
+          : e.names[p],
   ].join(' e ');
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final medal = switch (position) {
-      1 => AppColors.gold,
-      2 => Colors.blueGrey,
-      3 => Colors.brown,
-      _ => null,
-    };
-    return AppTile(
-      highlighted: isMe,
-      leading: CircleAvatar(
-        radius: 16,
-        backgroundColor: medal ?? theme.colorScheme.surfaceContainerHighest,
-        foregroundColor: medal == null
-            ? theme.colorScheme.onSurface
-            : Colors.white,
-        child: Text('$position', style: const TextStyle(fontSize: 14)),
+    final e = entry;
+    final numbers = theme.textTheme.bodyMedium?.copyWith(
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final head = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
+    );
+
+    Widget cell(String text, double width, {TextStyle? style}) => SizedBox(
+      width: width,
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: style ?? (e == null ? head : numbers),
       ),
-      title: _title,
-      subtitle: [
-        '${entry.games} jogos · ${entry.wins}V ${entry.losses}D · '
-            '${(entry.winRate * 100).round()}%'
-            '${entry.isProvisional ? ' · provisório' : ''}',
-        if (entry.shutoutsFor > 0 || entry.shutoutsAgainst > 0)
-          '12 x 0: aplicou ${entry.shutoutsFor} · '
-              'tomou ${entry.shutoutsAgainst}',
-      ].join('\n'),
-      trailing: Text(
-        entry.elo.round().toString(),
-        style: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          fontFeatures: const [FontFeature.tabularFigures()],
+    );
+
+    final Widget pos;
+    final Widget name;
+    if (e == null) {
+      pos = cell('#', _pos);
+      name = Text('Nome', style: head);
+    } else {
+      final medal = switch (position) {
+        1 => AppColors.gold,
+        2 => Colors.blueGrey,
+        3 => Colors.brown,
+        _ => null,
+      };
+      pos = SizedBox(
+        width: _pos,
+        child: Center(
+          child: CircleAvatar(
+            radius: 12,
+            backgroundColor:
+                medal ?? theme.colorScheme.surfaceContainerHighest,
+            foregroundColor: medal == null
+                ? theme.colorScheme.onSurface
+                : Colors.white,
+            child: Text('$position', style: const TextStyle(fontSize: 12)),
+          ),
         ),
+      );
+      final small = theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      );
+      name = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _title(e),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: isMe ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+          if (e.isProvisional) Text('provisório', style: small),
+          if (!wide && (e.shutoutsFor > 0 || e.shutoutsAgainst > 0))
+            Text(
+              '12x0: aplicou ${e.shutoutsFor} · tomou ${e.shutoutsAgainst}',
+              style: small,
+            ),
+        ],
+      );
+    }
+
+    final saldo = e == null ? 0 : e.pointsFor - e.pointsAgainst;
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Row(
+        children: [
+          pos,
+          const SizedBox(width: 6),
+          Expanded(child: name),
+          cell(e == null ? 'J' : '${e.games}', _num),
+          cell(e == null ? 'V' : '${e.wins}', _num),
+          cell(e == null ? 'D' : '${e.losses}', _num),
+          cell(e == null ? 'SP' : (saldo > 0 ? '+$saldo' : '$saldo'), _saldo),
+          if (wide) ...[
+            cell(e == null ? '%' : '${(e.winRate * 100).round()}', _rate),
+            cell(
+              e == null ? '12x0' : '${e.shutoutsFor}/${e.shutoutsAgainst}',
+              _shutouts,
+            ),
+          ],
+          cell(
+            e == null ? 'Elo' : e.elo.round().toString(),
+            _elo,
+            style: e == null
+                ? head
+                : numbers?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
+    );
+    if (!isMe) return row;
+    return ColoredBox(
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+      child: row,
     );
   }
 }
