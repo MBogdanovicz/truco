@@ -5,10 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/ads.dart';
 import '../../data/auth_repository.dart';
+import '../../data/entitlements.dart';
+import '../../data/game_room_repository.dart';
 import '../../domain/game/ai.dart';
 import '../../domain/game/rules.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../premium/premium_screen.dart';
 import 'local_game_controller.dart';
+import 'online_game_controller.dart';
 
 /// Chooses rules and computer levels for a game against the computer.
 class GameSetupScreen extends ConsumerStatefulWidget {
@@ -104,6 +108,42 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
     context.go('/jogo/partida');
   }
 
+  bool _creating = false;
+
+  Future<void> _createRoom() async {
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user == null || user.isGuest) {
+      showAppToast(context, 'Entre com seu e-mail para criar salas.');
+      return;
+    }
+    final ent = await ref.read(entitlementsProvider.future);
+    if (!mounted) return;
+    if (!ent.canHostOnline) {
+      await showPremiumRequired(context, 'Criar salas de jogo online');
+      return;
+    }
+    _save();
+    setState(() => _creating = true);
+    try {
+      await ref
+          .read(onlineGameControllerProvider.notifier)
+          .create(rules: _rules, botLevel: _opponents, ranked: true);
+      if (mounted) context.go('/jogo/sala');
+    } on GameRoomError catch (e) {
+      if (mounted) showAppToast(context, e.message);
+    } on Object catch (e) {
+      debugPrint('Create game room failed: $e');
+      if (mounted) {
+        showAppToast(
+          context,
+          'Não foi possível criar a sala. Verifique sua internet.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _creating = false);
+    }
+  }
+
   Widget _levels(AiLevel value, ValueChanged<AiLevel> onChanged) => Padding(
     padding: const EdgeInsets.all(12),
     child: AppSegmented<AiLevel>(
@@ -121,8 +161,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 20),
           child: Text(
-            'Você e um parceiro do computador contra dois adversários do '
-            'computador. Partida amistosa, não conta para o ranking.',
+            'Contra o computador neste aparelho (amistosa), ou online com '
+            'amigos numa sala: o computador fica nos lugares vazios.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
         ),
@@ -216,6 +256,28 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
               ),
             ),
           ),
+        ),
+        const SizedBox(height: 24),
+        AppSection(
+          header: 'Online, com amigos',
+          footer:
+              'A sala usa as regras acima; o computador joga nos lugares '
+              'vazios no nível dos adversários. Só conta para o ranking com '
+              '4 pessoas com conta.',
+          children: [
+            AppTile(
+              title: 'Criar sala',
+              subtitle: 'Mande o código para os amigos.',
+              leading: const AppTileIcon(AppIcon.online, color: Colors.red),
+              trailing: _creating ? const AppProgress() : null,
+              onTap: _creating ? null : _createRoom,
+            ),
+            AppTile(
+              title: 'Entrar com código',
+              leading: const AppTileIcon(AppIcon.key, color: Colors.indigo),
+              onTap: () => context.push('/jogo/entrar'),
+            ),
+          ],
         ),
       ],
     );

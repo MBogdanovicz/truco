@@ -12,6 +12,7 @@ import '../../ui/android_download_card.dart';
 import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
 import '../game/local_game_controller.dart';
+import '../game/online_game_controller.dart';
 import '../scorekeeper/online_room_controller.dart';
 import '../scorekeeper/scorekeeper_controller.dart';
 
@@ -25,6 +26,7 @@ class HomeScreen extends ConsumerWidget {
     final ongoing = ref.watch(scorekeeperControllerProvider);
     final room = ref.watch(onlineRoomControllerProvider);
     final game = ref.watch(localGameControllerProvider);
+    final gameRoom = ref.watch(onlineGameControllerProvider);
     // Mirrors achievements to Google Play Games (Android only).
     ref.watch(playGamesSyncProvider);
     final lastRoom = ref.watch(lastRoomCodeProvider).value;
@@ -33,6 +35,14 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     final menu = <_MenuItem>[
+      if (gameRoom != null)
+        _MenuItem(
+          icon: AppIcon.cards,
+          color: AppColors.red,
+          title: 'Voltar para a sala de jogo',
+          subtitle: 'Sala ${gameRoom.code}',
+          onTap: () => context.go('/jogo/sala'),
+        ),
       if (room != null)
         _MenuItem(
           icon: AppIcon.online,
@@ -115,7 +125,7 @@ class HomeScreen extends ConsumerWidget {
         icon: AppIcon.cards,
         color: AppColors.purple,
         title: game == null ? 'Jogar truco' : 'Continuar jogo',
-        subtitle: 'Truco paulista contra o computador.',
+        subtitle: 'Contra o computador ou online com os amigos.',
         onTap: () => context.go(game == null ? '/jogo' : '/jogo/partida'),
       ),
     ];

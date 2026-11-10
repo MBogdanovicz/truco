@@ -288,10 +288,32 @@ class GroupsRepository {
   Future<List<LeaderboardEntry>> leaderboard({
     String? groupId,
     required LeaderboardSubject subject,
+    LeaderboardBoard board = LeaderboardBoard.all,
   }) async {
-    final rows = await _client
-        .from('leaderboard')
-        .select()
+    try {
+      return await _leaderboard(
+        'leaderboard_boards',
+        groupId,
+        subject,
+        board: board,
+      );
+    } on PostgrestException catch (e) {
+      // The boards view isn't on the server yet: only "all" exists.
+      if (e.code != 'PGRST205' && e.code != '42P01') rethrow;
+      if (board != LeaderboardBoard.all) return const [];
+      return _leaderboard('leaderboard', groupId, subject);
+    }
+  }
+
+  Future<List<LeaderboardEntry>> _leaderboard(
+    String view,
+    String? groupId,
+    LeaderboardSubject subject, {
+    LeaderboardBoard? board,
+  }) async {
+    var query = _client.from(view).select();
+    if (board != null) query = query.eq('board', board.name);
+    final rows = await query
         .eq('scope_type', groupId == null ? 'global' : 'group')
         .eq('scope_id', groupId ?? globalScopeId)
         .eq('subject_type', subject.name)
@@ -325,8 +347,21 @@ final groupMembersProvider = FutureProvider.autoDispose
     );
 
 final leaderboardProvider = FutureProvider.autoDispose
-    .family<List<LeaderboardEntry>, (String?, LeaderboardSubject)>(
+    .family<
+      List<LeaderboardEntry>,
+      (String?, LeaderboardSubject, LeaderboardBoard)
+    >(
       (ref, args) => ref
           .watch(groupsRepositoryProvider)!
-          .leaderboard(groupId: args.$1, subject: args.$2),
+          .leaderboard(groupId: args.$1, subject: args.$2, board: args.$3),
     );
+
+/// Which games a leaderboard counts: all, app games or scoreboard games.
+enum LeaderboardBoard {
+  all('Ambos'),
+  game('Jogo'),
+  scorekeeper('Marcador');
+
+  const LeaderboardBoard(this.label);
+  final String label;
+}

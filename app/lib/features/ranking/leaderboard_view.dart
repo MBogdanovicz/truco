@@ -21,12 +21,15 @@ class LeaderboardView extends ConsumerStatefulWidget {
 
 class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
   var _subject = LeaderboardSubject.player;
+  var _board = LeaderboardBoard.all;
   var _sort = LeaderboardSort.elo;
   var _showProvisional = false;
 
   @override
   Widget build(BuildContext context) {
-    final data = ref.watch(leaderboardProvider((widget.groupId, _subject)));
+    final data = ref.watch(
+      leaderboardProvider((widget.groupId, _subject, _board)),
+    );
     final me = ref.watch(authRepositoryProvider).currentUser?.id;
     final theme = Theme.of(context);
 
@@ -40,6 +43,12 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
           },
           value: _subject,
           onChanged: (v) => setState(() => _subject = v),
+        ),
+        const SizedBox(height: 10),
+        AppSegmented<LeaderboardBoard>(
+          segments: {for (final b in LeaderboardBoard.values) b: b.label},
+          value: _board,
+          onChanged: (v) => setState(() => _board = v),
         ),
         const SizedBox(height: 10),
         AppSegmented<LeaderboardSort>(
@@ -110,7 +119,11 @@ class _LeaderboardViewState extends ConsumerState<LeaderboardView> {
             padding: const EdgeInsets.all(24),
             child: Text(
               rows.isEmpty
-                  ? 'Nenhuma partida rankeada ainda. Jogue pelo marcador online com 4 jogadores com conta.'
+                  ? switch (_board) {
+                      LeaderboardBoard.game => 'Nenhuma partida rankeada no jogo ainda. Jogue online com 4 pessoas com conta.',
+                      LeaderboardBoard.scorekeeper => 'Nenhuma partida rankeada no marcador ainda. Jogue pelo marcador online com 4 jogadores com conta.',
+                      LeaderboardBoard.all => 'Nenhuma partida rankeada ainda. Jogue online (jogo ou marcador) com 4 jogadores com conta.',
+                    }
                   : 'Ninguém com 5 jogos ou mais ainda. Ative o filtro acima para ver todos.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium,

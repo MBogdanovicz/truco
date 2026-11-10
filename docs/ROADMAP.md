@@ -30,7 +30,7 @@ out on purpose. Table variations are options on top of it.
 | # | Milestone | Scope |
 |---|-----------|-------|
 | G1 ✅ | Local game vs computer | Engine (`domain/game/`), bots easy/medium/hard, card table, rules screen, variations (fixed or flipped manilhas, covered card, mão de ferro). Friendly only. |
-| G2 | Online game | Rooms like the scorekeeper (bots fill empty seats), authoritative host/server hiding hands, ranked only with 4 humans, ranking filter game / scorekeeper / both. |
+| G2 🚧 | Online game | Rooms with a code/link (computer fills empty seats), server as judge (Edge Function `game` runs the Dart engine), ranked only with 4 people with accounts, ranking filter game / scorekeeper / both. Later: game "por perto", turn timer for idle players. |
 | G3 | Social | "Intimar" button (push to group members), game achievements, perks unlocked by achievements (decks, table themes). |
 | G4 | Learning & custom rules | More custom rule options; "modo professor": training scenarios and tips from the user's own plays. |
 | Later | Nearby game, championships | Nearby (Bluetooth) game is low priority: people at the same table usually use a real deck. |

@@ -347,19 +347,41 @@ deferred until after Phase 1. AdMob does not support Flutter Web, so the PWA fre
 
 Bots self-play tests: medium beats easy ~88%, hard beats medium ~55-60% (12-point games, 100-game samples).
 
-### 10.3 Local game UI (`app/lib/features/game/`)
+### 10.3 Sessions, frames and the table (`app/lib/features/game/`)
 
-`LocalGameController` (Riverpod) owns a `TrucoGame` with the human at seat 0 and bots elsewhere, pacing bot moves
-with timers. `GameTableScreen` draws the table with plain widgets (no card images), `GameSetupScreen` chooses
-variations and bot levels (remembered in shared preferences), `RulesScreen` explains the rules. Local games are
-friendly: nothing is uploaded and they never count for ranking or achievements.
+`GameSession` (domain) runs one game for its authority: people's actions come in, bots play until a person
+must act, and every step becomes a `TableView` (what one seat sees, plus table talk and a `delayMs` hint) for
+each human seat. Its whole state is rules + seed + first dealer + bot seats + action log, so it can be rebuilt
+by replaying the log. The same code runs on the device (local games) and on the server (online games).
 
-### 10.4 Next (see ROADMAP G2+)
+`GameTable` draws a `TableView` (viewer at the bottom); `FramePlayer` shows frames one by one with their
+delays. `LocalGameController` runs a `GameSession` on the device (always friendly, nothing uploaded).
+`GameSetupScreen` chooses variations and levels (remembered in shared preferences), `RulesScreen` explains them.
 
-* Online: same room flow as the scorekeeper. Hands must be hidden from other clients, so the host (or an Edge
-  Function) runs `TrucoGame` and sends each client only its `PlayerView`. Bots can fill empty seats; a game is
-  ranked only with four humans. Matches reuse `matches` (`kind = 'game'`) and the ranking pipeline, with a ranking
-  filter for game / scorekeeper / both.
+### 10.4 Online games (server as judge)
+
+* The Edge Function `supabase/functions/game` runs the Dart engine compiled to JavaScript
+  (`app/tool/build_game_server.sh` → `engine.js`; run it after changing `lib/domain/game` and commit the
+  output). Each request replays the log, applies one action and writes each person's frames to `game_views`.
+  Actions: create, join, sit, options, start (also rematch), act, leave. Tests: `deno test
+  supabase/functions/game/game_test.ts` (in-memory database).
+* Tables (`20261111000000_game_rooms.sql`): `game_rooms` (code, host, status, rules, computer level,
+  ranked/friendly, group, wins), `game_seats` (people only; empty seats are played by the computer),
+  `game_states` (seed and log; service role only), `game_views` (one row per person, readable only by them,
+  so nobody sees another hand). The app follows rooms/seats/views over Realtime and re-reads the rows on each
+  notice (plus a 15 s poll); a view `version` one above the last plays its frames, a bigger jump just shows
+  the last frame.
+* Someone leaving mid-game is replaced by the computer (`replaced`), which makes the game unranked.
+* Finished games go to `matches` (`kind = 'game'`) through `record_game_result()` (service role). Ranked only
+  when asked, with four e-mail accounts and no computer seat; ratings and achievements are applied at once
+  (no confirmations: the server saw every card). Hand results become `match_events`, so achievements that
+  look at the score's path keep working.
+* Rating boards: `ratings.board` is `all` (every ranked game, what older app versions show through the
+  `leaderboard` view), `game` or `scorekeeper`. The app reads `leaderboard_boards` and filters
+  Jogo / Marcador / Ambos.
+
+### 10.5 Next (see ROADMAP G3+)
+
 * Championships: new tables for tournaments, brackets and entries.
 
 ## 11. Repository layout (planned)

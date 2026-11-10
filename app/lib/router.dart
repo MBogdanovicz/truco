@@ -10,6 +10,7 @@ import 'features/groups/groups_screen.dart';
 import 'features/groups/join_group_screen.dart';
 import 'features/game/game_setup_screen.dart';
 import 'features/game/game_table_screen.dart';
+import 'features/game/online_game_screen.dart';
 import 'features/game/rules_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/premium/premium_screen.dart';
@@ -125,6 +126,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, _) => const GameTableScreen(),
               ),
               GoRoute(
+                path: 'sala',
+                builder: (_, _) => const OnlineGameScreen(),
+              ),
+              GoRoute(
+                path: 'entrar',
+                builder: (_, state) => JoinGameScreen(
+                  initialCode: state.uri.queryParameters['codigo'],
+                ),
+              ),
+              GoRoute(
                 path: 'regras',
                 builder: (_, state) => RulesScreen(
                   fixedManilhas: state.uri.queryParameters['fixas'] == '1',
@@ -162,8 +173,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Invite links opened in the Android app (see Env.roomInviteLink).
       GoRoute(
         path: '/sala',
-        redirect: (_, state) =>
-            _withCode('/marcador/entrar', state.uri.queryParameters['codigo']),
+        redirect: (_, state) => _withCode(
+          // Game rooms add "&jogo=1" to the scorekeeper's invite link.
+          state.uri.queryParameters['jogo'] == '1'
+              ? '/jogo/entrar'
+              : '/marcador/entrar',
+          state.uri.queryParameters['codigo'],
+        ),
       ),
       GoRoute(
         path: '/grupo',
