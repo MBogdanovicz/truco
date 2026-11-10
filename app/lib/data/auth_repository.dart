@@ -59,7 +59,7 @@ class AuthRepository {
   /// Account used by Google Play's app review. Its inbox can't receive
   /// codes, so it signs in with a numeric password typed in the code field.
   /// The user (and its password) is created by hand in Supabase Auth.
-  static const reviewEmail = 'revisao@mytrophies.app';
+  static const reviewEmail = 'review@mytrophies.app';
 
   static bool isReviewEmail(String email) =>
       email.trim().toLowerCase() == reviewEmail;

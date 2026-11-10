@@ -21,7 +21,7 @@ Signing and the AAB command are in [PREMIUM.md](PREMIUM.md).
 
 ## App review login
 
-Play's reviewers can't read a code e-mail, so `revisao@mytrophies.app`
+Play's reviewers can't read a code e-mail, so `review@mytrophies.app`
 signs in with a password typed in the code field (`AuthRepository.reviewEmail`).
 Create it in Supabase: Authentication → Users → Add user → Create new user,
 with that e-mail, a 6–8 digit password and "Auto Confirm User" checked.
