@@ -242,8 +242,11 @@ class OnlineRoomController extends Notifier<OnlineRoomView?> {
     await ref.read(matchHistoryRepositoryProvider).add(record);
     ref.invalidate(matchHistoryProvider);
     // A guest (no e-mail account) can't save games: it has no profile.
-    final guest = ref.read(authRepositoryProvider).currentUser?.isGuest ?? true;
-    if (room.isHost && !guest) {
+    // Every other seated player uploads it: a ranked result counts only
+    // once both teams have confirmed it.
+    final user = ref.read(authRepositoryProvider).currentUser;
+    final seated = record.seats.any((s) => s.userId == user?.id);
+    if (user != null && !user.isGuest && seated) {
       await ref
           .read(resultUploaderProvider)
           .submit(

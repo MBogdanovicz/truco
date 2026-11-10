@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <application
         android:label="Truco!"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

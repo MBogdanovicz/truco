@@ -54,14 +54,12 @@ class OnlineRoomRepository {
   }
 
   Future<String> findOpenRoom(String code) async {
-    final row = await _client
-        .from('rooms')
-        .select('id')
-        .eq('code', code.trim().toUpperCase())
-        .isFilter('closed_at', null)
-        .maybeSingle();
-    if (row == null) throw RoomNotFound();
-    return row['id'] as String;
+    final id = await _client.rpc<String?>(
+      'find_open_room',
+      params: {'p_code': code.trim().toUpperCase()},
+    );
+    if (id == null) throw RoomNotFound();
+    return id;
   }
 
   Future<void> closeRoom(String roomId) => _client
