@@ -81,7 +81,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const since = Date.now() - 30 * 24 * 3600 * 1000;
+    // Google keeps 30 days; asking for exactly 30 is refused at the edge.
+    const since = Date.now() - 29 * 24 * 3600 * 1000;
     let pageToken: string | undefined;
     let voided = 0;
     do {
