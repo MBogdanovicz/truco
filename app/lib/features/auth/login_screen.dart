@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/auth_repository.dart';
+import '../../data/captcha/captcha.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
 
@@ -38,6 +39,8 @@ class _LoginState extends ConsumerState<LoginScreen> {
     });
     try {
       await action();
+    } on CaptchaCancelled {
+      // Closed the security check: nothing to report.
     } on AuthException catch (e) {
       setState(() => _error = _describe(e));
     } on Object catch (e) {
@@ -78,7 +81,13 @@ class _LoginState extends ConsumerState<LoginScreen> {
       return;
     }
     await _run(() async {
-      await ref.read(authRepositoryProvider).sendCode(_email.text);
+      final review = AuthRepository.isReviewEmail(_email.text);
+      final token = review
+          ? null
+          : await ref.read(captchaProvider).solve(context);
+      await ref
+          .read(authRepositoryProvider)
+          .sendCode(_email.text, captchaToken: token);
       setState(() => _codeSent = true);
     });
   }
@@ -122,7 +131,13 @@ class _LoginState extends ConsumerState<LoginScreen> {
       setState(() => _error = 'O nome precisa ter pelo menos 2 letras.');
       return;
     }
-    await _run(() => ref.read(authRepositoryProvider).signInAsGuest(value));
+    if (!mounted) return;
+    await _run(() async {
+      final token = await ref.read(captchaProvider).solve(context);
+      await ref
+          .read(authRepositoryProvider)
+          .signInAsGuest(value, captchaToken: token);
+    });
   }
 
   Future<void> _verify() async {
@@ -131,10 +146,16 @@ class _LoginState extends ConsumerState<LoginScreen> {
       return;
     }
     // On success the router redirects (auth state listener).
-    await _run(
-      () =>
-          ref.read(authRepositoryProvider).verifyCode(_email.text, _code.text),
-    );
+    await _run(() async {
+      // Only the review account's password sign-in needs the check; a
+      // code is verified without it.
+      final token = AuthRepository.isReviewEmail(_email.text)
+          ? await ref.read(captchaProvider).solve(context)
+          : null;
+      await ref
+          .read(authRepositoryProvider)
+          .verifyCode(_email.text, _code.text, captchaToken: token);
+    });
   }
 
   @override

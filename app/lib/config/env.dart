@@ -16,6 +16,12 @@ abstract final class Env {
     defaultValue: 'dev',
   );
 
+  /// Cloudflare Turnstile site key (public) for the login security check.
+  static const turnstileSiteKey = String.fromEnvironment(
+    'TURNSTILE_SITE_KEY',
+    defaultValue: '0x4AAAAAAF7KaZifE1YxSGM-',
+  );
+
   static bool get hasSupabase =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 

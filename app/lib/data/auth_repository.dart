@@ -52,8 +52,11 @@ class AuthRepository {
   }
 
   /// Signs in without e-mail, just to join a scorekeeper room.
-  Future<void> signInAsGuest(String name) async {
-    await _client!.auth.signInAnonymously(data: {'display_name': name.trim()});
+  Future<void> signInAsGuest(String name, {String? captchaToken}) async {
+    await _client!.auth.signInAnonymously(
+      data: {'display_name': name.trim()},
+      captchaToken: captchaToken,
+    );
   }
 
   /// Account used by Google Play's app review. Its inbox can't receive
@@ -64,19 +67,25 @@ class AuthRepository {
   static bool isReviewEmail(String email) =>
       email.trim().toLowerCase() == reviewEmail;
 
-  Future<void> sendCode(String email) async {
+  Future<void> sendCode(String email, {String? captchaToken}) async {
     if (isReviewEmail(email)) return;
     await _client!.auth.signInWithOtp(
       email: email.trim(),
       shouldCreateUser: true,
+      captchaToken: captchaToken,
     );
   }
 
-  Future<void> verifyCode(String email, String code) async {
+  Future<void> verifyCode(
+    String email,
+    String code, {
+    String? captchaToken,
+  }) async {
     if (isReviewEmail(email)) {
       await _client!.auth.signInWithPassword(
         email: reviewEmail,
         password: code.trim(),
+        captchaToken: captchaToken,
       );
       return;
     }
