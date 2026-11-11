@@ -8,6 +8,7 @@ import '../../data/ads.dart';
 import '../../data/game_room_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/last_room_repository.dart';
+import '../../data/tournaments.dart' show bestOfLabel;
 import '../../domain/game/ai.dart';
 import '../../domain/game/truco_game.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
@@ -150,13 +151,25 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
           onLeave: model.view.phase == GamePhase.gameOver
               ? _leave
               : _confirmLeave,
-          onRematch: host && room.status == GameRoomStatus.finished
+          onRematch: room.isTournament
+              ? (room.status == GameRoomStatus.finished && !room.seriesOver
+                    ? () => _run(_ctrl.start)
+                    : null)
+              : host && room.status == GameRoomStatus.finished
               ? () async {
                   await Ads.beforeGame(ref);
                   await _run(_ctrl.start);
                 }
               : null,
-          gameOverExtra: host
+          rematchLabel: room.isTournament
+              ? 'Próxima partida (${room.wins.$1} × ${room.wins.$2})'
+              : 'Revanche',
+          gameOverExtra: room.isTournament
+              ? (room.seriesOver || room.bestOf <= 1
+                    ? 'Fim do jogo do torneio. O resultado já está na chave.'
+                    : 'Série ${bestOfLabel(room.bestOf).toLowerCase()}: '
+                          '${room.wins.$1} × ${room.wins.$2}.')
+              : host
               ? null
               : 'Esperando quem criou a sala chamar a revanche.',
         ),
@@ -257,12 +270,20 @@ class _Lobby extends ConsumerWidget {
           color: who == null ? Colors.blueGrey : AppColors.felt,
         ),
         title: who == null
-            ? 'Computador (${room.botLevel.label.toLowerCase()})'
+            ? (room.isTournament
+                  ? 'Esperando o jogador'
+                  : 'Computador (${room.botLevel.label.toLowerCase()})')
             : (me ? '${who.name} (você)' : who.name),
         subtitle: who == null
-            ? 'Lugar vazio. Toque para sentar aqui.'
-            : (who.userId == room.hostId ? 'Criou a sala' : null),
-        onTap: who == null && !sending ? () => run(() => ctrl.sit(seat)) : null,
+            ? (room.isTournament
+                  ? 'Lugar de quem joga este jogo do torneio.'
+                  : 'Lugar vazio. Toque para sentar aqui.')
+            : (who.userId == room.hostId && !room.isTournament
+                  ? 'Criou a sala'
+                  : null),
+        onTap: who == null && !sending && !room.isTournament
+            ? () => run(() => ctrl.sit(seat))
+            : null,
       );
     }
 
@@ -363,58 +384,65 @@ class _Lobby extends ConsumerWidget {
             ),
           ],
         ),
-        AppSection(
-          header: 'Partida',
-          children: [
-            AppTile(
-              title: 'Partida rankeada',
-              subtitle: !room.ranked
-                  ? 'Amistosa: fica só no histórico.'
-                  : room.rankable
-                  ? 'Conta para o ranking.'
-                  : 'Só conta para o ranking com 4 pessoas com conta, '
-                        'sem o computador.',
-              trailing: AppSwitch(
-                value: room.ranked,
-                onChanged: isHost && !sending
-                    ? (v) => run(() => ctrl.setRanked(v))
-                    : null,
-              ),
-            ),
-            if (room.ranked)
+        if (!room.isTournament)
+          AppSection(
+            header: 'Partida',
+            children: [
               AppTile(
-                title: 'Grupo',
-                subtitle: room.groupId == null
-                    ? 'Só o ranking geral'
-                    : (groupName ?? 'Grupo escolhido'),
-                onTap: isHost ? () => _pickGroup(context, ref) : null,
-              ),
-            if (room.seats.length < 4 && !room.rules.isSlow)
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Nível do computador'),
-                    const SizedBox(height: 8),
-                    AppSegmented<AiLevel>(
-                      segments: {for (final l in AiLevel.values) l: l.label},
-                      value: room.botLevel,
-                      onChanged: isHost && !sending
-                          ? (v) => run(() => ctrl.setBotLevel(v))
-                          : (_) {},
-                    ),
-                  ],
+                title: 'Partida rankeada',
+                subtitle: !room.ranked
+                    ? 'Amistosa: fica só no histórico.'
+                    : room.rankable
+                    ? 'Conta para o ranking.'
+                    : 'Só conta para o ranking com 4 pessoas com conta, '
+                          'sem o computador.',
+                trailing: AppSwitch(
+                  value: room.ranked,
+                  onChanged: isHost && !sending
+                      ? (v) => run(() => ctrl.setRanked(v))
+                      : null,
                 ),
               ),
-          ],
-        ),
+              if (room.ranked)
+                AppTile(
+                  title: 'Grupo',
+                  subtitle: room.groupId == null
+                      ? 'Só o ranking geral'
+                      : (groupName ?? 'Grupo escolhido'),
+                  onTap: isHost ? () => _pickGroup(context, ref) : null,
+                ),
+              if (room.seats.length < 4 && !room.rules.isSlow)
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Nível do computador'),
+                      const SizedBox(height: 8),
+                      AppSegmented<AiLevel>(
+                        segments: {for (final l in AiLevel.values) l: l.label},
+                        value: room.botLevel,
+                        onChanged: isHost && !sending
+                            ? (v) => run(() => ctrl.setBotLevel(v))
+                            : (_) {},
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: SizedBox(
               width: double.infinity,
-              child: isHost
+              child: room.isTournament
+                  ? Text(
+                      'Jogo do torneio: começa sozinho quando as 4 pessoas '
+                      'entrarem (${room.seats.length} de 4 na sala).',
+                      textAlign: TextAlign.center,
+                    )
+                  : isHost
                   ? AppButton(
                       label: room.rules.isSlow && room.seats.length < 4
                           ? (room.seats.length == 3

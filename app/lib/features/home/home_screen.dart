@@ -135,6 +135,15 @@ class HomeScreen extends ConsumerWidget {
         onTap: hasAccount ? () => context.go('/grupos') : null,
       ),
       _MenuItem(
+        icon: AppIcon.trophy,
+        color: AppColors.red,
+        title: 'Torneios',
+        subtitle: hasAccount
+            ? 'Mata-mata ou todos contra todos, no app.'
+            : 'Entre com seu e-mail para usar.',
+        onTap: hasAccount ? () => context.go('/torneios') : null,
+      ),
+      _MenuItem(
         icon: AppIcon.leaderboard,
         color: AppColors.gold,
         title: 'Ranking geral',

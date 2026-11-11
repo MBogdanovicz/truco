@@ -23,6 +23,9 @@ import 'features/scorekeeper/join_room_screen.dart';
 import 'features/scorekeeper/mode_screen.dart';
 import 'features/scorekeeper/nearby_screen.dart';
 import 'features/achievements/achievements_screen.dart';
+import 'features/tournaments/create_tournament_screen.dart';
+import 'features/tournaments/tournament_screen.dart';
+import 'features/tournaments/tournaments_screen.dart';
 import 'features/scorekeeper/online_room_screen.dart';
 import 'features/scorekeeper/scoreboard_screen.dart';
 import 'features/scorekeeper/setup_screen.dart';
@@ -159,6 +162,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, _) => const AchievementsScreen(),
           ),
           GoRoute(path: 'premium', builder: (_, _) => const PremiumScreen()),
+          GoRoute(
+            path: 'torneios',
+            builder: (_, _) => const TournamentsScreen(),
+            routes: [
+              GoRoute(
+                path: 'novo',
+                builder: (_, _) => const CreateTournamentScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (_, state) =>
+                    TournamentScreen(id: state.pathParameters['id']!),
+              ),
+            ],
+          ),
           // Nested so the back button of a group goes to the group list.
           GoRoute(
             path: 'grupos',

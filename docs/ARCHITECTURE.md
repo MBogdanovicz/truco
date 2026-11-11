@@ -420,9 +420,26 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   takes the game out of the ranking (`replaced`).
 * Leaving the screen keeps the seat ("Voltar depois"); "Abandonar a partida" gives the seat to the computer.
 
-### 10.8 Next (see ROADMAP G5+)
+### 10.8 Tournaments (G6)
 
-* Championships: new tables for tournaments, brackets and entries.
+* Tables `tournaments`, `tournament_teams`, `tournament_matches` (migration `20261113000000_tournaments.sql`),
+  written only by the `game` function (`game/tournament.ts`, actions `tournament.*`); the app reads them
+  (`app/lib/data/tournaments.dart`). Public or group-only; creating needs Premium (checked on the server).
+* Sign-up: pairs (a pair waits for the partner, who joins it), people alone, or both. On start the people
+  without a partner are paired at random (an odd one is left out) and the order is drawn.
+* Knockout: byes fill the bracket to a power of 2; each round opens when both feeding matches are done.
+  Round robin: circle method, every match created at start, round N due after N × `round_days`.
+* Each match has its own game room (`game_rooms.tournament_match_id`, rules carry `serie` = games in the
+  match): only its 4 people enter, on fixed seats (team A in 0/2). Live: the game starts when the 4th person
+  enters, the next game of a series by anyone seated. Slow (`lento`): seats filled and started at once,
+  the series goes on by itself. No rematch.
+* `game-sweep` also decides live matches past their deadline (not being played): ahead in the series wins,
+  else the team that entered the room (`present`), else a draw (knockout) or a loss for both (round robin).
+* Round robin order: wins, tento balance, tentos made.
+
+### 10.9 Next (see ROADMAP G5+)
+
+* Groups + knockout tournaments; tournaments played on the scorekeeper.
 
 ## 11. Repository layout (planned)
 

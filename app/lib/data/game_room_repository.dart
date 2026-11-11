@@ -43,6 +43,8 @@ class GameRoomSnapshot {
     this.viewVersion = 0,
     this.frames = const [],
     this.turnDeadline,
+    this.tournamentMatchId,
+    this.bestOf = 1,
   });
 
   final String id;
@@ -65,6 +67,19 @@ class GameRoomSnapshot {
 
   /// When the person the game waits for runs out of time.
   final DateTime? turnDeadline;
+
+  /// A tournament match room: seats are fixed, no rematch, and the next
+  /// game of a series ([bestOf] games) is started by anyone seated.
+  final String? tournamentMatchId;
+  final int bestOf;
+
+  bool get isTournament => tournamentMatchId != null;
+
+  /// The series of a tournament match is decided.
+  bool get seriesOver {
+    final need = bestOf ~/ 2 + 1;
+    return wins.$1 >= need || wins.$2 >= need;
+  }
 
   GameSeat? seatOf(String userId) =>
       seats.where((s) => s.userId == userId).firstOrNull;
@@ -103,6 +118,8 @@ class GameRoomSnapshot {
           ),
       ]..sort((a, b) => a.seat.compareTo(b.seat)),
       turnDeadline: DateTime.tryParse((room['turn_deadline'] as String?) ?? ''),
+      tournamentMatchId: room['tournament_match_id'] as String?,
+      bestOf: ((room['rules'] as Map?)?['serie'] as num?)?.toInt() ?? 1,
       viewVersion: (view?['version'] as int?) ?? 0,
       frames: [
         for (final f in (view?['frames'] as List?) ?? const [])
@@ -122,6 +139,10 @@ class GameRoomError implements Exception {
     'room_full' => 'A sala está cheia.',
     'game_started' => 'A partida já começou.',
     'slow_needs_four' => 'A partida lenta precisa de 4 pessoas na sala.',
+    'not_in_match' => 'Essa sala é de um jogo de torneio de outras duplas.',
+    'tournament_room' => 'Numa sala de torneio os lugares são fixos.',
+    'match_needs_four' => 'O jogo do torneio começa com as 4 pessoas na sala.',
+    'match_over' => 'Esse jogo do torneio já acabou.',
     'seat_taken' => 'Esse lugar já foi ocupado.',
     'account_required' => 'Entre com seu e-mail para criar salas.',
     'not_host' => 'Só quem criou a sala pode fazer isso.',

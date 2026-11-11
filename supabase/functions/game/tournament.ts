@@ -432,7 +432,8 @@ export class Tournaments {
     const slow = slowDays(t.rules) > 0;
     const host = new Game(this.db, a.player_a, false, a.name_a);
     const { roomId, code } = await host.createForTournament({
-      rules: t.rules,
+      // "serie": games in the match, so the app knows when it's over.
+      rules: { ...t.rules, serie: m.best_of || 1 },
       groupId: t.group_id,
       matchId: m.id,
       seats: slow
