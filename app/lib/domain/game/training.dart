@@ -199,7 +199,8 @@ final trainingScenarios = <TrainingScenario>[
         'precisa fazer (e pode até trucar). E com a primeira ganha, mesmo '
         'perdendo a segunda vocês ainda têm o ás para a terceira.',
     alsoGood: {
-      0: 'Jogar o ás também vale: com a primeira ganha, ganhar ou empatar a '
+      0:
+          'Jogar o ás também vale: com a primeira ganha, ganhar ou empatar a '
           'segunda já fecha a mão, e o ás obriga os adversários a gastar '
           'cartas fortes.',
     },

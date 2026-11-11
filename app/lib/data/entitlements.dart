@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_repository.dart';
 
@@ -41,14 +42,31 @@ final entitlementsProvider = FutureProvider<Entitlements>((ref) async {
   final user = ref.watch(currentUserProvider).value;
   final client = ref.watch(supabaseClientProvider);
   if (user == null || user.isGuest || client == null) return Entitlements.free;
+  // The last answer is kept on the device: offline (on the road, in airplane
+  // mode) the request can hang while the session tries to refresh, and
+  // starting a game must never wait for it.
+  final key = 'premium.${user.id}';
+  bool? cached;
+  try {
+    cached = await SharedPreferencesAsync().getBool(key);
+  } on Object {
+    cached = null;
+  }
   try {
     final row = await client
         .from('profiles')
         .select('is_premium')
         .eq('id', user.id)
-        .maybeSingle();
-    return Entitlements(isPremium: row?['is_premium'] == true);
+        .maybeSingle()
+        .timeout(const Duration(seconds: 5));
+    final premium = row?['is_premium'] == true;
+    try {
+      await SharedPreferencesAsync().setBool(key, premium);
+    } on Object {
+      // Only a cache.
+    }
+    return Entitlements(isPremium: premium);
   } on Object {
-    return Entitlements.free;
+    return Entitlements(isPremium: cached ?? false);
   }
 });
