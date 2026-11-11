@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_repository.dart';
@@ -109,22 +110,36 @@ class PushService {
     if (s != null) _summons.add(s);
   }
 
+  static const _askedKey = 'push.asked.v1';
+
   Future<PushState> state() async {
     if (!await _init()) return PushState.unsupported;
     final s = await FirebaseMessaging.instance.getNotificationSettings();
-    return switch (s.authorizationStatus) {
-      AuthorizationStatus.authorized ||
-      AuthorizationStatus.provisional => PushState.on,
-      AuthorizationStatus.denied ||
-      AuthorizationStatus.deniedPermanently => PushState.blocked,
-      AuthorizationStatus.notDetermined => PushState.off,
-    };
+    switch (s.authorizationStatus) {
+      case AuthorizationStatus.authorized:
+      case AuthorizationStatus.provisional:
+        return PushState.on;
+      case AuthorizationStatus.notDetermined:
+        return PushState.off;
+      case AuthorizationStatus.denied:
+      case AuthorizationStatus.deniedPermanently:
+        // Android says "denied" before the app ever asked: that is "off",
+        // and turning it on shows the system question.
+        final asked = await _prefs((p) => p.getBool(_askedKey))
+            .catchError((Object _) => null);
+        return asked == true ? PushState.blocked : PushState.off;
+    }
   }
+
+  static Future<T> _prefs<T>(Future<T> Function(SharedPreferencesAsync) f) =>
+      f(SharedPreferencesAsync());
 
   /// Asks permission (if needed) and registers this device for the account.
   Future<PushState> enable(SupabaseClient client) async {
     if (!await _init()) return PushState.unsupported;
     final s = await FirebaseMessaging.instance.requestPermission();
+    await _prefs((p) => p.setBool(_askedKey, true))
+        .catchError((Object e) => debugPrint('Push: $e'));
     if (s.authorizationStatus == AuthorizationStatus.denied ||
         s.authorizationStatus == AuthorizationStatus.deniedPermanently) {
       return PushState.blocked;
@@ -183,14 +198,29 @@ final pushSyncProvider = FutureProvider.autoDispose<void>((ref) async {
   }
 });
 
-/// Whether this device gets "intimar" pushes.
-final pushStateProvider = FutureProvider.autoDispose<PushState>(
-  (ref) => PushService.instance.state(),
-);
+/// Whether this device gets "intimar" pushes. When notifications are
+/// allowed (also when the person allowed them in the phone's settings), the
+/// device is registered for the account.
+final pushStateProvider = FutureProvider.autoDispose<PushState>((ref) async {
+  final state = await PushService.instance.state();
+  final client = ref.read(supabaseClientProvider);
+  final user = ref.read(currentUserProvider).value;
+  if (state == PushState.on &&
+      client != null &&
+      user != null &&
+      !user.isGuest) {
+    try {
+      await PushService.instance._register(client);
+    } on Object catch (e) {
+      debugPrint('Push register failed: $e');
+    }
+  }
+  return state;
+});
 
 /// Sends an "intimar" push to the other members of [groupId].
-/// Returns how many devices got it.
-Future<({int sent, int members})> summonGroup(
+/// Returns how many devices got it, and how many sends failed.
+Future<({int sent, int failed, int members})> summonGroup(
   SupabaseClient client, {
   required String groupId,
   required String code,
@@ -205,5 +235,9 @@ Future<({int sent, int members})> summonGroup(
     },
   );
   final data = res.data as Map;
-  return (sent: data['sent'] as int, members: data['members'] as int);
+  return (
+    sent: data['sent'] as int,
+    failed: (data['failed'] as int?) ?? 0,
+    members: data['members'] as int,
+  );
 }

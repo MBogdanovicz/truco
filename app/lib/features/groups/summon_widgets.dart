@@ -117,7 +117,10 @@ Future<void> summonToRoom(
       context,
       r.sent > 0
           ? 'Intimação enviada para o grupo $name.'
+          : r.failed > 0
+          ? 'Não foi possível enviar os avisos. Tente de novo daqui a pouco.'
           : 'Ninguém do grupo $name ligou os avisos de intimação ainda.',
+      long: true,
     );
   } on FunctionException catch (e) {
     final code = e.details is Map ? (e.details as Map)['error'] : null;
@@ -127,6 +130,7 @@ Future<void> summonToRoom(
       code == 'too_soon'
           ? 'Calma! Espere um minuto para intimar de novo.'
           : 'Não foi possível intimar o grupo.',
+      long: true,
     );
   } on Object {
     if (context.mounted) {

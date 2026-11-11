@@ -145,6 +145,7 @@ Deno.serve(async (req) => {
     const link = `${WEB_APP_URL}/sala/?codigo=${code}${kind === "game" ? "&jogo=1" : ""}`;
 
     let sent = 0;
+    let failed = 0;
     if (tokens?.length) {
       const sa = serviceAccount();
       const bearer = await accessToken(sa);
@@ -174,21 +175,28 @@ Deno.serve(async (req) => {
         } else {
           const err = await res.text();
           // The app was uninstalled or the token expired.
-          if (res.status === 404 || err.includes("UNREGISTERED")) dead.push(token);
-          else console.error("FCM", res.status, err);
+          if (res.status === 404 || err.includes("UNREGISTERED")) {
+            dead.push(token);
+          } else {
+            failed++;
+            console.error("FCM", res.status, err);
+          }
         }
       }));
       if (dead.length) await db.from("push_tokens").delete().in("token", dead);
     }
 
-    await db.from("summons").insert({
-      group_id: groupId,
-      user_id: user.id,
-      room_code: code,
-      kind,
-      sent,
-    });
-    return reply(200, { sent, members: others.length });
+    // Only a call that reached someone counts for the waiting time.
+    if (sent > 0) {
+      await db.from("summons").insert({
+        group_id: groupId,
+        user_id: user.id,
+        room_code: code,
+        kind,
+        sent,
+      });
+    }
+    return reply(200, { sent, failed, devices: tokens?.length ?? 0, members: others.length });
   } catch (e) {
     console.error(e);
     return reply(500, { error: "server_error" });
