@@ -243,7 +243,7 @@ export class Game {
   }
 
   async act(body: Json) {
-    const action = body.action as Json | undefined;
+    const action = body.move as Json | undefined;
     if (!action || typeof action.t !== "string") throw new Refused("bad_action");
     for (let attempt = 0; attempt < 4; attempt++) {
       const room = await this.room(body.roomId as string);

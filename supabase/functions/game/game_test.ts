@@ -201,7 +201,7 @@ async function playToEnd(db: FakeDb, roomId: string, players: Map<number, Game>)
     for (const [seat, game] of players) {
       const v = lastFrame(db, roomId, seat);
       if (v && (v.myTurn || v.mustAnswer)) {
-        await game.act({ roomId, action: move(v) });
+        await game.act({ roomId, move: move(v) });
         moved = true;
         break;
       }
@@ -254,7 +254,7 @@ Deno.test("a person who leaves mid-game is replaced by the computer", async () =
   assert(db.tables.game_seats.find((s) => s.user_id === "caio")!.seat === 1);
   await ana.start({ roomId });
   try {
-    await caio.act({ roomId, action: { t: "play", c: "zz" } });
+    await caio.act({ roomId, move: { t: "play", c: "zz" } });
   } catch (e) {
     assert(e instanceof Refused);
   }

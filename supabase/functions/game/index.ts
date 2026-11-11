@@ -8,7 +8,8 @@
 // until a person must act, and writes each person's frames to game_views,
 // which the app follows over Realtime.
 //
-// Actions: create, join, sit, options, start (also rematch), act, leave.
+// Actions: create, join, sit, options, start (also rematch), act ({roomId,
+// move: {t, c?, x?, i?}}), leave.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
 // by the platform.
 

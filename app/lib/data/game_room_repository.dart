@@ -121,7 +121,7 @@ class GameRoomError implements Exception {
     'not_host' => 'Só quem criou a sala pode fazer isso.',
     'illegal_move' || 'not_playing' => 'Essa jogada não vale agora.',
     'busy' => 'A mesa está ocupada, tente de novo.',
-    _ => 'Não foi possível falar com o servidor. Verifique sua internet.',
+    _ => 'O servidor recusou ($code). Tente de novo.',
   };
 
   @override
@@ -229,7 +229,7 @@ class SupabaseGameRooms implements GameRoomBackend {
 
   @override
   Future<void> act(String roomId, Map<String, Object?> action) =>
-      _call('act', {'roomId': roomId, 'action': action});
+      _call('act', {'roomId': roomId, 'move': action});
 
   @override
   Future<void> leave(String roomId) => _call('leave', {'roomId': roomId});
