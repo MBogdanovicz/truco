@@ -121,13 +121,19 @@ class PushService {
 
   static const _askedKey = 'push.asked.v1';
 
+  /// The person turned "Receber intimações" off on this device (the system
+  /// permission can only be taken back in the settings).
+  static const _offKey = 'push.off.v1';
+
   Future<PushState> state() async {
     if (!await _init()) return PushState.unsupported;
     final s = await FirebaseMessaging.instance.getNotificationSettings();
     switch (s.authorizationStatus) {
       case AuthorizationStatus.authorized:
       case AuthorizationStatus.provisional:
-        return PushState.on;
+        final off = await _prefs((p) => p.getBool(_offKey))
+            .catchError((Object _) => null);
+        return off == true ? PushState.off : PushState.on;
       case AuthorizationStatus.notDetermined:
         return PushState.off;
       case AuthorizationStatus.denied:
@@ -180,6 +186,10 @@ class PushService {
 
   /// Stops pushes to this device (e.g. on sign out).
   Future<void> disable(SupabaseClient client) async {
+    await _prefs((p) => p.setBool(_offKey, true))
+        .catchError((Object e) => debugPrint('Push: $e'));
+    await _refresh?.cancel();
+    _refresh = null;
     if (!_ready) return;
     final token = await FirebaseMessaging.instance.getToken(
       vapidKey: kIsWeb ? FirebaseWeb.vapidKey : null,

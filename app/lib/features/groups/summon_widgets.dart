@@ -43,13 +43,6 @@ class PushToggleTile extends ConsumerWidget {
                         ref.invalidate(pushStateProvider);
                       } else {
                         await PushService.instance.disable(client);
-                        if (context.mounted) {
-                          showAppToast(
-                            context,
-                            'Para parar de vez, desligue as notificações do '
-                            'Truco nas configurações.',
-                          );
-                        }
                       }
                     } on Object catch (e) {
                       debugPrint('Push toggle: $e');
