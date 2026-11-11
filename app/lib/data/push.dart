@@ -36,7 +36,16 @@ abstract final class FirebaseWeb {
   );
 }
 
-enum PushState { unsupported, off, on, blocked }
+enum PushState {
+  unsupported,
+  off,
+  on,
+  blocked,
+
+  /// Allowed, but the browser's push service refused to register (e.g.
+  /// Brave with Google push services turned off).
+  failed,
+}
 
 /// A push that calls the person to a room ("intimar").
 class Summons {

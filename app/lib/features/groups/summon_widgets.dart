@@ -21,6 +21,10 @@ class PushToggleTile extends ConsumerWidget {
       footer: state == PushState.blocked
           ? 'As notificações do Truco estão bloqueadas. Libere nas '
                 'configurações do ${Theme.of(context).platform == TargetPlatform.android ? 'celular' : 'navegador'}.'
+          : state == PushState.failed
+          ? 'Este navegador não conseguiu ativar os avisos. No Brave, ligue '
+                '"Usar os serviços do Google para mensagens push" em '
+                'Configurações > Privacidade e segurança, ou use o Chrome.'
           : 'Quando alguém do seu grupo intimar para uma partida, você recebe '
                 'um aviso neste aparelho.',
       children: [
@@ -36,6 +40,7 @@ class PushToggleTile extends ConsumerWidget {
                     try {
                       if (v) {
                         await PushService.instance.enable(client);
+                        ref.invalidate(pushStateProvider);
                       } else {
                         await PushService.instance.disable(client);
                         if (context.mounted) {
@@ -51,7 +56,11 @@ class PushToggleTile extends ConsumerWidget {
                       if (context.mounted) {
                         showAppToast(
                           context,
-                          'Não foi possível ativar os avisos.',
+                          '$e'.contains('push service')
+                              ? 'O navegador recusou os avisos. Veja a dica '
+                                    'abaixo.'
+                              : 'Não foi possível ativar os avisos.',
+                          long: true,
                         );
                       }
                     }
