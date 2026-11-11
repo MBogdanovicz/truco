@@ -170,8 +170,10 @@ class Coach {
       return CoachTip(_why(v, chosen, best.key, mine, best.value));
     }
 
-    // Didn't call truco with a hand that was very likely to win.
-    if (v.legalActions.any((a) => a is Raise) &&
+    // Didn't call truco with a hand that was very likely to win. Not in the
+    // first round: holding back there to let them call truco is a fine play.
+    if (v.rounds.isNotEmpty &&
+        v.legalActions.any((a) => a is Raise) &&
         v.stakeLevel == 0 &&
         v.scoreOf(v.team) + v.handValue < v.rules.targetScore) {
       final p = _chance(v);
