@@ -1,5 +1,5 @@
 // Slow games ("partida lenta"): lets the computer move for whoever ran out
-// of days. Nobody may have the game open, so a GitHub workflow calls this
+// of days. Tournaments: decides live matches past their deadline (W.O.). Nobody may have the game open, so a GitHub workflow calls this
 // every hour (.github/workflows/game-sweep.yml).
 //
 // Deploy with: supabase functions deploy game-sweep --no-verify-jwt
@@ -8,6 +8,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { Game } from "../game/game.ts";
+import { Tournaments } from "../game/tournament.ts";
 
 Deno.serve(async (req) => {
   const secret = Deno.env.get("CRON_SECRET");
@@ -19,7 +20,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const result = await new Game(db, "", false, "").sweep();
+    const result = {
+      slow: await new Game(db, "", false, "").sweep(),
+      tournaments: await new Tournaments(db, "", false, "").sweep(),
+    };
     console.log("game-sweep", result);
     return new Response(JSON.stringify(result), {
       headers: { "Content-Type": "application/json" },
