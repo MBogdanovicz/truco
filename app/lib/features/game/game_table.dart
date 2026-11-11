@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../domain/game/cards.dart' as deck;
+import '../../domain/game/coach.dart';
 import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
 import '../../domain/game/truco_game.dart';
@@ -20,6 +21,9 @@ class GameTableModel {
     this.busy = false,
     this.status,
     this.secondsLeft,
+    this.tip,
+    this.hint,
+    this.coachSummary,
   });
 
   final TableView view;
@@ -39,7 +43,26 @@ class GameTableModel {
   /// Time left for the move the game waits for (online games).
   final int? secondsLeft;
 
+  /// "Modo professor": a comment on the viewer's last move.
+  final CoachTip? tip;
+
+  /// "Modo professor": what to weigh before a hard decision.
+  final CoachTip? hint;
+
+  /// "Modo professor": how the game went, shown when it ends.
+  final String? coachSummary;
+
   bool get canAct => !busy && view.canAct;
+
+  GameTableModel withoutTips() => GameTableModel(
+    view: view,
+    names: names,
+    wins: wins,
+    busy: busy,
+    status: status,
+    secondsLeft: secondsLeft,
+    coachSummary: coachSummary,
+  );
 }
 
 /// What the viewer can do at the table.
@@ -54,6 +77,7 @@ class GameTableActions {
     this.onRematch,
     this.rematchLabel = 'Revanche',
     this.gameOverExtra,
+    this.onDismissTip,
   });
 
   final void Function(deck.Card card, {bool covered}) playCard;
@@ -69,6 +93,9 @@ class GameTableActions {
 
   /// E.g. "Esperando o anfitrião…" in an online room.
   final String? gameOverExtra;
+
+  /// Closes the professor's comment.
+  final VoidCallback? onDismissTip;
 }
 
 /// The card table: the viewer at the bottom, partner on top, opponents at
@@ -114,6 +141,8 @@ class _GameTableState extends State<GameTable> {
                   children: [
                     _TopBar(view: v, onBack: a.onLeave),
                     Expanded(child: _table()),
+                    if (m.tip != null) _tip(m.tip!),
+                    if (m.hint != null) _tip(m.hint!),
                     _actions(),
                     _hand(),
                   ],
@@ -125,6 +154,60 @@ class _GameTableState extends State<GameTable> {
       ),
     );
   }
+
+  // ------------------------------------------------------------ professor --
+
+  Widget _tip(CoachTip tip) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+    child: Material(
+      color: tip.good
+          ? const Color(0xFF2E7D32)
+          : tip.isHint
+          ? const Color(0xFFE3F0FF)
+          : const Color(0xFFFFF3C4),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: a.onDismissTip,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tip.good
+                    ? '👏'
+                    : tip.isHint
+                    ? '🤔'
+                    : '💡',
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  tip.text,
+                  style: TextStyle(
+                    color: tip.good
+                        ? Colors.white
+                        : tip.isHint
+                        ? const Color(0xFF0D2A4D)
+                        : const Color(0xFF4A3B00),
+                    fontSize: 14,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.close,
+                size: 18,
+                color: tip.good ? Colors.white70 : const Color(0xFF8A7A30),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 
   // -------------------------------------------------------------- table --
 
@@ -282,6 +365,24 @@ class _GameTableState extends State<GameTable> {
                   '\nPlacar da noite: ${m.wins[v.team]} × ${m.wins[v.team.other]}',
                   textAlign: TextAlign.center,
                 ),
+                if (m.coachSummary != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3C4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '🎓 Professor\n${m.coachSummary}',
+                      style: const TextStyle(
+                        color: Color(0xFF4A3B00),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
                 if (a.gameOverExtra != null) ...[
                   const SizedBox(height: 8),
                   Text(a.gameOverExtra!, textAlign: TextAlign.center),

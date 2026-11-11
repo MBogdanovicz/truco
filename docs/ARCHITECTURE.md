@@ -396,10 +396,20 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
 * Game achievements (`game_*` ids): `lib/domain/game/game_feats.dart` reads the game's events (cards
   dealt, raises, folds, the third round) and the engine returns them per seat when the game ends;
   `record_game_result(p_feats)` unlocks them only for ranked games. Wins in the game (`game_first_win`,
-  `game_wins_10`) are counted in SQL. Manilha names: gato (paus), copas, espadilha (espadas), salmora
+  `game_wins_10`) are counted in SQL. Manilha names: gato (paus), copas, espadilha (espadas), salmoura
   (ouros).
 
-### 10.6 Next (see ROADMAP G4+)
+### 10.6 Phase 4: move time and "modo professor"
+
+* Custom rules: only the online move time (`TrucoRules.turnSeconds`, JSON `tempo`, 10/20/30 s or 0 =
+  no limit; the server's `turnMs()` returns null for no deadline). The game is called just "Truco" in
+  the app (no "Paulista").
+* "Modo professor" (Premium, `Entitlements.canUseCoach`): `lib/domain/game/coach.dart` reviews each of
+  the person's moves against the computer before it is applied, estimating chances with the hard bot's
+  sampling (400 deals, fixed seed), and shows a tip banner above the actions. `training.dart` holds the
+  practice situations shown by `TrainingScreen` (`/jogo/treinar`); progress is a local pref.
+
+### 10.7 Next (see ROADMAP G5+)
 
 * Championships: new tables for tournaments, brackets and entries.
 

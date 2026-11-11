@@ -90,15 +90,24 @@ class Ads {
   static Future<void> beforeGame(WidgetRef ref) async {
     // Started by main(), so widget tests never reach the ad SDK.
     if (!supported || !_started) return;
-    final ent = await ref.read(entitlementsProvider.future);
-    if (ent.adFree) return;
-    final last = _lastShown;
-    if (last != null && DateTime.now().difference(last) < _minGap) return;
-    final ad = _ad;
-    if (ad == null) {
+    // No ad ready (offline, say): nothing to wait for, not even Premium.
+    if (_ad == null) {
       _load();
       return;
     }
+    final last = _lastShown;
+    if (last != null && DateTime.now().difference(last) < _minGap) return;
+    final Entitlements ent;
+    try {
+      ent = await ref
+          .read(entitlementsProvider.future)
+          .timeout(const Duration(seconds: 6));
+    } on Object {
+      return;
+    }
+    if (ent.adFree) return;
+    final ad = _ad;
+    if (ad == null) return;
     _ad = null;
     final closed = Completer<void>();
     void finish(Ad a) {

@@ -101,7 +101,7 @@ enum Achievement {
   gameCasalMenor(
     'game_casal_menor',
     'Casal menor',
-    'Ganhe uma mão em que você recebeu a salmora e a espadilha.',
+    'Ganhe uma mão em que você recebeu a salmoura e a espadilha.',
   ),
   gameCasalPreto(
     'game_casal_preto',
@@ -111,7 +111,7 @@ enum Achievement {
   gameCasalVermelho(
     'game_casal_vermelho',
     'Casal vermelho',
-    'Ganhe uma mão em que você recebeu a salmora e a copas.',
+    'Ganhe uma mão em que você recebeu a salmoura e a copas.',
   );
 
   const Achievement(

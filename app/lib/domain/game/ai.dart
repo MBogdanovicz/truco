@@ -110,8 +110,13 @@ class TrucoBot {
         return p > 0.72 + _noise(0.06) || _random.nextDouble() < 0.03;
       case AiLevel.hard:
         final p = winProbability(v, samples: _samples);
+        // A hand that is all but won: let the other team get excited and
+        // call truco (then raise them), and only ask at the last card.
+        if (p > 0.9 && v.hand.length > 1 && _random.nextDouble() < 0.8) {
+          return false;
+        }
         if (p > 0.62 + _noise(0.03)) return true;
-        // Rare bluff, late in the hand when fewer cards are hidden.
+        // Rare "facão", late in the hand when fewer cards are hidden.
         return v.rounds.isNotEmpty && p < 0.3 && _random.nextDouble() < 0.04;
     }
   }
@@ -315,8 +320,14 @@ int heuristicPick(
 
   if (hand.length == 1) return 0;
   final team = teamOfSeat(seat);
+  // Losing this round loses the hand (first lost or tied, or one each).
+  final decisive =
+      roundWinners.isNotEmpty &&
+      (roundWinners.first != team || roundWinners.length > 1);
   if (current.isEmpty) {
-    if (roundWinners.isNotEmpty) return idxMax();
+    // After winning the first, lead low: the partner, closer to the pé,
+    // answers if needed, and the strong card stays for the third round.
+    if (roundWinners.isNotEmpty) return decisive ? idxMax() : idxMin();
     // First round: lead the best card, but keep a manilha for later when
     // there is a decent card to lead instead.
     final sorted = [...hand]..sort();
@@ -332,6 +343,17 @@ int heuristicPick(
     } else {
       bestOpp = max(bestOpp, str);
     }
+  }
+  // Second to play: the partner is the pé and plays after both opponents.
+  // Win cheaply when a plain card does it; otherwise keep the manilhas and
+  // leave the round to the partner, unless the round decides the hand.
+  if (current.length == 1 && teamOfSeat(current.first.$1) != team) {
+    var cheap = -1;
+    for (var j = 0; j < hand.length; j++) {
+      if (hand[j] > bestOpp && (cheap < 0 || hand[j] < hand[cheap])) cheap = j;
+    }
+    if (cheap >= 0 && (hand[cheap] < 10 || decisive)) return cheap;
+    return idxMin();
   }
   // Partner is winning: save the good cards, unless an opponent still plays
   // after us and partner's card is weak.

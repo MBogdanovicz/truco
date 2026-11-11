@@ -13,6 +13,7 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import '../premium/premium_screen.dart';
 import 'local_game_controller.dart';
 import 'online_game_controller.dart';
+import 'rules_screen.dart';
 
 /// Chooses rules and computer levels for a game against the computer.
 class GameSetupScreen extends ConsumerStatefulWidget {
@@ -31,6 +32,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   static const _kFoot = 'game.dealerSeesPartnerThirdCard';
   static const _kPartner = 'game.partner';
   static const _kOpponents = 'game.opponents';
+  static const _kCoach = 'game.coach';
+  static const _kTurn = 'game.turnSeconds';
 
   bool _fixed = false;
   bool _cover = true;
@@ -38,6 +41,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   bool _seeOnRaise = true;
   bool _seeOnDecision = true;
   bool _foot = true;
+  bool _coach = false;
+  int _turn = 20;
 
   TrucoRules get _rules => TrucoRules.paulista.copyWith(
     manilhaMode: _fixed ? ManilhaMode.fixed : ManilhaMode.vira,
@@ -46,6 +51,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
     seePartnerOnRaise: _seeOnRaise,
     bothTeamsSeeOnDecision: _seeOnDecision,
     dealerSeesPartnerThirdCard: _foot,
+    turnSeconds: _turn,
   );
   AiLevel _partner = AiLevel.medium;
   AiLevel _opponents = AiLevel.medium;
@@ -67,6 +73,9 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
         _seeOnRaise = p.getBool(_kSeeOnRaise) ?? _seeOnRaise;
         _seeOnDecision = p.getBool(_kSeeOnDecision) ?? _seeOnDecision;
         _foot = p.getBool(_kFoot) ?? _foot;
+        _coach = p.getBool(_kCoach) ?? _coach;
+        final turn = p.getInt(_kTurn);
+        if (TrucoRules.turnSecondsOptions.contains(turn)) _turn = turn!;
         _partner =
             AiLevel.values.asNameMap()[p.getString(_kPartner)] ?? _partner;
         _opponents =
@@ -84,6 +93,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
       await p.setBool(_kSeeOnRaise, _seeOnRaise);
       await p.setBool(_kSeeOnDecision, _seeOnDecision);
       await p.setBool(_kFoot, _foot);
+      await p.setBool(_kCoach, _coach);
+      await p.setInt(_kTurn, _turn);
       await p.setString(_kPartner, _partner.name);
       await p.setString(_kOpponents, _opponents.name);
     } catch (_) {}
@@ -92,6 +103,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   Future<void> _start() async {
     _save();
     await Ads.beforeGame(ref);
+    if (!mounted) return;
+    final ent = await ref.read(entitlementsProvider.future);
     if (!mounted) return;
     final me = ref.read(authRepositoryProvider).currentUser;
     final name = me?.displayName?.trim();
@@ -103,12 +116,35 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
             partnerLevel: _partner,
             opponentLevel: _opponents,
             myName: name == null || name.isEmpty ? 'Você' : name,
+            coach: _coach && ent.canUseCoach,
           ),
         );
     context.go('/jogo/partida');
   }
 
   bool _creating = false;
+
+  Future<void> _openTraining() async {
+    final ent = await ref.read(entitlementsProvider.future);
+    if (!mounted) return;
+    if (!ent.canUseCoach) {
+      await showPremiumRequired(context, 'Treinar com o professor');
+      return;
+    }
+    context.push('/jogo/treinar');
+  }
+
+  Future<void> _setCoach(bool on) async {
+    if (on) {
+      final ent = await ref.read(entitlementsProvider.future);
+      if (!mounted) return;
+      if (!ent.canUseCoach) {
+        await showPremiumRequired(context, 'Modo professor');
+        return;
+      }
+    }
+    setState(() => _coach = on);
+  }
 
   Future<void> _createRoom() async {
     final user = ref.read(authRepositoryProvider).currentUser;
@@ -167,7 +203,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
           ),
         ),
         AppSection(
-          header: 'Regras (truco paulista)',
+          header: 'Regras',
           footer:
               'Mão vale 1, truco 3, seis 6, nove 9, doze 12. '
               'Mão de onze vale 3.',
@@ -244,6 +280,25 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
             _levels(_opponents, (v) => setState(() => _opponents = v)),
           ],
         ),
+        AppSection(
+          header: 'Professor (Premium)',
+          footer:
+              'O professor comenta as suas jogadas quando havia uma melhor, '
+              'e explica por quê.',
+          children: [
+            AppTile(
+              title: 'Modo professor',
+              subtitle: 'Dicas sobre as jogadas, só contra o computador.',
+              trailing: AppSwitch(value: _coach, onChanged: _setCoach),
+            ),
+            AppTile(
+              title: 'Treinar',
+              subtitle: 'Situações de jogo com a explicação da melhor jogada.',
+              leading: const AppTileIcon(AppIcon.info, color: Colors.teal),
+              onTap: _openTraining,
+            ),
+          ],
+        ),
         Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -262,9 +317,22 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
           header: 'Online, com amigos',
           footer:
               'A sala usa as regras acima; o computador joga nos lugares '
-              'vazios no nível dos adversários. Só conta para o ranking com '
-              '4 pessoas com conta.',
+              'vazios no nível dos adversários. Quando o tempo de jogada '
+              'acaba, o computador joga pela pessoa. Só conta para o ranking '
+              'com 4 pessoas com conta.',
           children: [
+            AppTile(title: 'Tempo de jogada'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: AppSegmented<int>(
+                segments: {
+                  for (final t in TrucoRules.turnSecondsOptions)
+                    t: turnSecondsLabel(t),
+                },
+                value: _turn,
+                onChanged: (v) => setState(() => _turn = v),
+              ),
+            ),
             AppTile(
               title: 'Criar sala',
               subtitle: 'Mande o código para os amigos.',

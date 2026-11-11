@@ -1,6 +1,6 @@
 // deno test supabase/functions/game/game_test.ts
 // Plays whole online games against an in-memory stand-in for the database.
-import { Game, type Json, Refused } from "./game.ts";
+import { Game, type Json, Refused, turnMs } from "./game.ts";
 
 type Row = Json;
 
@@ -332,4 +332,10 @@ Deno.test("leaving and coming back to a game in progress", async () => {
   assert(lastFrame(db, roomId, 3)!.me === 3, "has a view");
   assert(db.tables.game_states[0].replaced === true);
   await playToEnd(db, roomId, new Map([[0, ana], [3, caio], [daniSeat, dani]]));
+});
+
+Deno.test("turn time comes from the room's rules", () => {
+  assert(turnMs({}) === 20_000);
+  assert(turnMs({ tempo: 10 }) === 10_000);
+  assert(turnMs({ tempo: 0 }) === null);
 });

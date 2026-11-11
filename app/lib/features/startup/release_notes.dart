@@ -41,7 +41,7 @@ const releaseNotes = <ReleaseNote>[
     ],
   ),
   ReleaseNote(5, [
-    'Novo: jogue truco paulista contra o computador! Escolha o nível do '
+    'Novo: jogue truco contra o computador! Escolha o nível do '
         'parceiro e dos adversários (fácil, médio ou difícil).',
     'Variações de regra: manilha virada ou fixa, carta coberta, mão de '
         'ferro, ver as cartas do parceiro ao receber truco ou na mão de onze, '
@@ -59,5 +59,16 @@ const releaseNotes = <ReleaseNote>[
         'com os avisos ligados recebem um chamado para jogar.',
     'Ligue os avisos em Grupos > "Receber intimações".',
     '14 conquistas novas do jogo de truco, algumas secretas.',
+  ]),
+  ReleaseNote(8, [
+    'Novo (Premium): modo professor! Contra o computador, ele comenta as '
+        'suas jogadas, ajuda a pensar nas decisões difíceis e faz um resumo '
+        'no fim da partida.',
+    'Novo (Premium): Treinar, com situações de jogo e a explicação da '
+        'melhor jogada.',
+    'Tempo de jogada nas salas online: 10, 20 ou 30 segundos, ou sem limite.',
+    'Computador mais esperto: joga em dupla com o parceiro e sabe segurar '
+        'o truco.',
+    'Marcador e jogo contra o computador funcionam sem internet.',
   ]),
 ];
