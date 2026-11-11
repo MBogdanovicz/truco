@@ -110,6 +110,25 @@ void main() {
     ], rules);
     expect(quiet[0], {GameFeat.comadre});
     expect(quiet[1], isEmpty);
+
+    // A truco the other team ran from keeps the hand at 1; a mão de onze
+    // worth 3 doesn't count either.
+    final ran = gameFeats([
+      hand(filler),
+      const RaiseCalled(0, value: 3, name: 'Truco'),
+      const Folded(1),
+      const HandEnded(winner: Team.a, points: 1),
+      const HandStarted(
+        handNumber: 2,
+        dealer: 0,
+        vira: null,
+        decisionTeam: Team.a,
+        iron: false,
+      ),
+      const HandEnded(winner: Team.a, points: 3),
+      const GameEnded(Team.a),
+    ], rules);
+    expect(ran[0], {GameFeat.comadre});
   });
 
   test('a real game reports feats only from its events', () {

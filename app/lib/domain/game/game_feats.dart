@@ -16,7 +16,8 @@ abstract final class GameFeat {
   /// Won a "mão de ferro".
   static const ironHand = 'game_iron_hand';
 
-  /// Won a game where nobody called truco ("jogo de comadre").
+  /// Won a game where every hand was worth 1, apart from the mão de onze
+  /// ("jogo de comadre"): a truco may be called if the other team runs.
   static const comadre = 'game_comadre';
 
   /// Won a hand playing the ace of spades in its third round.
@@ -68,7 +69,7 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
     }
   }
 
-  var anyRaise = false;
+  var raisedHand = false;
   final ran = <Team>{};
   HandStarted? hand;
   var round = 1;
@@ -87,7 +88,6 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
         ranFromSeis = false;
         lastRound.clear();
       case RaiseCalled():
-        anyRaise = true;
         lastRaise = e.value;
       case Folded():
         folded = true;
@@ -100,6 +100,9 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
       case HandEnded():
         final h = hand;
         final w = e.winner;
+        if (h != null && h.decisionTeam == null && e.points > 1) {
+          raisedHand = true;
+        }
         if (h == null || w == null) continue;
         if (ranFromSeis) team(w, GameFeat.seisBurro);
         if (!folded && e.points == 12) team(w, GameFeat.truco12);
@@ -124,7 +127,7 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
           }
         }
       case GameEnded():
-        if (!anyRaise) team(e.winner, GameFeat.comadre);
+        if (!raisedHand) team(e.winner, GameFeat.comadre);
         if (ran.contains(e.winner)) team(e.winner, GameFeat.ranAndWon);
       case DecisionMade():
       case RaiseAccepted():

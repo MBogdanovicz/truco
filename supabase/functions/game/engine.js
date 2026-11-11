@@ -1690,14 +1690,15 @@ k=0
 j=!1
 i=!1
 break A}if(g instanceof A.b4){k=g.b
-n=!0
 break A}if(g instanceof A.aU){p.k(0,(g.a&1)===0?B.b:B.c)
 i=k===6
 j=!0
 break A}if(g instanceof A.aR){if(l===3&&!g.c)o.i(0,g.a,g.b)
 break A}if(g instanceof A.b6){l=g.a+1
 break A}if(g instanceof A.al){f=g.a
-if(m==null||f==null)continue
+e=m!=null
+if(e&&m.e==null&&g.b>1)n=!0
+if(!e||f==null)continue
 if(i)q.$2(f,"game_seis_burro")
 e=!j
 if(e&&g.b===12)q.$2(f,"game_truco_12")
@@ -1920,9 +1921,11 @@ H:function H(a){this.a=a},
 F:function F(a){this.a=a},
 L:function L(a){this.a=a},
 N:function N(){},
-aW:function aW(a,b,c){this.b=a
-this.d=b
-this.f=c},
+aW:function aW(a,b,c,d){var _=this
+_.b=a
+_.d=b
+_.e=c
+_.f=d},
 aS:function aS(a,b){this.a=a
 this.b=b},
 aR:function aR(a,b,c){this.a=a
@@ -3813,7 +3816,7 @@ j.ch=s
 j.r=s!=null?B.e:B.h
 r=j.y
 q=j.CW
-B.a.k(j.d,new A.aW(j.x,r,q))},
+B.a.k(j.d,new A.aW(j.x,r,s,q))},
 aQ(a){var s,r,q,p,o=this,n=(a&1)===0?B.b:B.c
 switch(o.r.a){case 0:if(n!==o.ch)return B.o
 return A.e([new A.F(a),new A.L(a)],t.u)

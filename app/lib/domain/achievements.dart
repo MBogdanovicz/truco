@@ -54,7 +54,7 @@ enum Achievement {
   ),
   gameShutout(
     'game_shutout',
-    'Debaixo da mesa',
+    'Passa negão, passa loirinha',
     'Vença uma partida de truco no app por 12 x 0.',
     hidden: true,
   ),
@@ -73,7 +73,8 @@ enum Achievement {
   gameComadre(
     'game_comadre',
     'Jogo de comadre',
-    'Vença uma partida sem ninguém pedir ou aceitar truco.',
+    'Vença uma partida com todas as mãos valendo 1 tento (fora a mão de '
+        'onze).',
     hidden: true,
   ),
   gameAceRiver(
