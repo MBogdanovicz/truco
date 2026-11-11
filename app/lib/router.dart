@@ -13,6 +13,7 @@ import 'features/game/game_table_screen.dart';
 import 'features/game/online_game_screen.dart';
 import 'domain/game/rules.dart';
 import 'features/game/rules_screen.dart';
+import 'features/game/training_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/premium/premium_screen.dart';
 import 'features/ranking/ranking_screen.dart';
@@ -135,6 +136,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => JoinGameScreen(
                   initialCode: state.uri.queryParameters['codigo'],
                 ),
+              ),
+              GoRoute(
+                path: 'treinar',
+                builder: (_, _) => const TrainingScreen(),
               ),
               GoRoute(
                 path: 'regras',

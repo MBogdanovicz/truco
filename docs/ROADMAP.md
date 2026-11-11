@@ -32,7 +32,7 @@ out on purpose. Table variations are options on top of it.
 | G1 ✅ | Local game vs computer | Engine (`domain/game/`), bots easy/medium/hard, card table, rules screen, variations (fixed or flipped manilhas, covered card, mão de ferro). Friendly only. |
 | G2 ✅ | Online game | Rooms with a code/link (computer fills empty seats), server as judge (Edge Function `game` runs the Dart engine), ranked only with 4 people with accounts, ranking filter game / scorekeeper / both. Later: game "por perto", turn timer for idle players. |
 | G3 | Social | "Intimar" button (push to group members), game achievements. |
-| G4 | Learning & custom rules | More custom rule options; "modo professor": training scenarios and tips from the user's own plays. |
+| G4 | Learning & custom rules | Done (2026-11-11): online move time is the only new rule (Marcelo declined the others); "modo professor" (Premium): tips on the person's plays vs the computer, and training situations. |
 | G5 | Looks | Perks unlocked by achievements (decks, table themes) and Marcelo's other theme ideas (decided 2026-11-10: features first). |
 | Later | Nearby game, championships | Nearby (Bluetooth) game is low priority: people at the same table usually use a real deck. |
 
