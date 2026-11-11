@@ -283,3 +283,53 @@ Deno.test("guests can join but not create rooms", async () => {
   await guest.join({ code });
   assert(db.tables.game_seats.length === 2);
 });
+
+Deno.test("the computer moves for someone out of time", async () => {
+  const db = new FakeDb();
+  const ana = new Game(asDb(db), "ana", false, "Ana");
+  const caio = new Game(asDb(db), "caio", false, "Caio");
+  const { roomId, code } = await ana.create({ botLevel: "easy" });
+  await caio.join({ code });
+  await ana.start({ roomId });
+  const room = db.tables.game_rooms[0];
+  assert(typeof room.turn_deadline === "string", "deadline set");
+  // Too early: nothing happens.
+  const early = await caio.timeout({ roomId });
+  assert((early as Json).waiting === true);
+  const version = db.tables.game_states[0].version as number;
+  room.turn_deadline = new Date(Date.now() - 1000).toISOString();
+  const r = await caio.timeout({ roomId }) as Json;
+  assert(r.version === version + 1, "moved");
+  assert(Array.isArray(r.frames));
+  // Play to the end only by timeouts.
+  for (let i = 0; i < 2000 && room.status === "playing"; i++) {
+    room.turn_deadline = new Date(Date.now() - 1000).toISOString();
+    await ana.timeout({ roomId });
+  }
+  assert(room.status === "finished");
+  assert(room.turn_deadline === null);
+});
+
+Deno.test("leaving and coming back to a game in progress", async () => {
+  const db = new FakeDb();
+  const ana = new Game(asDb(db), "ana", false, "Ana");
+  const caio = new Game(asDb(db), "caio", false, "Caio");
+  const dani = new Game(asDb(db), "dani", false, "Dani");
+  const { roomId, code } = await ana.create({ botLevel: "easy" });
+  await caio.join({ code });
+  await caio.sit({ roomId, seat: 3 });
+  await ana.start({ roomId });
+  await caio.leave({ roomId });
+  const room = db.tables.game_rooms[0];
+  assert((room.bots as unknown[])[3] === "easy");
+  // Someone new takes a computer seat; Caio gets his own seat back.
+  await dani.join({ code });
+  const daniSeat = db.tables.game_seats.find((s) => s.user_id === "dani")!.seat as number;
+  assert(daniSeat !== 3 && daniSeat !== 0, `dani at ${daniSeat}`);
+  await caio.join({ code });
+  assert(db.tables.game_seats.find((s) => s.user_id === "caio")!.seat === 3);
+  assert((room.bots as unknown[])[3] === null);
+  assert(lastFrame(db, roomId, 3)!.me === 3, "has a view");
+  assert(db.tables.game_states[0].replaced === true);
+  await playToEnd(db, roomId, new Map([[0, ana], [3, caio], [daniSeat, dani]]));
+});

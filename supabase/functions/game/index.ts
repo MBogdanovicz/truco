@@ -9,7 +9,7 @@
 // which the app follows over Realtime.
 //
 // Actions: create, join, sit, options, start (also rematch), act ({roomId,
-// move: {t, c?, x?, i?}}), leave.
+// move: {t, c?, x?, i?}}), timeout, leave.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
 // by the platform.
 
@@ -63,6 +63,8 @@ Deno.serve(async (req) => {
         return reply(200, await game.start(body));
       case "act":
         return reply(200, await game.act(body));
+      case "timeout":
+        return reply(200, await game.timeout(body));
       case "leave":
         return reply(200, await game.leave(body));
       default:

@@ -92,6 +92,36 @@ class GameSession {
     return act(seat, PlayCard(seat, hand[index]));
   }
 
+  /// The person the game waits for, or null (game over, or a bot's move).
+  int? get waitingFor {
+    switch (game.phase) {
+      case GamePhase.playing:
+        return isHuman(game.turn) ? game.turn : null;
+      case GamePhase.raisePending:
+      case GamePhase.decision:
+        final team = game.phase == GamePhase.decision
+            ? game.decisionTeam!
+            : game.pending!.team.other;
+        final responder = game.responder;
+        if (responder != null && isHuman(responder)) return responder;
+        for (var s = 0; s < 4; s++) {
+          if (teamOfSeat(s) == team && isHuman(s)) return s;
+        }
+        return null;
+      case GamePhase.handOver:
+      case GamePhase.gameOver:
+        return null;
+    }
+  }
+
+  /// The person took too long: the computer moves for them.
+  Frames timeout({AiLevel level = AiLevel.medium}) {
+    final seat = waitingFor;
+    if (seat == null) throw GameRuleError('nobody to wait for');
+    final action = TrucoBot(level, random: _random).decide(game.viewFor(seat));
+    return act(seat, action);
+  }
+
   /// Applies a person's action sent as JSON (online games).
   Frames actJson(int seat, Map<String, Object?> j) => j['t'] == 'blind'
       ? actBlind(seat, j['i']! as int)

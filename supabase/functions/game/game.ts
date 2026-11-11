@@ -13,8 +13,12 @@ interface EngineOut {
   winner?: "a" | "b";
   scores: [number, number];
   hands: Json[];
+  waitingFor?: number;
   error?: string;
 }
+
+/** Time a person has for each move, after the previous moves are shown. */
+export const TURN_MS = 20_000;
 
 const engine = (globalThis as unknown as { trucoEngine: (s: string) => string })
   .trucoEngine;
@@ -50,6 +54,7 @@ interface Room {
   wins_a: number;
   wins_b: number;
   game_no: number;
+  turn_deadline?: string | null;
 }
 
 interface Seat {
@@ -68,6 +73,7 @@ interface State {
   replaced: boolean;
   started_at: string;
   match_id: string | null;
+  departed?: Record<string, number>;
 }
 
 export class Game {
@@ -153,7 +159,10 @@ export class Game {
     if (seats.some((s) => s.user_id === this.userId)) {
       return { roomId: room.id, code: room.code };
     }
-    if (room.status === "playing") throw new Refused("game_started");
+    if (room.status === "playing") {
+      await this.joinGame(room, seats);
+      return { roomId: room.id, code: room.code };
+    }
     const free = [0, 1, 2, 3].filter((i) => !seats.some((s) => s.seat === i));
     if (free.length === 0) throw new Refused("room_full");
     await this.seat(room.id, free[0]);
@@ -233,12 +242,19 @@ export class Game {
       log: out.log,
       version,
       replaced: false,
+      departed: {},
       started_at: new Date().toISOString(),
       match_id: null,
     });
     if (error) throw error;
-    await this.touch(room.id, { bots, game_no: room.game_no + 1 });
-    await this.writeViews(room.id, seats, out, version);
+    await Promise.all([
+      this.touch(room.id, {
+        bots,
+        game_no: room.game_no + 1,
+        turn_deadline: this.deadline(out, seats),
+      }),
+      this.writeViews(room.id, seats, out, version),
+    ]);
     return {};
   }
 
@@ -246,36 +262,96 @@ export class Game {
     const action = body.move as Json | undefined;
     if (!action || typeof action.t !== "string") throw new Refused("bad_action");
     for (let attempt = 0; attempt < 4; attempt++) {
-      const room = await this.room(body.roomId as string);
+      const { room, seats, state } = await this.load(body.roomId as string);
       if (room.status !== "playing") throw new Refused("not_playing");
-      const seats = await this.seats(room.id);
       const me = this.mySeat(seats);
-      const state = await this.state(room.id);
       const out = runEngine({
-        rules: room.rules,
-        seed: state.seed,
-        firstDealer: state.first_dealer,
-        bots: room.bots,
-        log: state.log,
+        ...this.input(room, state),
         act: { seat: me.seat, action },
       });
       if (out.error) throw new Refused("illegal_move");
-      if (await this.save(room, seats, state, out)) return {};
+      const version = await this.save(room, seats, state, out);
+      if (version) return this.mine(out, me.seat, version);
     }
     throw new Refused("busy");
   }
 
-  /** Stores the new log if nobody changed it meanwhile; false to retry. */
+  /** Someone ran out of time: the computer moves for them. Any seated
+   * person's app may ask; it does nothing before the deadline. */
+  async timeout(body: Json) {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { room, seats, state } = await this.load(body.roomId as string);
+      const me = this.mySeat(seats);
+      const deadline = room.turn_deadline ? Date.parse(room.turn_deadline) : NaN;
+      // A little slack for clocks that run a bit fast.
+      if (room.status !== "playing" || !(Date.now() >= deadline - 2000)) {
+        return { waiting: true };
+      }
+      const out = runEngine({ ...this.input(room, state), timeout: true });
+      if (out.error) return { waiting: true };
+      const version = await this.save(room, seats, state, out);
+      if (version) return this.mine(out, me.seat, version);
+    }
+    throw new Refused("busy");
+  }
+
+  private async load(roomId: string) {
+    const [room, seats, state] = await Promise.all([
+      this.room(roomId),
+      this.seats(roomId),
+      this.state(roomId),
+    ]);
+    return { room, seats, state };
+  }
+
+  private input(room: Room, state: State): Json {
+    return {
+      rules: room.rules,
+      seed: state.seed,
+      firstDealer: state.first_dealer,
+      bots: room.bots,
+      log: state.log,
+    };
+  }
+
+  /** The caller's own frames, so their app needn't wait for Realtime. */
+  private mine(out: EngineOut, seat: number, version: number) {
+    return { version, frames: out.frames[String(seat)] ?? [] };
+  }
+
+  /** When the person the game now waits for runs out of time. */
+  private deadline(out: EngineOut, seats: Seat[]): string | null {
+    if (out.waitingFor === undefined || out.phase === "gameOver") return null;
+    // Everyone first watches the moves just made.
+    const showing = Math.max(
+      0,
+      ...seats.map((s) =>
+        (out.frames[String(s.seat)] ?? []).reduce(
+          (sum, f) => sum + ((f.delay as number | undefined) ?? 0),
+          0,
+        )
+      ),
+    );
+    return new Date(Date.now() + showing + TURN_MS).toISOString();
+  }
+
+  /** Stores the new log if nobody changed it meanwhile; returns the new
+   * version, or 0 to retry. */
   private async save(room: Room, seats: Seat[], state: State, out: EngineOut, patch: Json = {}) {
     const version = state.version + 1;
     const { data, error } = await this.db.from("game_states")
       .update({ log: out.log, version, ...patch })
       .eq("room_id", room.id).eq("version", state.version).select("room_id");
     if (error) throw error;
-    if (!data?.length) return false;
-    await this.writeViews(room.id, seats, out, version);
-    if (out.phase === "gameOver" && out.winner) await this.finish(room, state, out);
-    return true;
+    if (!data?.length) return 0;
+    const over = out.phase === "gameOver" && out.winner;
+    await Promise.all([
+      this.writeViews(room.id, seats, out, version),
+      over ? this.finish(room, state, out) : this.touch(room.id, {
+        turn_deadline: this.deadline(out, seats),
+      }),
+    ]);
+    return version;
   }
 
   private async finish(room: Room, state: State, out: EngineOut) {
@@ -288,6 +364,7 @@ export class Game {
     if (error) console.error("record_game_result", error);
     await this.touch(room.id, {
       status: "finished",
+      turn_deadline: null,
       wins_a: room.wins_a + (out.winner === "a" ? 1 : 0),
       wins_b: room.wins_b + (out.winner === "b" ? 1 : 0),
     });
@@ -307,6 +384,27 @@ export class Game {
     if (rows.length === 0) return;
     const { error } = await this.db.from("game_views").upsert(rows);
     if (error) throw error;
+  }
+
+  /** Takes a seat the computer is playing (the one this person left, if
+   * they come back), so a game in progress can be joined. */
+  private async joinGame(room: Room, seats: Seat[]) {
+    const state = await this.state(room.id);
+    const bots = [...room.bots];
+    const back = state.departed?.[this.userId];
+    const seat = back !== undefined && bots[back] ? back : bots.findIndex((b) => b);
+    if (seat < 0) throw new Refused("room_full");
+    await this.seat(room.id, seat);
+    bots[seat] = null;
+    await this.touch(room.id, { bots });
+    const now = [...seats, { seat, user_id: this.userId, name: this.name, is_guest: this.isGuest }];
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const fresh = attempt === 0 ? state : await this.state(room.id);
+      const out = runEngine(this.input({ ...room, bots }, fresh));
+      // Someone joined mid-game: it no longer counts for the ranking.
+      if (await this.save({ ...room, bots }, now, fresh, out, { replaced: true })) return;
+    }
+    throw new Refused("busy");
   }
 
   /** Leaves the room; during a game the computer takes the seat. */
@@ -330,14 +428,9 @@ export class Game {
       // The computer plays on for the one who left.
       for (let attempt = 0; attempt < 4; attempt++) {
         const state = await this.state(room.id);
-        const out = runEngine({
-          rules: room.rules,
-          seed: state.seed,
-          firstDealer: state.first_dealer,
-          bots,
-          log: state.log,
-        });
-        if (await this.save({ ...room, bots }, rest, state, out, { replaced: true })) break;
+        const out = runEngine(this.input({ ...room, bots }, state));
+        const departed = { ...(state.departed ?? {}), [this.userId]: me.seat };
+        if (await this.save({ ...room, bots }, rest, state, out, { replaced: true, departed })) break;
       }
       return {};
     }
@@ -345,4 +438,3 @@ export class Game {
     return {};
   }
 }
-

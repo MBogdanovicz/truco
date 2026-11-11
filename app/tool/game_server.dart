@@ -5,7 +5,9 @@
 // function that takes and returns JSON text:
 //
 //   in:  {rules, seed, firstDealer, bots: [level|null x4], log,
-//         act?: {seat, action}}            // action: {t, c?, x?, i?}
+//         act?: {seat, action}             // action: {t, c?, x?, i?}
+//         timeout?: true}                  // the computer moves for the
+//                                          // person the game waits for
 //   out: {log, frames: {"<seat>": [TableView json]}, phase, winner?,
 //         scores: [a, b], hands: [{w?, p}], error?}
 //
@@ -41,7 +43,9 @@ String run(String input) {
   String? error;
   final act = (j['act'] as Map?)?.cast<String, Object?>();
   try {
-    final f = act == null
+    final f = j['timeout'] == true
+        ? session.timeout()
+        : act == null
         ? session.advance()
         : session.actJson(
             act['seat']! as int,
@@ -65,6 +69,7 @@ String run(String input) {
     'phase': g.phase.name,
     if (g.winner != null) 'winner': g.winner!.name,
     'scores': [g.scores[Team.a], g.scores[Team.b]],
+    'waitingFor': ?session.waitingFor,
     'hands': [
       for (final e in g.events.whereType<HandEnded>())
         {if (e.winner != null) 'w': e.winner!.name, 'p': e.points},
