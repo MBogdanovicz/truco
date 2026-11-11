@@ -7,6 +7,7 @@
 // handler so it runs first. It opens in the site last opened (the official
 // one or the beta at /beta/; index.html saves which), else the invite link.
 self.addEventListener('notificationclick', function (event) {
+  console.log('Truco: notification click', event.notification.data);
   var raw = event.notification.data || {};
   var msg = raw.FCM_MSG || {};
   var data = msg.data || raw;
