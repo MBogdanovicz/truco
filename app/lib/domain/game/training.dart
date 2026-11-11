@@ -15,6 +15,7 @@ class TrainingScenario {
     required this.explanation,
     this.table = const [],
     this.partner,
+    this.alsoGood = const {},
   });
 
   /// Stable id, kept with the person's progress.
@@ -37,6 +38,12 @@ class TrainingScenario {
   /// Index of the right option.
   final int answer;
   final String explanation;
+
+  /// Other options that are also a good play (a more cautious line, say),
+  /// with a word on why. Picking one counts as right.
+  final Map<int, String> alsoGood;
+
+  bool isGood(int option) => option == answer || alsoGood.containsKey(option);
 }
 
 Card _c(String id) => Card.parse(id);
@@ -278,6 +285,11 @@ final trainingScenarios = <TrainingScenario>[
         'Com a primeira ganha e o gato na mão, a segunda rodada é sua: a '
         'mão está ganha. Peça nove: se correrem, vocês levam 6; se '
         'aceitarem, 9.',
+    alsoGood: {
+      1:
+          'Aceitar também é bom: a mão continua ganha e você ainda pode '
+          'pedir nove mais à frente, quando eles já estiverem presos.',
+    },
   ),
   TrainingScenario(
     id: 'two_top_manilhas_answer',
@@ -294,6 +306,11 @@ final trainingScenarios = <TrainingScenario>[
         'A copas e a espadilha são a 2ª e a 3ª maiores cartas do jogo. Só o '
         'gato ganha de uma delas. Vocês ganham na grande maioria das vezes: '
         'peça seis.',
+    alsoGood: {
+      1:
+          'Aceitar também é bom: é uma linha mais conservadora, e você ainda '
+          'pode pedir seis mais à frente, depois de ver as cartas deles.',
+    },
   ),
   TrainingScenario(
     id: 'mao_de_onze_play',

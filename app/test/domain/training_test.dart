@@ -19,6 +19,10 @@ void main() {
         reason: 'repeated card in ${s.id}',
       );
       expect(s.explanation, isNotEmpty);
+      for (final k in s.alsoGood.keys) {
+        expect(k, isNot(s.answer));
+        expect(k, inInclusiveRange(0, s.options.length - 1));
+      }
     }
     expect(trainingScenarios.length, greaterThanOrEqualTo(15));
   });

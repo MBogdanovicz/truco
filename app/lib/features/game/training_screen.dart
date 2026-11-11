@@ -50,7 +50,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final s = trainingScenarios[_open!];
     setState(() {
       _picked = i;
-      if (i == s.answer) _done = {..._done, s.id};
+      if (s.isGood(i)) _done = {..._done, s.id};
     });
     _save();
   }
@@ -188,15 +188,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   label: picked == null
                       ? s.options[i]
                       : '${s.options[i]}'
-                            '${i == s.answer
+                            '${s.isGood(i)
                                 ? '  ✓'
                                 : i == picked
                                 ? '  ✗'
                                 : ''}',
-                  tonal: !(picked != null && i == s.answer),
+                  tonal: !(picked != null && s.isGood(i)),
                   onPressed: picked == null
                       ? () => _answer(i)
-                      : (i == s.answer ? () {} : null),
+                      : (s.isGood(i) ? () {} : null),
                 ),
               ),
             ),
@@ -205,7 +205,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: picked == s.answer
+                color: s.isGood(picked)
                     ? Colors.green.withValues(alpha: 0.12)
                     : Colors.orange.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(12),
@@ -214,11 +214,20 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    picked == s.answer ? 'Isso mesmo!' : 'Não foi dessa vez.',
+                    picked == s.answer
+                        ? 'Isso mesmo!'
+                        : s.isGood(picked)
+                        ? 'Também vale!'
+                        : 'Não foi dessa vez.',
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 6),
                   Text(s.explanation),
+                  for (final MapEntry(:key, :value) in s.alsoGood.entries)
+                    if (picked == key || picked == s.answer) ...[
+                      const SizedBox(height: 6),
+                      Text(value),
+                    ],
                 ],
               ),
             ),
