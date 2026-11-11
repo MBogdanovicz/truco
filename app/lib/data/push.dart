@@ -212,7 +212,8 @@ final pushStateProvider = FutureProvider.autoDispose<PushState>((ref) async {
     try {
       await PushService.instance._register(client);
     } on Object catch (e) {
-      debugPrint('Push register failed: $e');
+      // ignore: avoid_print
+      print('Push register failed: $e'); // shows in the browser console
     }
   }
   return state;

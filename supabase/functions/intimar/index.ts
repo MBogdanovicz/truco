@@ -144,13 +144,14 @@ Deno.serve(async (req) => {
       : `/marcador/entrar?codigo=${code}`;
     const link = `${WEB_APP_URL}/sala/?codigo=${code}${kind === "game" ? "&jogo=1" : ""}`;
 
+    console.log("intimar", { members: others.length, devices: tokens?.length ?? 0 });
     let sent = 0;
     let failed = 0;
     if (tokens?.length) {
       const sa = serviceAccount();
       const bearer = await accessToken(sa);
       const dead: string[] = [];
-      await Promise.all(tokens.map(async ({ token }) => {
+      await Promise.all(tokens.map(async ({ token, platform }) => {
         const res = await fetch(
           `https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`,
           {
@@ -176,6 +177,7 @@ Deno.serve(async (req) => {
           const err = await res.text();
           // The app was uninstalled or the token expired.
           if (res.status === 404 || err.includes("UNREGISTERED")) {
+            console.log("FCM dropped token", platform, res.status, err.slice(0, 300));
             dead.push(token);
           } else {
             failed++;
