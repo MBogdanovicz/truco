@@ -19,8 +19,15 @@ interface EngineOut {
   error?: string;
 }
 
-/** Time a person has for each move, after the previous moves are shown. */
+/** Time a person has for each move, after the previous moves are shown,
+ * unless the room's rules say otherwise ("tempo", seconds; 0 = no limit). */
 export const TURN_MS = 20_000;
+
+export function turnMs(rules: Json): number | null {
+  const t = (rules as Record<string, unknown>)?.tempo;
+  if (typeof t !== "number") return TURN_MS;
+  return t > 0 ? Math.min(t, 120) * 1000 : null;
+}
 
 const engine = (globalThis as unknown as { trucoEngine: (s: string) => string })
   .trucoEngine;
@@ -253,7 +260,7 @@ export class Game {
       this.touch(room.id, {
         bots,
         game_no: room.game_no + 1,
-        turn_deadline: this.deadline(out, seats),
+        turn_deadline: this.deadline(room, out, seats),
       }),
       this.writeViews(room.id, seats, out, version),
     ]);
@@ -322,8 +329,10 @@ export class Game {
   }
 
   /** When the person the game now waits for runs out of time. */
-  private deadline(out: EngineOut, seats: Seat[]): string | null {
+  private deadline(room: Room, out: EngineOut, seats: Seat[]): string | null {
     if (out.waitingFor === undefined || out.phase === "gameOver") return null;
+    const turn = turnMs(room.rules);
+    if (turn === null) return null;
     // Everyone first watches the moves just made.
     const showing = Math.max(
       0,
@@ -334,7 +343,7 @@ export class Game {
         )
       ),
     );
-    return new Date(Date.now() + showing + TURN_MS).toISOString();
+    return new Date(Date.now() + showing + turn).toISOString();
   }
 
   /** Stores the new log if nobody changed it meanwhile; returns the new
@@ -350,7 +359,7 @@ export class Game {
     await Promise.all([
       this.writeViews(room.id, seats, out, version),
       over ? this.finish(room, state, out) : this.touch(room.id, {
-        turn_deadline: this.deadline(out, seats),
+        turn_deadline: this.deadline(room, out, seats),
       }),
     ]);
     return version;

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/game/ai.dart';
 import '../../domain/game/cards.dart';
+import '../../domain/game/coach.dart';
 import '../../domain/game/game_session.dart';
 import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
@@ -19,12 +20,16 @@ class LocalGameSetup {
     required this.partnerLevel,
     required this.opponentLevel,
     required this.myName,
+    this.coach = false,
   });
 
   final TrucoRules rules;
   final AiLevel partnerLevel;
   final AiLevel opponentLevel;
   final String myName;
+
+  /// "Modo professor": comments on the person's moves.
+  final bool coach;
 }
 
 /// The human always sits at seat 0 (bottom); 1 is on the right, 2 (partner)
@@ -46,6 +51,8 @@ class LocalGameController extends Notifier<GameTableModel?> {
   GameSession? _session;
   Map<Team, int> _wins = const {Team.a: 0, Team.b: 0};
   List<String> _names = const [];
+  final _coach = const Coach();
+  CoachTip? _tip;
 
   static const botNames = ['', 'Zeca', 'Bia', 'Tonho'];
 
@@ -88,6 +95,7 @@ class LocalGameController extends Notifier<GameTableModel?> {
     );
     _player.reset();
     state = null;
+    _tip = null;
     _show(session.viewFor(humanSeat), busy: true);
     _play(session.advance());
   }
@@ -100,18 +108,37 @@ class LocalGameController extends Notifier<GameTableModel?> {
 
   // ---------------------------------------------------- human actions --
 
-  void playCard(Card card, {bool covered = false}) => _human(
-    (s) => s.act(humanSeat, PlayCard(humanSeat, card, covered: covered)),
-  );
+  void playCard(Card card, {bool covered = false}) =>
+      _act(PlayCard(humanSeat, card, covered: covered));
 
   /// "Mão de ferro": the human picks a face-down card by position.
   void playBlind(int index) => _human((s) => s.actBlind(humanSeat, index));
 
-  void raise() => _human((s) => s.act(humanSeat, const Raise(humanSeat)));
-  void accept() => _human((s) => s.act(humanSeat, const Accept(humanSeat)));
-  void fold() => _human((s) => s.act(humanSeat, const Fold(humanSeat)));
+  void raise() => _act(const Raise(humanSeat));
+  void accept() => _act(const Accept(humanSeat));
+  void fold() => _act(const Fold(humanSeat));
 
-  void _human(Frames Function(GameSession s) action) {
+  /// Hides the professor's comment.
+  void dismissTip() {
+    _tip = null;
+    final m = state;
+    if (m != null) state = m.copyWith(tip: null);
+  }
+
+  void _act(GameAction action) {
+    final s = _session;
+    CoachTip? tip;
+    if (s != null && (_setup?.coach ?? false) && (state?.canAct ?? false)) {
+      try {
+        tip = _coach.review(s.game.viewFor(humanSeat), action);
+      } on Object {
+        tip = null;
+      }
+    }
+    _human((s) => s.act(humanSeat, action), tip: tip);
+  }
+
+  void _human(Frames Function(GameSession s) action, {CoachTip? tip}) {
     final s = _session;
     if (s == null || !(state?.canAct ?? false)) return;
     final Frames frames;
@@ -120,6 +147,7 @@ class LocalGameController extends Notifier<GameTableModel?> {
     } on GameRuleError {
       return;
     }
+    _tip = tip;
     _play(frames);
   }
 
@@ -138,6 +166,12 @@ class LocalGameController extends Notifier<GameTableModel?> {
         view.winner != null) {
       _wins = {..._wins, view.winner!: _wins[view.winner!]! + 1};
     }
-    state = GameTableModel(view: view, names: _names, wins: _wins, busy: busy);
+    state = GameTableModel(
+      view: view,
+      names: _names,
+      wins: _wins,
+      busy: busy,
+      tip: _tip,
+    );
   }
 }

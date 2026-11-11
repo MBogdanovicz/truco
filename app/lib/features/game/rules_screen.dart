@@ -113,7 +113,7 @@ class _RulesScreenState extends State<RulesScreen> {
     ];
     final theme = Theme.of(context);
     return AppScaffold(
-      title: 'Regras do truco paulista',
+      title: 'Regras do truco',
       children: [
         if (widget.table != null) TableRulesSection(rules: widget.table!),
         Padding(
@@ -168,6 +168,7 @@ class TableRulesSection extends StatelessWidget {
         'Quem dá vê a 3ª carta do parceiro',
         yes(rules.dealerSeesPartnerThirdCard),
       ),
+      ('Tempo de jogada', turnSecondsLabel(rules.turnSeconds)),
     ];
     return AppSection(
       header: 'Regras desta mesa',
@@ -186,3 +187,7 @@ class TableRulesSection extends StatelessWidget {
     );
   }
 }
+
+/// "20 s", or "Sem limite" for 0.
+String turnSecondsLabel(int seconds) =>
+    seconds <= 0 ? 'Sem limite' : '$seconds s';

@@ -30,6 +30,9 @@ class Entitlements {
   /// Creating "cada um no seu celular" online rooms (joining stays free).
   bool get canHostOnline => _unlocked;
 
+  /// "Modo professor": tips on the moves against the computer.
+  bool get canUseCoach => _unlocked;
+
   /// Playing without an ad before each game.
   bool get adFree => _unlocked;
 }

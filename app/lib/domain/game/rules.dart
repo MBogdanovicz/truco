@@ -31,6 +31,7 @@ class TrucoRules {
     this.seePartnerOnRaise = true,
     this.bothTeamsSeeOnDecision = true,
     this.dealerSeesPartnerThirdCard = true,
+    this.turnSeconds = 20,
   });
 
   /// Stable id ("paulista"), stored with results.
@@ -71,6 +72,13 @@ class TrucoRules {
   /// hand, while the partner still holds it).
   final bool dealerSeesPartnerThirdCard;
 
+  /// Time for each move in online games, in seconds (0 = no limit). When it
+  /// runs out, the computer moves for that person.
+  final int turnSeconds;
+
+  /// The choices offered for [turnSeconds].
+  static const turnSecondsOptions = [10, 20, 30, 0];
+
   int get baseValue => stakes.first;
 
   /// Name of the call that raises the hand from [stakes][level] to the next
@@ -80,7 +88,7 @@ class TrucoRules {
 
   static const paulista = TrucoRules(
     id: 'paulista',
-    name: 'Paulista',
+    name: 'Truco',
     manilhaMode: ManilhaMode.vira,
     stakes: [1, 3, 6, 9, 12],
     decisionScore: 11,
@@ -95,6 +103,7 @@ class TrucoRules {
     bool? seePartnerOnRaise,
     bool? bothTeamsSeeOnDecision,
     bool? dealerSeesPartnerThirdCard,
+    int? turnSeconds,
   }) => TrucoRules(
     id: id,
     name: name,
@@ -110,6 +119,7 @@ class TrucoRules {
         bothTeamsSeeOnDecision ?? this.bothTeamsSeeOnDecision,
     dealerSeesPartnerThirdCard:
         dealerSeesPartnerThirdCard ?? this.dealerSeesPartnerThirdCard,
+    turnSeconds: turnSeconds ?? this.turnSeconds,
   );
 
   /// Table options as stored with a room (Paulista base + variations).
@@ -120,6 +130,7 @@ class TrucoRules {
     'verNoTruco': seePartnerOnRaise,
     'verNaMaoDeOnze': bothTeamsSeeOnDecision,
     'terceiraCarta': dealerSeesPartnerThirdCard,
+    'tempo': turnSeconds,
   };
 
   static TrucoRules fromJson(Map<String, Object?> j) => paulista.copyWith(
@@ -129,6 +140,7 @@ class TrucoRules {
     seePartnerOnRaise: j['verNoTruco'] as bool?,
     bothTeamsSeeOnDecision: j['verNaMaoDeOnze'] as bool?,
     dealerSeesPartnerThirdCard: j['terceiraCarta'] as bool?,
+    turnSeconds: (j['tempo'] as num?)?.toInt(),
   );
 
   /// Short description of the options, e.g. for results and the rules page.
