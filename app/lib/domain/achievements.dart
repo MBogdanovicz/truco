@@ -54,7 +54,7 @@ enum Achievement {
   ),
   gameShutout(
     'game_shutout',
-    'Passa negão, passa loirinha',
+    'Passa negão, passa loirinha!',
     'Vença uma partida de truco no app por 12 x 0.',
     hidden: true,
   ),

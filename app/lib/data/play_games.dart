@@ -23,7 +23,20 @@ const _playGamesIds = <Achievement, String>{
   Achievement.loyalPartner: 'CgkI1Iv_lucZEAIQCQ',
   Achievement.revenge: 'CgkI1Iv_lucZEAIQCg',
   Achievement.groupGame: 'CgkI1Iv_lucZEAIQCw',
-  // The game's ones: ids pending (Play Console).
+  Achievement.gameFirstWin: 'CgkI1Iv_lucZEAIQDA',
+  Achievement.gameWins10: 'CgkI1Iv_lucZEAIQDQ',
+  Achievement.gameRanWon: 'CgkI1Iv_lucZEAIQDg',
+  Achievement.gameIronHand: 'CgkI1Iv_lucZEAIQDw',
+  Achievement.gameAceRiver: 'CgkI1Iv_lucZEAIQEA',
+  Achievement.gameCasalMaior: 'CgkI1Iv_lucZEAIQEQ',
+  Achievement.gameCasalMenor: 'CgkI1Iv_lucZEAIQEg',
+  Achievement.gameCasalPreto: 'CgkI1Iv_lucZEAIQEw',
+  Achievement.gameCasalVermelho: 'CgkI1Iv_lucZEAIQFA',
+  Achievement.gameTruco12: 'CgkI1Iv_lucZEAIQFQ',
+  Achievement.gameComadre: 'CgkI1Iv_lucZEAIQFg',
+  Achievement.game666: 'CgkI1Iv_lucZEAIQFw',
+  Achievement.gameSeisBurro: 'CgkI1Iv_lucZEAIQGA',
+  Achievement.gameShutout: 'CgkI1Iv_lucZEAIQGQ',
 };
 
 const _incrementalSteps = <Achievement, int>{
