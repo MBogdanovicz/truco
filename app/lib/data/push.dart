@@ -153,8 +153,10 @@ class PushService {
   Future<PushState> enable(SupabaseClient client) async {
     if (!await _init()) return PushState.unsupported;
     final s = await FirebaseMessaging.instance.requestPermission();
-    await _prefs((p) => p.setBool(_askedKey, true))
-        .catchError((Object e) => debugPrint('Push: $e'));
+    await _prefs((p) async {
+      await p.setBool(_askedKey, true);
+      await p.remove(_offKey);
+    }).catchError((Object e) => debugPrint('Push: $e'));
     if (s.authorizationStatus == AuthorizationStatus.denied ||
         s.authorizationStatus == AuthorizationStatus.deniedPermanently) {
       return PushState.blocked;
@@ -170,9 +172,9 @@ class PushService {
 
   Future<void> _register(SupabaseClient client) async {
     final messaging = FirebaseMessaging.instance;
-    final token = await messaging.getToken(
-      vapidKey: kIsWeb ? FirebaseWeb.vapidKey : null,
-    );
+    final token = await messaging
+        .getToken(vapidKey: kIsWeb ? FirebaseWeb.vapidKey : null)
+        .timeout(const Duration(seconds: 20));
     if (token == null) return;
     Future<void> save(String t) => client.rpc(
       'save_push_token',
