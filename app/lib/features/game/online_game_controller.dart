@@ -194,7 +194,8 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
       return;
     }
     final left = deadline.difference(DateTime.now()).inMilliseconds;
-    final seconds = (left / 1000).ceil().clamp(0, 99);
+    // Slow games count days.
+    final seconds = (left / 1000).ceil().clamp(0, 8 * 86400);
     if (seconds != s.secondsLeft) {
       state = s.copyWith(secondsLeft: () => seconds);
     }
@@ -287,6 +288,13 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
     } finally {
       if (state?.roomId == s.roomId) state = state!.copyWith(sending: false);
     }
+  }
+
+  /// Stops following the room but keeps the seat (slow games: the person
+  /// comes back when it's their turn).
+  void close() {
+    _close();
+    state = null;
   }
 
   Future<void> leave() async {

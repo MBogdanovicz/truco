@@ -121,6 +121,7 @@ class GameRoomError implements Exception {
     'room_not_found' => 'Nenhuma sala aberta com esse código.',
     'room_full' => 'A sala está cheia.',
     'game_started' => 'A partida já começou.',
+    'slow_needs_four' => 'A partida lenta precisa de 4 pessoas na sala.',
     'seat_taken' => 'Esse lugar já foi ocupado.',
     'account_required' => 'Entre com seu e-mail para criar salas.',
     'not_host' => 'Só quem criou a sala pode fazer isso.',

@@ -2,6 +2,9 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import "./engine.js";
+import { sendPush } from "../_shared/push.ts";
+
+const WEB_APP_URL = Deno.env.get("WEB_APP_URL") ?? "https://truco.mytrophies.app";
 
 export type Json = Record<string, unknown>;
 type Level = "easy" | "medium" | "hard";
@@ -23,7 +26,16 @@ interface EngineOut {
  * unless the room's rules say otherwise ("tempo", seconds; 0 = no limit). */
 export const TURN_MS = 20_000;
 
+/** Days per move of a slow game ("partida lenta", rules "lento"); 0 for a
+ * normal game. A slow game is for 4 people, who play whenever they can. */
+export function slowDays(rules: Json): number {
+  const d = (rules as Record<string, unknown>)?.lento;
+  return typeof d === "number" && d > 0 ? Math.min(Math.floor(d), 7) : 0;
+}
+
 export function turnMs(rules: Json): number | null {
+  const days = slowDays(rules);
+  if (days) return days * 86_400_000;
   const t = (rules as Record<string, unknown>)?.tempo;
   if (typeof t !== "number") return TURN_MS;
   return t > 0 ? Math.min(t, 120) * 1000 : null;
@@ -64,6 +76,8 @@ interface Room {
   wins_b: number;
   game_no: number;
   turn_deadline?: string | null;
+  /** Seat the game waits for (null when nobody, e.g. between games). */
+  waiting_seat?: number | null;
 }
 
 interface Seat {
@@ -221,6 +235,9 @@ export class Game {
   async start(body: Json) {
     const room = await this.room(body.roomId as string);
     this.hostOnly(room);
+    if (slowDays(room.rules) && (await this.seats(room.id)).length < 4) {
+      throw new Refused("slow_needs_four");
+    }
     // Claim the start, so a double tap doesn't deal twice.
     const { data: claimed, error: claimError } = await this.db.from("game_rooms")
       .update({ status: "playing", updated_at: new Date().toISOString() })
@@ -261,9 +278,11 @@ export class Game {
         bots,
         game_no: room.game_no + 1,
         turn_deadline: this.deadline(room, out, seats),
+        waiting_seat: out.waitingFor ?? null,
       }),
       this.writeViews(room.id, seats, out, version),
     ]);
+    await this.notifyTurn({ ...room, waiting_seat: null }, seats, out);
     return {};
   }
 
@@ -288,18 +307,45 @@ export class Game {
   /** Someone ran out of time: the computer moves for them. Any seated
    * person's app may ask; it does nothing before the deadline. */
   async timeout(body: Json) {
+    const seats = await this.seats(body.roomId as string);
+    const me = this.mySeat(seats);
+    const res = await this.expire(body.roomId as string);
+    return res ? this.mine(res.out, me.seat, res.version) : { waiting: true };
+  }
+
+  /** Slow games: lets the computer move for whoever ran out of days. Called
+   * by the game-sweep function (hourly), since nobody may be online. */
+  async sweep() {
+    const { data, error } = await this.db.from("game_rooms").select("id")
+      .eq("status", "playing").not("rules->lento", "is", null)
+      .lt("turn_deadline", new Date().toISOString()).limit(50);
+    if (error) throw error;
+    let moved = 0;
+    for (const { id } of data ?? []) {
+      try {
+        if (await this.expire(id)) moved++;
+      } catch (e) {
+        console.error("sweep", id, e);
+      }
+    }
+    return { rooms: data?.length ?? 0, moved };
+  }
+
+  private async expire(roomId: string) {
     for (let attempt = 0; attempt < 4; attempt++) {
-      const { room, seats, state } = await this.load(body.roomId as string);
-      const me = this.mySeat(seats);
+      const { room, seats, state } = await this.load(roomId);
       const deadline = room.turn_deadline ? Date.parse(room.turn_deadline) : NaN;
       // A little slack for clocks that run a bit fast.
       if (room.status !== "playing" || !(Date.now() >= deadline - 2000)) {
-        return { waiting: true };
+        return null;
       }
       const out = runEngine({ ...this.input(room, state), timeout: true });
-      if (out.error) return { waiting: true };
-      const version = await this.save(room, seats, state, out);
-      if (version) return this.mine(out, me.seat, version);
+      if (out.error) return null;
+      // In a slow game, the computer moving for someone takes it out of
+      // the ranking (like leaving a normal game).
+      const patch = slowDays(room.rules) ? { replaced: true } : {};
+      const version = await this.save(room, seats, state, out, patch);
+      if (version) return { out, version };
     }
     throw new Refused("busy");
   }
@@ -360,9 +406,44 @@ export class Game {
       this.writeViews(room.id, seats, out, version),
       over ? this.finish(room, state, out) : this.touch(room.id, {
         turn_deadline: this.deadline(room, out, seats),
+        waiting_seat: out.waitingFor ?? null,
       }),
     ]);
+    await this.notifyTurn(room, seats, out);
     return version;
+  }
+
+  /** Slow games: a push to the person whose turn it now is, and to
+   * everyone when the game ends. */
+  private async notifyTurn(room: Room, seats: Seat[], out: EngineOut) {
+    const days = slowDays(room.rules);
+    if (!days) return;
+    const path = `/jogo/entrar?codigo=${room.code}`;
+    const link = `${WEB_APP_URL}/sala/?codigo=${room.code}&jogo=1`;
+    const tag = `slow-${room.id}`;
+    if (out.phase === "gameOver") {
+      const [a, b] = out.scores;
+      await sendPush(this.db, seats.map((s) => s.user_id), {
+        title: "Fim da partida lenta",
+        body: `Sala ${room.code}: ${a} × ${b}. Veja como terminou.`,
+        path,
+        link,
+        tag,
+      });
+      return;
+    }
+    const seat = out.waitingFor;
+    if (seat === undefined || seat === room.waiting_seat) return;
+    const who = seats.find((s) => s.seat === seat);
+    if (!who) return;
+    await sendPush(this.db, [who.user_id], {
+      title: "Sua vez no truco!",
+      body: `Partida lenta (sala ${room.code}): é a sua vez. Você tem ` +
+        `${days === 1 ? "1 dia" : `${days} dias`} para jogar.`,
+      path,
+      link,
+      tag,
+    });
   }
 
   private async finish(room: Room, state: State, out: EngineOut) {
@@ -377,6 +458,7 @@ export class Game {
     await this.touch(room.id, {
       status: "finished",
       turn_deadline: null,
+      waiting_seat: null,
       wins_a: room.wins_a + (out.winner === "a" ? 1 : 0),
       wins_b: room.wins_b + (out.winner === "b" ? 1 : 0),
     });
@@ -450,3 +532,4 @@ export class Game {
     return {};
   }
 }
+

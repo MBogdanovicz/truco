@@ -1,6 +1,6 @@
 // deno test supabase/functions/game/game_test.ts
 // Plays whole online games against an in-memory stand-in for the database.
-import { Game, type Json, Refused, turnMs } from "./game.ts";
+import { Game, type Json, Refused, slowDays, turnMs } from "./game.ts";
 
 type Row = Json;
 
@@ -9,6 +9,7 @@ const KEYS: Record<string, string[]> = {
   game_seats: ["room_id", "seat"],
   game_states: ["room_id"],
   game_views: ["room_id", "seat"],
+  push_tokens: ["token"],
 };
 
 class FakeDb {
@@ -17,6 +18,7 @@ class FakeDb {
     game_seats: [],
     game_states: [],
     game_views: [],
+    push_tokens: [],
   };
   rpcs: { fn: string; args: Json }[] = [];
 
@@ -74,6 +76,22 @@ class Query {
   }
   delete() {
     this.op = "delete";
+    return this;
+  }
+  limit(_n: number) {
+    return this;
+  }
+  lt(k: string, v: string) {
+    this.filters.push((r) => typeof r[k] === "string" && (r[k] as string) < v);
+    return this;
+  }
+  /** Only `not(<col>-><key>, "is", null)`. */
+  not(k: string, _op: "is", _v: null) {
+    const [col, key] = k.split("->");
+    this.filters.push((r) => {
+      const v = key ? (r[col] as Json | undefined)?.[key] : r[col];
+      return v !== undefined && v !== null;
+    });
     return this;
   }
   eq(k: string, v: unknown) {
@@ -338,4 +356,43 @@ Deno.test("turn time comes from the room's rules", () => {
   assert(turnMs({}) === 20_000);
   assert(turnMs({ tempo: 10 }) === 10_000);
   assert(turnMs({ tempo: 0 }) === null);
+  // Slow games: days per move.
+  assert(slowDays({}) === 0);
+  assert(slowDays({ lento: 2 }) === 2);
+  assert(turnMs({ lento: 1, tempo: 10 }) === 86_400_000);
 });
+
+Deno.test("slow games: 4 people, and the sweep moves for whoever ran out of days", async () => {
+  const db = new FakeDb();
+  const people = ["ana", "caio", "dani", "edu"].map((id) =>
+    new Game(asDb(db), id, false, id)
+  );
+  const [ana] = people;
+  const { roomId, code } = await ana.create({ rules: { lento: 2 } });
+  await refused(() => ana.start({ roomId }), "slow_needs_four");
+  for (const p of people.slice(1)) await p.join({ code });
+  await ana.start({ roomId });
+  const room = db.tables.game_rooms[0];
+  const deadline = Date.parse(room.turn_deadline as string);
+  assert(deadline - Date.now() > 2 * 86_400_000 - 60_000, "two days");
+  assert(typeof room.waiting_seat === "number", "waiting seat");
+  // Not yet late: the sweep leaves it alone.
+  const sweeper = new Game(asDb(db), "", false, "");
+  assert((await sweeper.sweep()).moved === 0);
+  room.turn_deadline = new Date(Date.now() - 1000).toISOString();
+  const version = db.tables.game_states[0].version as number;
+  assert((await sweeper.sweep()).moved === 1);
+  assert(db.tables.game_states[0].version === version + 1);
+  // The computer played for someone: no longer ranked.
+  assert(db.tables.game_states[0].replaced === true);
+});
+
+async function refused(f: () => Promise<unknown>, message: string) {
+  try {
+    await f();
+  } catch (e) {
+    assert(e instanceof Refused && e.message === message, `refused ${message}`);
+    return;
+  }
+  throw new Error(`expected ${message}`);
+}

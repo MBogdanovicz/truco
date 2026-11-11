@@ -482,7 +482,7 @@ class _GameTableState extends State<GameTable> {
       if (prompt == null && v.phase == GamePhase.playing && active != null) {
         prompt = 'Vez de ${m.names[active]}';
       }
-      if (prompt != null) prompt = '$prompt  ⏱ $left s';
+      if (prompt != null) prompt = '$prompt  ⏱ ${timeLeftLabel(left)}';
     }
 
     return AnimatedSize(
@@ -910,4 +910,14 @@ Future<bool> confirmLeaveGame(BuildContext context, {String? message}) async {
     ],
   );
   return leave == true;
+}
+
+/// "15 s", "12 min", "5 h", "1 d 4 h" (slow games count days).
+String timeLeftLabel(int seconds) {
+  if (seconds < 100) return '$seconds s';
+  if (seconds < 3600) return '${(seconds / 60).ceil()} min';
+  final hours = (seconds / 3600).ceil();
+  if (hours < 24) return '$hours h';
+  final d = hours ~/ 24, h = hours % 24;
+  return h == 0 ? '$d d' : '$d d $h h';
 }

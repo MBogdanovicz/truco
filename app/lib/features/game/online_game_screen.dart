@@ -52,6 +52,35 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
   Future<void> _confirmLeave() async {
     final s = ref.read(onlineGameControllerProvider);
     final playing = s?.room?.status == GameRoomStatus.playing;
+    if (s?.room?.rules.isSlow ?? false) {
+      // A slow game goes on without anyone watching: leaving the screen
+      // keeps the seat, unless the person really wants out.
+      final choice = await showAppDialog<String>(
+        context,
+        title: 'Partida lenta',
+        message:
+            'Você continua na partida e recebe um aviso quando for a sua '
+            'vez. Ela também fica na tela inicial.',
+        actions: const [
+          AppDialogAction(label: 'Voltar depois', value: 'close'),
+          AppDialogAction(label: 'Continuar aqui', value: 'stay'),
+          AppDialogAction(
+            label: 'Abandonar a partida',
+            value: 'leave',
+            isDestructive: true,
+          ),
+        ],
+      );
+      if (!mounted) return;
+      if (choice == 'close') {
+        _leaving = true;
+        _ctrl.close();
+        context.go('/');
+      } else if (choice == 'leave') {
+        await _leave();
+      }
+      return;
+    }
     if (playing &&
         !await confirmLeaveGame(
           context,
@@ -300,10 +329,10 @@ class _Lobby extends ConsumerWidget {
                     summonToRoom(context, ref, code: room.code, game: true),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Em "Jogar truco", toque em "Entrar com código". Ou copie o '
-                'convite com o link e mande no grupo. Os lugares vazios '
-                'ficam com o computador.',
+                'convite com o link e mande no grupo. '
+                '${room.rules.isSlow ? 'A partida lenta começa com 4 pessoas.' : 'Os lugares vazios ficam com o computador.'}',
                 textAlign: TextAlign.center,
                 style: white70,
               ),
@@ -360,7 +389,7 @@ class _Lobby extends ConsumerWidget {
                     : (groupName ?? 'Grupo escolhido'),
                 onTap: isHost ? () => _pickGroup(context, ref) : null,
               ),
-            if (room.seats.length < 4)
+            if (room.seats.length < 4 && !room.rules.isSlow)
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -387,9 +416,15 @@ class _Lobby extends ConsumerWidget {
               width: double.infinity,
               child: isHost
                   ? AppButton(
-                      label: 'Começar a partida',
+                      label: room.rules.isSlow && room.seats.length < 4
+                          ? (room.seats.length == 3
+                                ? 'Falta 1 pessoa'
+                                : 'Faltam ${4 - room.seats.length} pessoas')
+                          : 'Começar a partida',
                       icon: context.icon(AppIcon.play),
-                      onPressed: sending
+                      onPressed:
+                          sending ||
+                              (room.rules.isSlow && room.seats.length < 4)
                           ? null
                           : () async {
                               await Ads.beforeGame(ref);

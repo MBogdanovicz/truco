@@ -8,6 +8,8 @@ import '../../data/play_games.dart';
 import '../../data/push.dart';
 import '../../data/entitlements.dart';
 import '../../data/last_room_repository.dart';
+import '../../data/slow_games.dart';
+import '../game/game_table.dart' show timeLeftLabel;
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
 import '../premium/premium_screen.dart';
@@ -29,6 +31,12 @@ class HomeScreen extends ConsumerWidget {
     final game = ref.watch(localGameControllerProvider);
     final gameRoom = ref.watch(onlineGameControllerProvider);
     final lastGameRoom = ref.watch(lastGameRoomCodeProvider).value;
+    final slowGames = ref.watch(slowGamesProvider).value ?? const [];
+    // Leaving or entering a room may change whose turn it is.
+    ref.listen(
+      onlineGameControllerProvider.select((s) => s?.code),
+      (_, _) => ref.invalidate(slowGamesProvider),
+    );
     // Mirrors achievements to Google Play Games (Android only).
     ref.watch(playGamesSyncProvider);
     // Keeps this device's push token for "intimar".
@@ -55,6 +63,23 @@ class HomeScreen extends ConsumerWidget {
           subtitle: 'Saiu sem querer? Toque para entrar de novo.',
           onTap: () => context.go('/jogo/entrar?codigo=$lastGameRoom'),
         ),
+      for (final g in slowGames.take(4))
+        if (gameRoom?.code != g.code)
+          _MenuItem(
+            icon: AppIcon.cards,
+            color: g.myTurn ? AppColors.red : Colors.teal,
+            title: g.myTurn
+                ? 'Sua vez na partida lenta ${g.code}!'
+                : 'Partida lenta ${g.code}',
+            subtitle: !g.playing
+                ? 'Esperando 4 pessoas (${g.people} na sala).'
+                : g.myTurn
+                ? (g.deadline == null
+                      ? 'Toque para jogar.'
+                      : 'Você tem ${timeLeftLabel(_secondsUntil(g.deadline!))} para jogar.')
+                : 'Esperando a jogada de outra pessoa.',
+            onTap: () => context.go('/jogo/entrar?codigo=${g.code}'),
+          ),
       if (room != null)
         _MenuItem(
           icon: AppIcon.online,
@@ -413,4 +438,9 @@ class _MenuCard extends StatelessWidget {
       ),
     );
   }
+}
+
+int _secondsUntil(DateTime t) {
+  final s = t.difference(DateTime.now()).inSeconds;
+  return s < 0 ? 0 : s;
 }

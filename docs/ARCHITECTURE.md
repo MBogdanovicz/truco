@@ -409,7 +409,18 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   sampling (400 deals, fixed seed), and shows a tip banner above the actions. `training.dart` holds the
   practice situations shown by `TrainingScreen` (`/jogo/treinar`); progress is a local pref.
 
-### 10.7 Next (see ROADMAP G5+)
+### 10.7 Slow games ("partida lenta")
+
+* A room whose rules have `lento` (days per move, 1-3) is a slow game: it starts only with 4 people,
+  `turn_deadline` is days away, and `game_rooms.waiting_seat` says whose turn it is (home screen list
+  `slowGamesProvider`, "Sua vez").
+* The `game` function pushes (`_shared/push.ts`, FCM) the person whose turn it becomes, and everyone when
+  the game ends. Nobody needs the game open: the `game-sweep` function (hourly GitHub workflow
+  `game-sweep.yml`, header `x-cron-secret`) lets the computer move for whoever ran out of days, which
+  takes the game out of the ranking (`replaced`).
+* Leaving the screen keeps the seat ("Voltar depois"); "Abandonar a partida" gives the seat to the computer.
+
+### 10.8 Next (see ROADMAP G5+)
 
 * Championships: new tables for tournaments, brackets and entries.
 

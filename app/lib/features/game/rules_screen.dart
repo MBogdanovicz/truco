@@ -168,7 +168,10 @@ class TableRulesSection extends StatelessWidget {
         'Quem dá vê a 3ª carta do parceiro',
         yes(rules.dealerSeesPartnerThirdCard),
       ),
-      ('Tempo de jogada', turnSecondsLabel(rules.turnSeconds)),
+      if (rules.isSlow)
+        ('Partida lenta', '${slowDaysLabel(rules.slowDays)} por jogada')
+      else
+        ('Tempo de jogada', turnSecondsLabel(rules.turnSeconds)),
     ];
     return AppSection(
       header: 'Regras desta mesa',
@@ -191,3 +194,6 @@ class TableRulesSection extends StatelessWidget {
 /// "20 s", or "Sem limite" for 0.
 String turnSecondsLabel(int seconds) =>
     seconds <= 0 ? 'Sem limite' : '$seconds s';
+
+/// "1 dia", "2 dias".
+String slowDaysLabel(int days) => days == 1 ? '1 dia' : '$days dias';
