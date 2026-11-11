@@ -60,4 +60,15 @@ const releaseNotes = <ReleaseNote>[
     'Ligue os avisos em Grupos > "Receber intimações".',
     '14 conquistas novas do jogo de truco, algumas secretas.',
   ]),
+  ReleaseNote(8, [
+    'Novo (Premium): modo professor! Contra o computador, ele comenta as '
+        'suas jogadas, ajuda a pensar nas decisões difíceis e faz um resumo '
+        'no fim da partida.',
+    'Novo (Premium): Treinar, com situações de jogo e a explicação da '
+        'melhor jogada.',
+    'Tempo de jogada nas salas online: 10, 20 ou 30 segundos, ou sem limite.',
+    'Computador mais esperto: joga em dupla com o parceiro e sabe segurar '
+        'o truco.',
+    'Marcador e jogo contra o computador funcionam sem internet.',
+  ]),
 ];
