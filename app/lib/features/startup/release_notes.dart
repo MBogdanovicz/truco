@@ -48,4 +48,10 @@ const releaseNotes = <ReleaseNote>[
         'e quem dá ver a 3ª carta do parceiro.',
     'Tela com as regras do truco.',
   ]),
+  ReleaseNote(6, [
+    'Novo: truco online! Crie uma sala em "Jogar truco" e chame os amigos '
+        'pelo código ou link. O computador joga nos lugares vazios.',
+    'Partidas online com 4 pessoas com conta contam para o ranking.',
+    'Ranking com filtro: Jogo, Marcador ou Ambos.',
+  ]),
 ];
