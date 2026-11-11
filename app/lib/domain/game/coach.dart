@@ -10,7 +10,9 @@ enum CoachTopic {
   card,
   cover,
   truco,
-  missedTruco,
+
+  /// A bluff ("facão"): a fair play, pointed out but not a mistake.
+  bluff,
   answer,
   elevenHand,
   praise,
@@ -140,9 +142,9 @@ class Coach {
     }
     if (action is Raise && p < 0.45) {
       return CoachTip(
-        'Pedir mais com uns ${pct(p)} de chance é blefe. Às vezes funciona, '
-        'mas se aceitarem a conta fica alta.',
-        topic: CoachTopic.truco,
+        'Passando facão: com uns ${pct(p)} de chance, vale se eles '
+        'correrem, mas se aceitarem a conta fica alta.',
+        topic: CoachTopic.bluff,
       );
     }
     return null;
@@ -172,9 +174,9 @@ class Coach {
       }
       if (p < 0.3) {
         return CoachTip(
-          'Truco com uns ${pct(p)} de chance é blefe. Funciona às vezes, '
-          'mas se aceitarem você arrisca mais.',
-          topic: CoachTopic.truco,
+          'Passando facão: com uns ${pct(p)} de chance, esse truco vale se '
+          'eles correrem, mas se aceitarem vocês arriscam mais.',
+          topic: CoachTopic.bluff,
         );
       }
       return null;
@@ -200,21 +202,9 @@ class Coach {
       return CoachTip(_why(v, chosen, best.key, mine, best.value));
     }
 
-    // Didn't call truco with a hand that was very likely to win. Not in the
-    // first round: holding back there to let them call truco is a fine play.
-    if (v.rounds.isNotEmpty &&
-        v.legalActions.any((a) => a is Raise) &&
-        v.stakeLevel == 0 &&
-        v.scoreOf(v.team) + v.handValue < v.rules.targetScore) {
-      final p = _chance(v);
-      if (p > 0.85) {
-        return CoachTip(
-          'Com uns ${pct(p)} de chance de ganhar a mão, valia pedir truco '
-          'antes de jogar.',
-          topic: CoachTopic.missedTruco,
-        );
-      }
-    }
+    // A hand already won without truco is not a mistake: letting the other
+    // team get excited and call it (or bluffing later) is a fine way to play
+    // it, so the professor says nothing about it.
 
     final others = [
       for (final e in chances.entries)
@@ -384,7 +374,7 @@ class CoachReport {
 
   int get praises => _counts[CoachTopic.praise] ?? 0;
   int get mistakes => _counts.entries
-      .where((e) => e.key != CoachTopic.praise)
+      .where((e) => e.key != CoachTopic.praise && e.key != CoachTopic.bluff)
       .fold(0, (a, e) => a + e.value);
 
   static const _advice = {
@@ -395,11 +385,8 @@ class CoachReport {
         'Carta coberta: cubra só a carta que não faz falta, nunca a que '
         'ganha a rodada.',
     CoachTopic.truco:
-        'Pedidos de truco: blefe com poucas chances custa caro quando '
-        'aceitam.',
-    CoachTopic.missedTruco:
-        'Mãos fortes: quando a mão está praticamente ganha, peça truco para '
-        'valer mais.',
+        'Pedidos de truco: com a mão perdida ou já valendo a partida, o '
+        'truco só ajuda o adversário.',
     CoachTopic.answer:
         'Respostas ao truco: compare o que perde correndo com o que arrisca '
         'aceitando.',
