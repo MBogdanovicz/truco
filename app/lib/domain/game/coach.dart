@@ -4,13 +4,32 @@ import 'ai.dart';
 import 'cards.dart';
 import 'truco_game.dart';
 
+/// What a comment of the "modo professor" is about (for the summary at the
+/// end of the game).
+enum CoachTopic {
+  card,
+  cover,
+  truco,
+  missedTruco,
+  answer,
+  elevenHand,
+  praise,
+
+  /// Something to think about before a hard decision, said before it.
+  hint,
+}
+
 /// A comment from the "modo professor" about a move.
 class CoachTip {
-  const CoachTip(this.text, {this.good = false});
+  const CoachTip(this.text, {this.good = false, this.topic = CoachTopic.card});
   final String text;
 
   /// Praise rather than a correction.
   final bool good;
+  final CoachTopic topic;
+
+  /// Said before the decision, not about a move already made.
+  bool get isHint => topic == CoachTopic.hint;
 
   @override
   String toString() => text;
@@ -58,6 +77,7 @@ class Coach {
       return const CoachTip(
         'Correr entregava a partida aos adversários: na mão de onze, nesse '
         'placar, é jogar de qualquer jeito.',
+        topic: CoachTopic.elevenHand,
       );
     }
     final p = _chance(v);
@@ -68,12 +88,14 @@ class Coach {
         'Arriscado: com essas cartas (as suas e as do parceiro) a chance de '
         'ganhar a mão de onze era de uns ${pct(p)}. Correndo você perde só '
         '$run ponto; jogando, arrisca $play.',
+        topic: CoachTopic.elevenHand,
       );
     }
     if (action is Fold && p > threshold + 0.15) {
       return CoachTip(
         'Dava para jogar: vocês tinham uns ${pct(p)} de chance de ganhar a '
         'mão de onze, e jogar vale $play pontos contra $run de correr.',
+        topic: CoachTopic.elevenHand,
       );
     }
     return null;
@@ -91,6 +113,7 @@ class Coach {
       return CoachTip(
         'Correr dava a partida aos adversários: aceitar o $name era a única '
         'chance.',
+        topic: CoachTopic.answer,
       );
     }
     final p = _chance(v);
@@ -102,6 +125,7 @@ class Coach {
         'Valia aceitar: a chance de ganhar a mão era de uns ${pct(p)}. '
         'Correndo, você entregou $current ${_pontos(current)}; aceitando, '
         'arriscava $asked para ganhar $asked.',
+        topic: CoachTopic.answer,
       );
     }
     if (action is Accept && accept < -current - margin) {
@@ -111,12 +135,14 @@ class Coach {
       return CoachTip(
         'Era melhor correr: $odds. Correndo, você perdia $current '
         '${_pontos(current)}; aceitando, arriscou $asked.',
+        topic: CoachTopic.answer,
       );
     }
     if (action is Raise && p < 0.45) {
       return CoachTip(
         'Pedir mais com uns ${pct(p)} de chance é blefe. Às vezes funciona, '
         'mas se aceitarem a conta fica alta.',
+        topic: CoachTopic.truco,
       );
     }
     return null;
@@ -133,6 +159,7 @@ class Coach {
         return const CoachTip(
           'Essa mão já valia a partida: pedir truco só dá ao adversário a '
           'chance de correr e entregar menos.',
+          topic: CoachTopic.truco,
         );
       }
       final p = _chance(v);
@@ -140,12 +167,14 @@ class Coach {
         return const CoachTip(
           'A mão já estava perdida: esse truco só funciona se eles correrem. '
           'Se aceitarem, vocês perdem mais pontos.',
+          topic: CoachTopic.truco,
         );
       }
       if (p < 0.3) {
         return CoachTip(
           'Truco com uns ${pct(p)} de chance é blefe. Funciona às vezes, '
           'mas se aceitarem você arrisca mais.',
+          topic: CoachTopic.truco,
         );
       }
       return null;
@@ -158,6 +187,7 @@ class Coach {
       return CoachTip(
         'Você cobriu o ${cardName(chosen)}, que ganhava a rodada. Coberta '
         'perde para qualquer carta.',
+        topic: CoachTopic.cover,
       );
     }
     if (hand.length < 2 || action.covered) return null;
@@ -181,6 +211,7 @@ class Coach {
         return CoachTip(
           'Com uns ${pct(p)} de chance de ganhar a mão, valia pedir truco '
           'antes de jogar.',
+          topic: CoachTopic.missedTruco,
         );
       }
     }
@@ -193,9 +224,102 @@ class Coach {
       return const CoachTip(
         'Boa! Era a melhor carta para essa hora.',
         good: true,
+        topic: CoachTopic.praise,
       );
     }
     return null;
+  }
+
+  // ----------------------------------------- before a hard decision --
+
+  /// Call when the person has to answer a raise or decide a mão de onze.
+  /// When the choice is close, says what to weigh, without the answer.
+  CoachTip? consider(PlayerView v) {
+    if (v.iron) return null;
+    final ours = v.scoreOf(v.team), opp = v.scoreOf(v.team.other);
+    final target = v.rules.targetScore;
+    final int lose, risk;
+    final String verb;
+    if (v.phase == GamePhase.raisePending) {
+      final pending = v.pending;
+      if (pending == null || teamOfSeat(pending.seat) == v.team) return null;
+      lose = v.rules.stakes[v.stakeLevel];
+      risk = v.rules.stakes[pending.toLevel];
+      verb = 'aceitando';
+    } else if (v.phase == GamePhase.decision) {
+      if (v.decisionTeam != v.team) return null;
+      lose = v.rules.baseValue;
+      risk = v.rules.decisionHandValue;
+      verb = 'jogando';
+    } else {
+      return null;
+    }
+    // Running would end the game: there is nothing to weigh.
+    if (opp + lose >= target) return null;
+    final p = _chance(v);
+    final even = (risk - lose) / (2 * risk);
+    if ((p - even).abs() > 0.15) return null;
+
+    final parts = <String>[
+      'Decisão difícil.',
+      _roundsSoFar(v),
+      _strongCards(v),
+      'Correndo, vocês perdem $lose ${_pontos(lose)}; $verb, arriscam '
+          '$risk para ganhar $risk.',
+      if (opp + risk >= target)
+        'Se perderem, a partida acaba.'
+      else if (ours + risk >= target)
+        'Se ganharem, vocês fecham a partida.',
+      v.phase == GamePhase.decision
+          ? 'Pense se as cartas de vocês dois ganham duas rodadas.'
+          : 'Pense em quantas rodadas suas cartas ainda ganham.',
+    ];
+    return CoachTip(
+      parts.where((t) => t.isNotEmpty).join(' '),
+      topic: CoachTopic.hint,
+    );
+  }
+
+  String _roundsSoFar(PlayerView v) {
+    final r = v.rounds;
+    if (r.isEmpty) return 'Ainda é a primeira rodada.';
+    if (r.length == 1) {
+      if (r.first.tied) {
+        return 'A primeira empatou: quem ganhar a próxima leva a mão.';
+      }
+      return r.first.winner == v.team
+          ? 'Vocês ganharam a primeira: ganhar ou empatar mais uma fecha a mão.'
+          : 'Vocês perderam a primeira: precisam ganhar as duas próximas.';
+    }
+    return 'Está uma a uma: a terceira rodada decide.';
+  }
+
+  String _strongCards(PlayerView v) {
+    String count(List<Card> cards) {
+      final manilhas = cards
+          .where((c) => v.rules.isManilha(c, vira: v.vira))
+          .length;
+      final threes = cards
+          .where(
+            (c) => c.rank == Rank.three && !v.rules.isManilha(c, vira: v.vira),
+          )
+          .length;
+      final m = switch (manilhas) {
+        0 => 'nenhuma manilha',
+        1 => '1 manilha',
+        _ => '$manilhas manilhas',
+      };
+      final t = switch (threes) {
+        0 => 'nenhum 3',
+        1 => 'um 3',
+        _ => '$threes 3s',
+      };
+      return '$m e $t';
+    }
+
+    final partner = v.partnerHand;
+    return 'Na sua mão: ${count(v.hand)}.'
+        '${partner == null || partner.isEmpty ? '' : ' Na do parceiro: ${count(partner)}.'}';
   }
 
   bool _winsRound(PlayerView v, Card c) {
@@ -243,5 +367,67 @@ class Coach {
           '${cardName(chosen)} não. $odds';
     }
     return 'Era hora de usar o ${cardName(better)}. $odds';
+  }
+}
+
+/// Adds up the professor's comments over a game, for the summary at the end.
+class CoachReport {
+  int moves = 0;
+  final _counts = <CoachTopic, int>{};
+
+  void record(CoachTip? tip) {
+    moves++;
+    if (tip != null && !tip.isHint) {
+      _counts[tip.topic] = (_counts[tip.topic] ?? 0) + 1;
+    }
+  }
+
+  int get praises => _counts[CoachTopic.praise] ?? 0;
+  int get mistakes => _counts.entries
+      .where((e) => e.key != CoachTopic.praise)
+      .fold(0, (a, e) => a + e.value);
+
+  static const _advice = {
+    CoachTopic.card:
+        'Escolha da carta: guarde as fortes quando o parceiro já ganha a '
+        'rodada ou quando uma mais fraca resolve.',
+    CoachTopic.cover:
+        'Carta coberta: cubra só a carta que não faz falta, nunca a que '
+        'ganha a rodada.',
+    CoachTopic.truco:
+        'Pedidos de truco: blefe com poucas chances custa caro quando '
+        'aceitam.',
+    CoachTopic.missedTruco:
+        'Mãos fortes: quando a mão está praticamente ganha, peça truco para '
+        'valer mais.',
+    CoachTopic.answer:
+        'Respostas ao truco: compare o que perde correndo com o que arrisca '
+        'aceitando.',
+    CoachTopic.elevenHand:
+        'Mão de onze: jogue quando as cartas de vocês dois ganham duas '
+        'rodadas; senão, correr custa só 1 ponto.',
+  };
+
+  /// Null when nothing was reviewed (no moves by the person).
+  String? summary() {
+    if (moves == 0) return null;
+    final m = mistakes;
+    if (m == 0) {
+      return praises > 0
+          ? 'Partida muito bem jogada! Nenhum erro claro, e $praises '
+                '${praises == 1 ? 'jogada se destacou' : 'jogadas se destacaram'}.'
+          : 'Partida muito bem jogada! Nenhum erro claro.';
+    }
+    final lines = <String>[
+      if (m <= 2)
+        'Boa partida, com poucos deslizes.'
+      else
+        'Alguns pontos para melhorar:',
+      for (final MapEntry(:key, :value) in _advice.entries)
+        if ((_counts[key] ?? 0) > 0) '• $value (${_counts[key]}×)',
+      if (praises > 0)
+        '${praises == 1 ? 'Uma jogada' : '$praises jogadas'} de destaque.',
+    ];
+    return lines.join('\n');
   }
 }

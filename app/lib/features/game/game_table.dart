@@ -22,6 +22,8 @@ class GameTableModel {
     this.status,
     this.secondsLeft,
     this.tip,
+    this.hint,
+    this.coachSummary,
   });
 
   final TableView view;
@@ -44,16 +46,22 @@ class GameTableModel {
   /// "Modo professor": a comment on the viewer's last move.
   final CoachTip? tip;
 
+  /// "Modo professor": what to weigh before a hard decision.
+  final CoachTip? hint;
+
+  /// "Modo professor": how the game went, shown when it ends.
+  final String? coachSummary;
+
   bool get canAct => !busy && view.canAct;
 
-  GameTableModel copyWith({CoachTip? tip}) => GameTableModel(
+  GameTableModel withoutTips() => GameTableModel(
     view: view,
     names: names,
     wins: wins,
     busy: busy,
     status: status,
     secondsLeft: secondsLeft,
-    tip: tip,
+    coachSummary: coachSummary,
   );
 }
 
@@ -134,6 +142,7 @@ class _GameTableState extends State<GameTable> {
                     _TopBar(view: v, onBack: a.onLeave),
                     Expanded(child: _table()),
                     if (m.tip != null) _tip(m.tip!),
+                    if (m.hint != null) _tip(m.hint!),
                     _actions(),
                     _hand(),
                   ],
@@ -151,7 +160,11 @@ class _GameTableState extends State<GameTable> {
   Widget _tip(CoachTip tip) => Padding(
     padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
     child: Material(
-      color: tip.good ? const Color(0xFF2E7D32) : const Color(0xFFFFF3C4),
+      color: tip.good
+          ? const Color(0xFF2E7D32)
+          : tip.isHint
+          ? const Color(0xFFE3F0FF)
+          : const Color(0xFFFFF3C4),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -162,7 +175,11 @@ class _GameTableState extends State<GameTable> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                tip.good ? '👏' : '💡',
+                tip.good
+                    ? '👏'
+                    : tip.isHint
+                    ? '🤔'
+                    : '💡',
                 style: const TextStyle(fontSize: 18),
               ),
               const SizedBox(width: 8),
@@ -170,7 +187,11 @@ class _GameTableState extends State<GameTable> {
                 child: Text(
                   tip.text,
                   style: TextStyle(
-                    color: tip.good ? Colors.white : const Color(0xFF4A3B00),
+                    color: tip.good
+                        ? Colors.white
+                        : tip.isHint
+                        ? const Color(0xFF0D2A4D)
+                        : const Color(0xFF4A3B00),
                     fontSize: 14,
                     height: 1.25,
                   ),
@@ -344,6 +365,24 @@ class _GameTableState extends State<GameTable> {
                   '\nPlacar da noite: ${m.wins[v.team]} × ${m.wins[v.team.other]}',
                   textAlign: TextAlign.center,
                 ),
+                if (m.coachSummary != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3C4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '🎓 Professor\n${m.coachSummary}',
+                      style: const TextStyle(
+                        color: Color(0xFF4A3B00),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
                 if (a.gameOverExtra != null) ...[
                   const SizedBox(height: 8),
                   Text(a.gameOverExtra!, textAlign: TextAlign.center),

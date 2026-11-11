@@ -53,6 +53,11 @@ class LocalGameController extends Notifier<GameTableModel?> {
   List<String> _names = const [];
   final _coach = const Coach();
   CoachTip? _tip;
+  CoachTip? _hint;
+  CoachReport _report = CoachReport();
+
+  /// The decision a hint was worked out for, so it is computed once.
+  String? _hintKey;
 
   static const botNames = ['', 'Zeca', 'Bia', 'Tonho'];
 
@@ -96,6 +101,9 @@ class LocalGameController extends Notifier<GameTableModel?> {
     _player.reset();
     state = null;
     _tip = null;
+    _hint = null;
+    _hintKey = null;
+    _report = CoachReport();
     _show(session.viewFor(humanSeat), busy: true);
     _play(session.advance());
   }
@@ -121,19 +129,23 @@ class LocalGameController extends Notifier<GameTableModel?> {
   /// Hides the professor's comment.
   void dismissTip() {
     _tip = null;
+    _hint = null;
     final m = state;
-    if (m != null) state = m.copyWith(tip: null);
+    if (m != null) state = m.withoutTips();
   }
+
+  bool get _coaching => _setup?.coach ?? false;
 
   void _act(GameAction action) {
     final s = _session;
     CoachTip? tip;
-    if (s != null && (_setup?.coach ?? false) && (state?.canAct ?? false)) {
+    if (s != null && _coaching && (state?.canAct ?? false)) {
       try {
         tip = _coach.review(s.game.viewFor(humanSeat), action);
       } on Object {
         tip = null;
       }
+      _report.record(tip);
     }
     _human((s) => s.act(humanSeat, action), tip: tip);
   }
@@ -148,6 +160,7 @@ class LocalGameController extends Notifier<GameTableModel?> {
       return;
     }
     _tip = tip;
+    _hint = null;
     _play(frames);
   }
 
@@ -166,12 +179,40 @@ class LocalGameController extends Notifier<GameTableModel?> {
         view.winner != null) {
       _wins = {..._wins, view.winner!: _wins[view.winner!]! + 1};
     }
+    if (!busy) _maybeHint(view);
     state = GameTableModel(
       view: view,
       names: _names,
       wins: _wins,
       busy: busy,
       tip: _tip,
+      hint: _hint,
+      coachSummary: _coaching && view.phase == GamePhase.gameOver
+          ? _report.summary()
+          : null,
     );
+  }
+
+  /// Before the person answers a raise or decides a mão de onze, a word on
+  /// what to weigh when the choice is close.
+  void _maybeHint(TableView view) {
+    final s = _session;
+    if (s == null || !_coaching || !view.mustAnswer) return;
+    if (view.phase != GamePhase.raisePending &&
+        view.phase != GamePhase.decision) {
+      return;
+    }
+    final key =
+        '${view.handNumber}/${view.phase}/${view.stakeLevel}/'
+        '${view.pending?.toLevel}/${view.rounds.length}';
+    if (key == _hintKey) return;
+    _hintKey = key;
+    final live = s.game.viewFor(humanSeat);
+    if (live.phase != view.phase) return;
+    try {
+      _hint = _coach.consider(live);
+    } on Object {
+      _hint = null;
+    }
   }
 }
