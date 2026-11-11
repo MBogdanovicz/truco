@@ -12,7 +12,6 @@ class AchievementsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final data = ref.watch(unlockedAchievementsProvider);
-    final theme = Theme.of(context);
     return AppScaffold(
       title: 'Conquistas',
       onRefresh: () async => ref.invalidate(unlockedAchievementsProvider),
@@ -29,38 +28,58 @@ class AchievementsScreen extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
           ),
-          data: (unlocked) => AppSection(
-            header: '${unlocked.length} de ${Achievement.values.length}',
-            footer:
-                'Contam só as partidas rankeadas, as mesmas do ranking: 4 '
-                'jogadores com conta e as duas duplas confirmando o placar.',
+          data: (unlocked) => Column(
             children: [
-              for (final a in Achievement.values)
-                AppTile(
-                  leading: Icon(
-                    context.icon(AppIcon.medal),
-                    color: unlocked.containsKey(a)
-                        ? AppColors.gold
-                        : theme.disabledColor,
-                  ),
-                  // Secret ones stay a mystery until unlocked.
-                  title: a.hidden && !unlocked.containsKey(a)
-                      ? 'Conquista secreta'
-                      : a.title,
-                  subtitle: switch (unlocked[a]) {
-                    final at? =>
-                      '${a.description}\nConquistada em '
-                          '${at.day.toString().padLeft(2, '0')}/'
-                          '${at.month.toString().padLeft(2, '0')}/${at.year}',
-                    null when a.hidden => 'Jogue para descobrir.',
-                    null => a.description,
-                  },
-                  enabled: unlocked.containsKey(a),
-                ),
+              AppSection(
+                header:
+                    '${unlocked.length} de ${Achievement.values.length} · '
+                    'Marcador e jogo',
+                footer:
+                    'Contam só as partidas rankeadas, as mesmas do ranking: 4 '
+                    'jogadores com conta e as duas duplas confirmando o placar.',
+                children: [
+                  for (final a in Achievement.values)
+                    if (!a.game) _tile(context, a, unlocked),
+                ],
+              ),
+              AppSection(
+                header: 'Jogo de truco',
+                footer:
+                    'Só nas partidas rankeadas do jogo: 4 pessoas com conta, '
+                    'sem o computador em nenhum lugar.',
+                children: [
+                  for (final a in Achievement.values)
+                    if (a.game) _tile(context, a, unlocked),
+                ],
+              ),
             ],
           ),
         ),
       ],
     );
   }
+
+  Widget _tile(
+    BuildContext context,
+    Achievement a,
+    Map<Achievement, DateTime> unlocked,
+  ) => AppTile(
+    leading: Icon(
+      context.icon(AppIcon.medal),
+      color: unlocked.containsKey(a)
+          ? AppColors.gold
+          : Theme.of(context).disabledColor,
+    ),
+    // Secret ones stay a mystery until unlocked.
+    title: a.hidden && !unlocked.containsKey(a) ? 'Conquista secreta' : a.title,
+    subtitle: switch (unlocked[a]) {
+      final at? =>
+        '${a.description}\nConquistada em '
+            '${at.day.toString().padLeft(2, '0')}/'
+            '${at.month.toString().padLeft(2, '0')}/${at.year}',
+      null when a.hidden => 'Jogue para descobrir.',
+      null => a.description,
+    },
+    enabled: unlocked.containsKey(a),
+  );
 }

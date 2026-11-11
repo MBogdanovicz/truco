@@ -386,7 +386,20 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   `leaderboard` view), `game` or `scorekeeper`. The app reads `leaderboard_boards` and filters
   Jogo / Marcador / Ambos.
 
-### 10.5 Next (see ROADMAP G3+)
+### 10.5 Intimar and game achievements (G3)
+
+* Intimar: the app registers its Firebase Cloud Messaging token (`save_push_token`, table `push_tokens`).
+  "Intimar o grupo" in a room calls the Edge Function `intimar`, which checks membership, allows one call
+  per person and group per minute (`summons`) and sends FCM HTTP v1 pushes to the other members' devices
+  (secret `FIREBASE_SERVICE_ACCOUNT_JSON`). Tapping one opens the room's join screen. The site needs the
+  Firebase web config and VAPID key as dart-defines (`FIREBASE_*`).
+* Game achievements (`game_*` ids): `lib/domain/game/game_feats.dart` reads the game's events (cards
+  dealt, raises, folds, the third round) and the engine returns them per seat when the game ends;
+  `record_game_result(p_feats)` unlocks them only for ranked games. Wins in the game (`game_first_win`,
+  `game_wins_10`) are counted in SQL. Manilha names: gato (paus), copas, espadilha (espadas), salmora
+  (ouros).
+
+### 10.6 Next (see ROADMAP G4+)
 
 * Championships: new tables for tournaments, brackets and entries.
 

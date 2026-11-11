@@ -14,6 +14,8 @@ interface EngineOut {
   scores: [number, number];
   hands: Json[];
   waitingFor?: number;
+  /** Achievement ids earned per seat, when the game is over. */
+  feats?: Record<string, string[]>;
   error?: string;
 }
 
@@ -360,6 +362,7 @@ export class Game {
       p_scores: out.scores,
       p_hands: out.hands,
       p_started_at: state.started_at,
+      p_feats: out.feats ?? {},
     });
     if (error) console.error("record_game_result", error);
     await this.touch(room.id, {
