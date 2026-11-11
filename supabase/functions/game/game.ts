@@ -429,6 +429,7 @@ export class Game {
         path,
         link,
         tag,
+        kind: "end",
       });
       return;
     }
@@ -443,6 +444,7 @@ export class Game {
       path,
       link,
       tag,
+      kind: "turn",
     });
   }
 

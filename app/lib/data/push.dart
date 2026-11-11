@@ -53,6 +53,7 @@ class Summons {
     required this.title,
     required this.body,
     required this.path,
+    this.kind,
     this.tapped = false,
   });
   final String title;
@@ -60,6 +61,10 @@ class Summons {
 
   /// Where tapping it goes, e.g. /jogo/entrar?codigo=ABC234.
   final String path;
+
+  /// "turn" (your move in a slow game), "end" (slow game over), or null
+  /// ("intimar").
+  final String? kind;
 
   /// The person tapped the notification (otherwise the app was open).
   final bool tapped;
@@ -71,6 +76,7 @@ class Summons {
       title: m.notification?.title ?? 'Truco!',
       body: m.notification?.body ?? '',
       path: path,
+      kind: m.data['kind'] as String?,
       tapped: tapped,
     );
   }

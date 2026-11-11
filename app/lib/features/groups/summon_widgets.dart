@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/push.dart';
+import '../../data/slow_games.dart';
 import '../../router.dart';
 import '../game/online_game_controller.dart';
 import '../scorekeeper/online_room_controller.dart';
@@ -154,22 +157,80 @@ class SummonsListener extends ConsumerStatefulWidget {
 }
 
 class _SummonsListenerState extends ConsumerState<SummonsListener> {
+  StreamSubscription<Summons>? _sub;
+
+  /// A dialog is open; pushes that arrive meanwhile wait here, the latest
+  /// per room only (a newer "sua vez" or the end replaces an older one).
+  bool _showing = false;
+  final _pending = <String, Summons>{};
+
   @override
   void initState() {
     super.initState();
     if (!PushService.supported) return;
-    PushService.instance.summons.listen(_show);
+    _sub = PushService.instance.summons.listen(_onSummons);
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  void _onSummons(Summons s) {
+    if (s.tapped) {
+      ref.read(routerProvider).go(s.path);
+      return;
+    }
+    _pending.remove(s.path);
+    _pending[s.path] = s;
+    if (!_showing) _drain();
+  }
+
+  Future<void> _drain() async {
+    _showing = true;
+    try {
+      while (_pending.isNotEmpty && mounted) {
+        final s = _pending.remove(_pending.keys.first)!;
+        if (await _stillNews(s)) await _show(s);
+      }
+    } finally {
+      _showing = false;
+    }
+  }
+
+  /// Whether [s] is still worth a dialog now (it may have waited behind
+  /// another one, or the person may be at that table already).
+  Future<bool> _stillNews(Summons s) async {
+    final router = ref.read(routerProvider);
+    if (_alreadyThere(s, router.routerDelegate.currentConfiguration.uri.path)) {
+      return false;
+    }
+    final code = Uri.tryParse(s.path)?.queryParameters['codigo'];
+    if (s.kind == 'end') {
+      // Seen it end at the table (even if now on another screen of it).
+      return ref.read(onlineGameControllerProvider)?.code != code;
+    }
+    if (s.kind == 'turn') {
+      // Still this person's turn? (They may have played elsewhere, or the
+      // game may be over.)
+      ref.invalidate(slowGamesProvider);
+      // Keeps the (auto-dispose) list alive while it loads.
+      final keep = ref.listenManual(slowGamesProvider, (_, _) {});
+      try {
+        final games = await ref.read(slowGamesProvider.future);
+        return games.any((g) => g.code == code && g.myTurn);
+      } on Object {
+        return true;
+      } finally {
+        keep.close();
+      }
+    }
+    return true;
   }
 
   Future<void> _show(Summons s) async {
     final router = ref.read(routerProvider);
-    if (s.tapped) {
-      router.go(s.path);
-      return;
-    }
-    if (_alreadyThere(s, router.routerDelegate.currentConfiguration.uri.path)) {
-      return;
-    }
     final context = router.routerDelegate.navigatorKey.currentContext;
     if (context == null) return;
     final go = await showAppDialog<bool>(

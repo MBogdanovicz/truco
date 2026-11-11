@@ -75,6 +75,9 @@ export interface Push {
   link: string;
   /** Pushes with the same tag replace each other on Android. */
   tag: string;
+  /** What the app does with it when open: "turn" (slow game, your move),
+   * "end" (slow game over); none for "intimar". */
+  kind?: "turn" | "end";
 }
 
 /** Sends [push] to every device of [userIds]; drops dead tokens. Returns
@@ -106,7 +109,11 @@ export async function sendPush(
             message: {
               token,
               notification: { title: push.title, body: push.body },
-              data: { path: push.path, link: push.link },
+              data: {
+                path: push.path,
+                link: push.link,
+                ...(push.kind ? { kind: push.kind } : {}),
+              },
               android: { priority: "high", notification: { tag: push.tag } },
               webpush: { fcm_options: { link: push.link } },
             },
