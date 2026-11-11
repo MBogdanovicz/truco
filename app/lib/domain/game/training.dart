@@ -191,10 +191,18 @@ final trainingScenarios = <TrainingScenario>[
     hand: _h('Ae 4c'),
     question: 'Qual carta você joga?',
     options: ['A♠', '4♥'],
-    answer: 0,
+    answer: 1,
     explanation:
-        'Com a primeira ganha, ganhar ou empatar a segunda já fecha a mão. '
-        'Jogue a mais forte e obrigue os adversários a gastar as deles.',
+        'Truco é em dupla: quem está mais perto do pé é que deve jogar a '
+        'carta forte. Jogando o 4, se o primeiro adversário puser uma carta '
+        'alta, você economizou o ás e o seu parceiro responde, sabendo o que '
+        'precisa fazer (e pode até trucar). E com a primeira ganha, mesmo '
+        'perdendo a segunda vocês ainda têm o ás para a terceira.',
+    alsoGood: {
+      0: 'Jogar o ás também vale: com a primeira ganha, ganhar ou empatar a '
+          'segunda já fecha a mão, e o ás obriga os adversários a gastar '
+          'cartas fortes.',
+    },
   ),
   TrainingScenario(
     id: 'tied_first',
