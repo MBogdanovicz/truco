@@ -249,14 +249,19 @@ final trainingScenarios = <TrainingScenario>[
         'são os ases.',
     vira: _c('Ko'),
     hand: _h('Ap Ac 4o'),
-    question: 'Vale pedir truco?',
-    options: ['Sim', 'Não'],
-    answer: 0,
+    question: 'Qual é a melhor jogada?',
+    options: [
+      'Pedir truco agora',
+      'Jogar o 4♦ e deixar eles pedirem truco',
+      'Jogar o gato para garantir a primeira',
+    ],
+    answer: 1,
     explanation:
         'O gato (A♣) e a copas (A♥) são as duas maiores cartas do jogo: '
-        'vocês ganham duas rodadas com certeza. Pode pedir truco sem medo. '
-        'Se quiser arrancar mais pontos, deixe que eles peçam e responda '
-        'com seis.',
+        'mesmo perdendo a primeira, vocês ganham a segunda e a terceira. '
+        'Então entregue a primeira com o 4♦: o adversário fica confiante e '
+        'pede truco, e aí você responde com seis. Pedir truco agora assusta, '
+        'e eles podem correr e dar só 1 ponto.',
   ),
   TrainingScenario(
     id: 'raise_after_seis',
