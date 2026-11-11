@@ -31,9 +31,9 @@ abstract final class GameFeat {
 
   /// Won a hand after being dealt two given manilhas.
   static const casalMaior = 'game_casal_maior'; // gato + copas
-  static const casalMenor = 'game_casal_menor'; // salmora + espadilha
+  static const casalMenor = 'game_casal_menor'; // salmoura + espadilha
   static const casalPreto = 'game_casal_preto'; // espadilha + gato
-  static const casalVermelho = 'game_casal_vermelho'; // salmora + copas
+  static const casalVermelho = 'game_casal_vermelho'; // salmoura + copas
 
   static const all = {
     truco12,

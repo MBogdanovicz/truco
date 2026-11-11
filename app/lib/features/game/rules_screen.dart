@@ -56,12 +56,12 @@ class _RulesScreenState extends State<RulesScreen> {
             'Manilhas: depois de dar as cartas, vira-se uma carta (a "vira"). '
                 'As manilhas são as cartas logo acima dela (vira 7, manilha é '
                 'a dama; vira 3, manilha é o 4). Entre manilhas vale o naipe: '
-                'paus (gato) > copas > espadas (espadilha) > ouros (salmora ou '
+                'paus (gato) > copas > espadas (espadilha) > ouros (salmoura ou '
                 'pica-fumo).'
           else
             'Manilhas fixas, da mais forte para a mais fraca: 4 de paus '
                 '(gato), 7 de copas (copas), ás de espadas (espadilha) e 7 de '
-                'ouros (salmora ou pica-fumo), como no truco mineiro. Não tem vira.',
+                'ouros (salmoura ou pica-fumo), como no truco mineiro. Não tem vira.',
           'No app as manilhas têm uma estrelinha e borda dourada.',
         ],
       ),

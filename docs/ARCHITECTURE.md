@@ -396,7 +396,7 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
 * Game achievements (`game_*` ids): `lib/domain/game/game_feats.dart` reads the game's events (cards
   dealt, raises, folds, the third round) and the engine returns them per seat when the game ends;
   `record_game_result(p_feats)` unlocks them only for ranked games. Wins in the game (`game_first_win`,
-  `game_wins_10`) are counted in SQL. Manilha names: gato (paus), copas, espadilha (espadas), salmora
+  `game_wins_10`) are counted in SQL. Manilha names: gato (paus), copas, espadilha (espadas), salmoura
   (ouros).
 
 ### 10.6 Phase 4: move time and "modo professor"

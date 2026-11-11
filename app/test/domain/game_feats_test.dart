@@ -34,7 +34,7 @@ void main() {
     final f = gameFeats([
       hand([
         ['5p', '5c', '7o'], // gato + copas
-        ['5e', '5o', '7e'], // espadilha + salmora
+        ['5e', '5o', '7e'], // espadilha + salmoura
         ['7c', 'Qc', 'Jc'],
         ['7p', 'Qp', 'Jp'],
       ]),

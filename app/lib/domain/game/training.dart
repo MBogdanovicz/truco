@@ -44,7 +44,7 @@ List<Card> _h(String ids) => ids.split(' ').map(_c).toList();
 
 /// Paulista rules with the "vira": the manilha is the rank after the vira,
 /// and between manilhas: paus (gato) > copas > espadas (espadilha) > ouros
-/// (salmora).
+/// (salmoura).
 final trainingScenarios = <TrainingScenario>[
   TrainingScenario(
     id: 'manilha_3',
@@ -86,8 +86,8 @@ final trainingScenarios = <TrainingScenario>[
     answer: 0,
     explanation:
         'Só manilha ganha de manilha, e entre elas vale o naipe: paus (gato) '
-        '> copas > espadas (espadilha) > ouros (salmora). A espadilha ganha '
-        'da salmora. O 3 é a maior carta comum, mas perde de qualquer '
+        '> copas > espadas (espadilha) > ouros (salmoura). A espadilha ganha '
+        'da salmoura. O 3 é a maior carta comum, mas perde de qualquer '
         'manilha.',
   ),
   TrainingScenario(
