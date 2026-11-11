@@ -43,10 +43,13 @@
   -->
   <script>
     // Remove service workers left by older builds so they cannot serve a
-    // stale version of the app.
+    // stale version of the app. Keep the one of the "intimar" pushes.
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function (regs) {
-        regs.forEach(function (r) { r.unregister(); });
+        regs.forEach(function (r) {
+          var w = r.active || r.waiting || r.installing;
+          if (!w || !/firebase-messaging-sw\.js$/.test(w.scriptURL)) r.unregister();
+        });
       });
     }
   </script>
