@@ -6,8 +6,8 @@ enum ManilhaMode {
   /// (Paulista).
   vira,
 
-  /// Always the same four cards: 4♣ (zap), 7♥ (copas), A♠ (espadilha) and
-  /// 7♦ (pica-fumo), as in truco mineiro.
+  /// Always the same four cards: 4♣ (gato), 7♥ (copas), A♠ (espadilha) and
+  /// 7♦ (salmora or pica-fumo), as in truco mineiro.
   fixed,
 }
 
@@ -157,10 +157,10 @@ class TrucoRules {
 
   /// Mineiro manilhas, weakest first.
   static const _fixedManilhas = [
-    Card(Rank.seven, Suit.ouros), // pica-fumo
+    Card(Rank.seven, Suit.ouros), // salmora (pica-fumo)
     Card(Rank.ace, Suit.espadas), // espadilha
     Card(Rank.seven, Suit.copas), // sete copas
-    Card(Rank.four, Suit.paus), // zap
+    Card(Rank.four, Suit.paus), // gato
   ];
 }
 

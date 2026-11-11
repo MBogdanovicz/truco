@@ -76,8 +76,12 @@ class HandStarted extends GameEvent {
     required this.vira,
     required this.decisionTeam,
     required this.iron,
+    this.dealt = const [],
   });
   final int handNumber;
+
+  /// The three cards each seat got (for the achievements).
+  final List<List<Card>> dealt;
   final int dealer;
   final Card? vira;
   final Team? decisionTeam;
@@ -295,6 +299,7 @@ class TrucoGame {
         vira: _vira,
         decisionTeam: _decisionTeam,
         iron: _iron,
+        dealt: _dealt,
       ),
     );
   }

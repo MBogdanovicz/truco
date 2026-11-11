@@ -54,4 +54,10 @@ const releaseNotes = <ReleaseNote>[
     'Partidas online com 4 pessoas com conta contam para o ranking.',
     'Ranking com filtro: Jogo, Marcador ou Ambos.',
   ]),
+  ReleaseNote(7, [
+    'Novo: intime o seu grupo! Na sala, toque em "Intimar o grupo" e todos '
+        'com os avisos ligados recebem um chamado para jogar.',
+    'Ligue os avisos em Grupos > "Receber intimações".',
+    '14 conquistas novas do jogo de truco, algumas secretas.',
+  ]),
 ];

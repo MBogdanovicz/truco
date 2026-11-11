@@ -9,13 +9,16 @@
 //         timeout?: true}                  // the computer moves for the
 //                                          // person the game waits for
 //   out: {log, frames: {"<seat>": [TableView json]}, phase, winner?,
-//         scores: [a, b], hands: [{w?, p}], error?}
+//         scores: [a, b], hands: [{w?, p}],
+//         feats?: {"<seat>": [achievement id]}   // when the game is over
+//         error?}
 //
 // Without "act" the computer plays until a person must act (game start).
 import 'dart:convert';
 import 'dart:js_interop';
 
 import 'package:truco/domain/game/ai.dart';
+import 'package:truco/domain/game/game_feats.dart';
 import 'package:truco/domain/game/game_session.dart';
 import 'package:truco/domain/game/rules.dart';
 import 'package:truco/domain/game/truco_game.dart';
@@ -74,6 +77,11 @@ String run(String input) {
       for (final e in g.events.whereType<HandEnded>())
         {if (e.winner != null) 'w': e.winner!.name, 'p': e.points},
     ],
+    if (g.phase == GamePhase.gameOver)
+      'feats': {
+        for (final e in gameFeats(g.events, g.rules).entries)
+          if (e.value.isNotEmpty) '${e.key}': e.value.toList(),
+      },
     'error': ?error,
   });
 }

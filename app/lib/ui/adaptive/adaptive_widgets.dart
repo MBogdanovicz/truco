@@ -481,7 +481,7 @@ Future<T?> showAppDialog<T>(
 }
 
 /// Brief, non-blocking message.
-void showAppToast(BuildContext context, String message) {
+void showAppToast(BuildContext context, String message, {bool long = false}) {
   final messenger = ScaffoldMessenger.maybeOf(context);
   final wide = context.windowWidth >= AppBreakpoints.medium;
   messenger
@@ -489,7 +489,7 @@ void showAppToast(BuildContext context, String message) {
     ..showSnackBar(
       SnackBar(
         content: Text(message),
-        duration: const Duration(seconds: 2),
+        duration: Duration(seconds: long ? 5 : 2),
         width: wide ? 440 : null,
       ),
     );

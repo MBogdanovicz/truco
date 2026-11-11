@@ -7,14 +7,17 @@ plugins {
 }
 
 // Dev builds (TRUCO_DEV=1, from the `dev` branch) install next to the
-// tester app: other package id, "Truco β" on the launcher. They have no
-// Firebase/Crashlytics (google-services.json only knows the real package),
-// and Play Games / purchases don't work there.
+// tester app: other package id, "Truco β" on the launcher. Play Games and
+// purchases don't work there. They get Firebase (push for "intimar") only
+// when google-services.json also lists the dev package.
 val devBuild = System.getenv("TRUCO_DEV") == "1"
 
-// Firebase Crashlytics needs android/app/google-services.json. Builds without
-// it (e.g. CI) still work; the app then just skips crash reporting.
-if (!devBuild && file("google-services.json").exists()) {
+// Firebase (Crashlytics, push) needs android/app/google-services.json. Builds
+// without it (e.g. CI) still work; the app then skips crash reports and push.
+val googleServices = file("google-services.json")
+val firebaseForThisBuild = googleServices.exists() &&
+    (!devBuild || googleServices.readText().contains("app.mytrophies.truco.dev"))
+if (firebaseForThisBuild) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
 }

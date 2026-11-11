@@ -44,3 +44,22 @@ final rankedGamesCountProvider = FutureProvider.autoDispose<int>((ref) async {
       .count(CountOption.exact);
   return res.count;
 });
+
+/// Ranked wins in the app's truco game (the progress of "Truqueiro").
+final rankedGameWinsCountProvider = FutureProvider.autoDispose<int>((
+  ref,
+) async {
+  final client = ref.watch(supabaseClientProvider);
+  final userId = ref.watch(_accountIdProvider);
+  if (client == null || userId == null) return 0;
+  final rows = await client
+      .from('match_players')
+      .select('team, matches!inner(winner)')
+      .eq('user_id', userId)
+      .eq('matches.kind', 'game')
+      .eq('matches.is_ranked', true)
+      .eq('matches.ratings_applied', true);
+  return rows
+      .where((r) => (r['matches'] as Map?)?['winner'] == r['team'])
+      .length;
+});

@@ -14,6 +14,7 @@ import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
+import '../groups/summon_widgets.dart';
 import 'online_room_controller.dart';
 import 'scoreboard_skin.dart';
 import 'scoreboard_view.dart';
@@ -366,6 +367,20 @@ class _Lobby extends StatelessWidget {
                       'Ou copie o convite com o link e mande no grupo.',
                       textAlign: TextAlign.center,
                       style: white70,
+                    ),
+                    const SizedBox(height: 12),
+                    Consumer(
+                      builder: (context, ref, _) => AppButton(
+                        label: 'Intimar o grupo',
+                        icon: context.icon(AppIcon.groups),
+                        tonal: true,
+                        onPressed: () => summonToRoom(
+                          context,
+                          ref,
+                          code: snap.code,
+                          game: false,
+                        ),
+                      ),
                     ),
                   ],
                 ),
