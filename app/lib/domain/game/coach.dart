@@ -185,7 +185,10 @@ class Coach {
     final hand = v.hand;
     final chosen = action.card;
 
-    if (action.covered && _winsRound(v, chosen)) {
+    // Covering or giving away a round is a plan (letting them call truco)
+    // when the hand stays all but won; the professor only speaks when it
+    // costs the hand.
+    if (action.covered && _winsRound(v, chosen) && _chance(v) < 0.85) {
       return CoachTip(
         'Você cobriu o ${cardName(chosen)}, que ganhava a rodada. Coberta '
         'perde para qualquer carta.',
@@ -198,7 +201,7 @@ class Coach {
     final best = chances.entries.reduce((a, b) => b.value > a.value ? b : a);
     final mine = chances[chosen]!;
 
-    if (best.value - mine >= 0.1 && best.key != chosen) {
+    if (best.value - mine >= 0.1 && mine < 0.85 && best.key != chosen) {
       return CoachTip(_why(v, chosen, best.key, mine, best.value));
     }
 
@@ -379,11 +382,12 @@ class CoachReport {
 
   static const _advice = {
     CoachTopic.card:
-        'Escolha da carta: guarde as fortes quando o parceiro já ganha a '
-        'rodada ou quando uma mais fraca resolve.',
+        'Escolha da carta: lembre da posição (se o parceiro ainda joga, '
+        'ele pode resolver a rodada) e guarde as fortes quando uma mais '
+        'fraca resolve.',
     CoachTopic.cover:
-        'Carta coberta: cubra só a carta que não faz falta, nunca a que '
-        'ganha a rodada.',
+        'Carta coberta: cobrir a carta que ganhava a rodada só vale como '
+        'plano quando a mão continua garantida.',
     CoachTopic.truco:
         'Pedidos de truco: com a mão perdida ou já valendo a partida, o '
         'truco só ajuda o adversário.',
