@@ -73,8 +73,7 @@ enum Achievement {
   gameComadre(
     'game_comadre',
     'Jogo de comadre',
-    'Vença uma partida com todas as mãos valendo 1 tento (fora a mão de '
-        'onze).',
+    'Vença uma partida sem ninguém pedir ou aceitar truco.',
     hidden: true,
   ),
   gameAceRiver(
