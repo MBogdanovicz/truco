@@ -34,7 +34,6 @@ def text(parts, size):
 
 G, R = GOLD, RED
 ICONS = {
-    'game_first_win': ([('1ª', G)], 190),
     'game_wins_10': ([('10', G)], 200),
     'game_truco_12': ([('12!', G)], 170),
     'game_ran_won': ([('↩', G)], 230),
@@ -49,7 +48,19 @@ ICONS = {
     'game_casal_vermelho': ([('♦', R), ('♥', R)], 170),
 }
 
+def card_star():
+    """A playing card with a star: the first win in the card game."""
+    im, d = base()
+    d.rounded_rectangle((176, 136, 336, 376), radius=18, outline=GOLD, width=12)
+    f = ImageFont.truetype(FONT, 120)
+    d.text((256, 258), '★', font=f, fill=GOLD, anchor='mm')
+    return im
+
+DRAWN = {'game_first_win': card_star}
+
 if __name__ == '__main__':
     out = sys.argv[1]
     for name, (parts, size) in ICONS.items():
         text(parts, size).save(f'{out}/{name}.png')
+    for name, draw in DRAWN.items():
+        draw().save(f'{out}/{name}.png')
