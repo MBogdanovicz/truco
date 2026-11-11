@@ -7,8 +7,9 @@
 --
 -- Run this BEFORE deploying the new "game" Edge Function (it calls
 -- record_game_result with p_feats). The old function still works with it.
+-- Safe to run again.
 
-create function public._award_game_achievements(p_match uuid, p_feats jsonb)
+create or replace function public._award_game_achievements(p_match uuid, p_feats jsonb)
 returns void
 language plpgsql security definer set search_path = ''
 as $$
@@ -39,6 +40,9 @@ begin
     if v_wins >= 10 then
       perform public._unlock(v_p.user_id, 'game_wins_10', p_match, v_m.finished_at);
     end if;
+    if v_m.winner = v_p.team and least(v_m.score_a, v_m.score_b) = 0 then
+      perform public._unlock(v_p.user_id, 'game_shutout', p_match, v_m.finished_at);
+    end if;
 
     for v_feat in
       select jsonb_array_elements_text(coalesce(p_feats -> v_p.seat::text, '[]'))
@@ -58,7 +62,8 @@ $$;
 revoke execute on function public._award_game_achievements from public, anon, authenticated;
 
 -- Same as in 20261111000000_game_rooms.sql, plus p_feats.
-drop function public.record_game_result(uuid, int[], jsonb, timestamptz);
+drop function if exists public.record_game_result(uuid, int[], jsonb, timestamptz);
+drop function if exists public.record_game_result(uuid, int[], jsonb, timestamptz, jsonb);
 
 create function public.record_game_result(
   p_room uuid,

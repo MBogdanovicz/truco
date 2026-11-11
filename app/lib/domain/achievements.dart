@@ -52,6 +52,12 @@ enum Achievement {
     'Truqueiro',
     'Vença 10 partidas rankeadas de truco no app.',
   ),
+  gameShutout(
+    'game_shutout',
+    'Debaixo da mesa',
+    'Vença uma partida de truco no app por 12 x 0.',
+    hidden: true,
+  ),
   gameTruco12(
     'game_truco_12',
     'Doze!',
@@ -67,7 +73,7 @@ enum Achievement {
   gameComadre(
     'game_comadre',
     'Jogo de comadre',
-    'Vença uma partida sem ninguém pedir truco.',
+    'Vença uma partida sem ninguém pedir ou aceitar truco.',
     hidden: true,
   ),
   gameAceRiver(

@@ -23,13 +23,18 @@ const _playGamesIds = <Achievement, String>{
   Achievement.loyalPartner: 'CgkI1Iv_lucZEAIQCQ',
   Achievement.revenge: 'CgkI1Iv_lucZEAIQCg',
   Achievement.groupGame: 'CgkI1Iv_lucZEAIQCw',
+  // The game's ones: ids pending (Play Console).
 };
 
 const _incrementalSteps = <Achievement, int>{
   Achievement.veteran10: 10,
   Achievement.veteran50: 50,
   Achievement.veteran100: 100,
+  Achievement.gameWins10: 10,
 };
+
+/// Incremental ones that count game wins (the others count ranked games).
+const _countsGameWins = {Achievement.gameWins10};
 
 /// Mirrors the server's achievements to Google Play Games on Android.
 ///
@@ -55,12 +60,17 @@ class PlayGamesSync {
 
   /// What Play Games should have: `id` for unlocks, `id:steps` for
   /// progress of the incremental ones.
-  static Set<String> _wanted(Map<Achievement, DateTime> unlocked, int games) {
+  static Set<String> _wanted(
+    Map<Achievement, DateTime> unlocked,
+    int games,
+    int gameWins,
+  ) {
     final wanted = <String>{};
     for (final a in _playGamesIds.keys) {
       final steps = _incrementalSteps[a];
       if (steps != null) {
-        if (games > 0) wanted.add('${a.id}:${games.clamp(0, steps)}');
+        final n = _countsGameWins.contains(a) ? gameWins : games;
+        if (n > 0) wanted.add('${a.id}:${n.clamp(0, steps)}');
       } else if (unlocked.containsKey(a)) {
         wanted.add(a.id);
       }
@@ -73,12 +83,13 @@ class PlayGamesSync {
     required String userId,
     required Map<Achievement, DateTime> unlocked,
     required int rankedGames,
+    required int gameWins,
   }) async {
     if (!supported || _running) return;
     final prefs = SharedPreferencesAsync();
     final key = 'play_games.sent.$userId';
     final sent = (await prefs.getStringList(key) ?? const []).toSet();
-    final pending = _wanted(unlocked, rankedGames).difference(sent);
+    final pending = _wanted(unlocked, rankedGames, gameWins).difference(sent);
     final attempt = '$userId|${(pending.toList()..sort()).join(',')}';
     if (pending.isEmpty || !_tried.add(attempt)) return;
     _running = true;
@@ -184,10 +195,12 @@ final playGamesSyncProvider = FutureProvider.autoDispose<void>((ref) async {
   if (client == null || userId == null) return;
   final unlocked = await ref.watch(unlockedAchievementsProvider.future);
   final games = await ref.watch(rankedGamesCountProvider.future);
+  final gameWins = await ref.watch(rankedGameWinsCountProvider.future);
   await _playGames.sync(
     client: client,
     userId: userId,
     unlocked: unlocked,
     rankedGames: games,
+    gameWins: gameWins,
   );
 });

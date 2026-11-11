@@ -34,7 +34,6 @@ def text(parts, size):
 
 G, R = GOLD, RED
 ICONS = {
-    'game_wins_10': ([('10', G)], 200),
     'game_truco_12': ([('12!', G)], 170),
     'game_ran_won': ([('↩', G)], 230),
     'game_iron_hand': ([('11×11', G)], 108),
@@ -48,19 +47,40 @@ ICONS = {
     'game_casal_vermelho': ([('♦', R), ('♥', R)], 170),
 }
 
-def card_star():
-    """A playing card with a star: the first win in the card game."""
+def card(symbol, size):
+    """A playing card with a symbol: wins in the card game."""
     im, d = base()
     d.rounded_rectangle((176, 136, 336, 376), radius=18, outline=GOLD, width=12)
-    f = ImageFont.truetype(FONT, 120)
-    d.text((256, 258), '★', font=f, fill=GOLD, anchor='mm')
+    f = ImageFont.truetype(FONT, size)
+    d.text((256, 258), symbol, font=f, fill=GOLD, anchor='mm')
     return im
 
-DRAWN = {'game_first_win': card_star}
+def under_table():
+    """12 x 0 in the game: the losers go under the table."""
+    im, d = base()
+    f = ImageFont.truetype(FONT, 80)
+    d.text((256, 200), '12×0', font=f, fill=GOLD, anchor='mm')
+    d.rounded_rectangle((136, 262, 376, 284), radius=6, fill=GOLD)  # table top
+    d.rectangle((160, 284, 178, 372), fill=GOLD)  # legs
+    d.rectangle((334, 284, 352, 372), fill=GOLD)
+    return im
+
+DRAWN = {
+    'game_first_win': lambda: card('★', 120),
+    'game_wins_10': lambda: card('10', 84),
+    'game_shutout': under_table,
+}
+
+# Changes to the first set (scorekeeper achievements).
+OLD = {
+    'loyal_partner': ([('♥', G), (' ', G), ('♥', G)], 150),
+}
 
 if __name__ == '__main__':
     out = sys.argv[1]
     for name, (parts, size) in ICONS.items():
+        text(parts, size).save(f'{out}/{name}.png')
+    for name, (parts, size) in OLD.items():
         text(parts, size).save(f'{out}/{name}.png')
     for name, draw in DRAWN.items():
         draw().save(f'{out}/{name}.png')
