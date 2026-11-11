@@ -55,7 +55,10 @@ class HomeScreen extends ConsumerWidget {
           subtitle: 'Sala ${gameRoom.code}',
           onTap: () => context.go('/jogo/sala'),
         )
-      else if (lastGameRoom != null && user != null)
+      // A slow game has its own item below.
+      else if (lastGameRoom != null &&
+          user != null &&
+          !slowGames.any((g) => g.code == lastGameRoom))
         _MenuItem(
           icon: AppIcon.cards,
           color: AppColors.red,

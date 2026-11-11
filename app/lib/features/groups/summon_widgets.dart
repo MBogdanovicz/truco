@@ -6,6 +6,8 @@ import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/push.dart';
 import '../../router.dart';
+import '../game/online_game_controller.dart';
+import '../scorekeeper/online_room_controller.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 
 /// "Avisos de intimação": lets this device get the group's calls to play.
@@ -165,6 +167,9 @@ class _SummonsListenerState extends ConsumerState<SummonsListener> {
       router.go(s.path);
       return;
     }
+    if (_alreadyThere(s, router.routerDelegate.currentConfiguration.uri.path)) {
+      return;
+    }
     final context = router.routerDelegate.navigatorKey.currentContext;
     if (context == null) return;
     final go = await showAppDialog<bool>(
@@ -177,6 +182,23 @@ class _SummonsListenerState extends ConsumerState<SummonsListener> {
       ],
     );
     if (go == true) router.go(s.path);
+  }
+
+  /// The person is already looking at the room the push is about (their
+  /// turn in a slow game, its end): the table shows it, no dialog needed.
+  bool _alreadyThere(Summons s, String location) {
+    final target = Uri.tryParse(s.path);
+    final code = target?.queryParameters['codigo'];
+    if (code == null) return false;
+    if (target!.path == '/jogo/entrar') {
+      return location == '/jogo/sala' &&
+          ref.read(onlineGameControllerProvider)?.code == code;
+    }
+    if (target.path == '/marcador/entrar') {
+      return location == '/marcador/sala' &&
+          ref.read(onlineRoomControllerProvider)?.snapshot?.code == code;
+    }
+    return false;
   }
 
   @override
