@@ -7,8 +7,12 @@
 <!-- Invite links open the Android app when it is installed (App Links);
      everywhere else this page forwards to the PWA with the code filled in. -->
 <script>
-  var code = new URLSearchParams(location.search).get('codigo') || '';
-  location.replace('/#/marcador/entrar' + (code ? '?codigo=' + encodeURIComponent(code) : ''));
+  var params = new URLSearchParams(location.search);
+  var code = params.get('codigo') || '';
+  // Game rooms add "jogo=1"; the beta site lives under /beta/.
+  var base = location.pathname.replace(/sala\/?(index\.html)?$/, '');
+  var screen = params.get('jogo') === '1' ? 'jogo/entrar' : 'marcador/entrar';
+  location.replace(base + '#/' + screen + (code ? '?codigo=' + encodeURIComponent(code) : ''));
 </script>
 </head>
 <body></body>
