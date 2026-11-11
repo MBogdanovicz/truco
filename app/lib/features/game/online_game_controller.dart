@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/game_room_repository.dart';
+import '../../data/last_room_repository.dart';
 import '../../domain/game/ai.dart';
 import '../../domain/game/cards.dart';
 import '../../domain/game/rules.dart';
@@ -23,6 +24,7 @@ class OnlineGameState {
     this.table,
     this.sending = false,
     this.closed = false,
+    this.secondsLeft,
   });
 
   final String roomId;
@@ -38,11 +40,15 @@ class OnlineGameState {
   /// The room no longer exists.
   final bool closed;
 
+  /// Time left for the move the game waits for.
+  final int? secondsLeft;
+
   OnlineGameState copyWith({
     GameRoomSnapshot? room,
     TableView? table,
     bool? sending,
     bool? closed,
+    int? Function()? secondsLeft,
   }) => OnlineGameState(
     roomId: roomId,
     code: code,
@@ -50,6 +56,7 @@ class OnlineGameState {
     table: table ?? this.table,
     sending: sending ?? this.sending,
     closed: closed ?? this.closed,
+    secondsLeft: secondsLeft == null ? this.secondsLeft : secondsLeft(),
   );
 }
 
@@ -66,12 +73,15 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   StreamSubscription<GameRoomSnapshot>? _sub;
   int _version = 0;
   bool _playing = false;
+  Timer? _clock;
+  DateTime? _askedTimeout;
 
   GameRoomBackend get _backend => ref.read(gameRoomBackendProvider)!;
 
   @override
   OnlineGameState? build() {
     ref.onDispose(() {
+      _clock?.cancel();
       _player.dispose();
       _sub?.cancel();
       _watch?.close();
@@ -111,6 +121,10 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
     if (state?.roomId == roomId) return;
     _close();
     state = OnlineGameState(roomId: roomId, code: code);
+    ref.read(lastGameRoomRepositoryProvider).save(code).then((_) {
+      ref.invalidate(lastGameRoomCodeProvider);
+    }, onError: (_) {});
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     final watch = _watch = _backend.watch(roomId);
     _sub = watch.snapshots.listen(
       _onSnapshot,
@@ -123,6 +137,8 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   }
 
   void _close() {
+    _clock?.cancel();
+    _clock = null;
     _player.reset();
     _sub?.cancel();
     _watch?.close();
@@ -135,22 +151,65 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   void _onSnapshot(GameRoomSnapshot room) {
     final s = state;
     if (s == null || room.id != s.roomId) return;
+    if (room.status == GameRoomStatus.closed) {
+      ref.read(lastGameRoomRepositoryProvider).clear().then((_) {
+        ref.invalidate(lastGameRoomCodeProvider);
+      }, onError: (_) {});
+    }
     if (room.status == GameRoomStatus.closed ||
         (myId != null && room.seatOf(myId!) == null)) {
       state = s.copyWith(room: room, closed: true);
       return;
     }
     state = s.copyWith(room: room);
-    if (room.viewVersion != _version && room.frames.isNotEmpty) {
-      final next = room.viewVersion == _version + 1 && _version != 0;
-      _version = room.viewVersion;
-      if (next) {
-        _player.enqueue(room.frames);
-      } else {
-        // First look, or changes were missed: show where things stand.
-        _player.reset();
-        _show(room.frames.last.copyWith(delayMs: 0));
-      }
+    _applyView(room.viewVersion, room.frames);
+  }
+
+  /// New frames for this person: played in order when they follow the
+  /// last ones, otherwise only the last is shown.
+  void _applyView(int version, List<TableView> frames) {
+    if (version <= _version || frames.isEmpty) return;
+    final next = version == _version + 1 && _version != 0;
+    _version = version;
+    if (next) {
+      _player.enqueue(frames);
+    } else {
+      // First look, or changes were missed: show where things stand.
+      _player.reset();
+      _show(frames.last.copyWith(delayMs: 0));
+    }
+  }
+
+  /// Counts down the move's time; when it runs out, asks the server to let
+  /// the computer move (any seated person's app may ask).
+  void _tick() {
+    final s = state;
+    final room = s?.room;
+    if (s == null || room == null) return;
+    final deadline = room.status == GameRoomStatus.playing
+        ? room.turnDeadline
+        : null;
+    if (deadline == null || _playing) {
+      if (s.secondsLeft != null) state = s.copyWith(secondsLeft: () => null);
+      return;
+    }
+    final left = deadline.difference(DateTime.now()).inMilliseconds;
+    final seconds = (left / 1000).ceil().clamp(0, 99);
+    if (seconds != s.secondsLeft) {
+      state = s.copyWith(secondsLeft: () => seconds);
+    }
+    final asked = _askedTimeout;
+    if (left < -1000 &&
+        !s.sending &&
+        (asked == null ||
+            DateTime.now().difference(asked) > const Duration(seconds: 4))) {
+      _askedTimeout = DateTime.now();
+      final roomId = s.roomId;
+      _backend.timeout(roomId).then((u) {
+        if (u != null && state?.roomId == roomId) {
+          _applyView(u.version, u.frames);
+        }
+      }, onError: (Object e) => debugPrint('Timeout request failed: $e'));
     }
   }
 
@@ -177,6 +236,7 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
       ],
       wins: {Team.a: room.wins.$1, Team.b: room.wins.$2},
       busy: _playing || s!.sending,
+      secondsLeft: _playing ? null : s!.secondsLeft,
     );
   }
 
@@ -207,7 +267,10 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
 
   Future<void> _act(Map<String, Object?> action) async {
     if (!(tableModel?.canAct ?? false)) return;
-    await _send((b, id) => b.act(id, action));
+    await _send((b, id) async {
+      final u = await b.act(id, action);
+      if (u != null && state?.roomId == id) _applyView(u.version, u.frames);
+    });
   }
 
   /// Sends a request; the room's changes come back through the watch.
@@ -220,7 +283,7 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
     state = s.copyWith(sending: true);
     try {
       await request(_backend, s.roomId);
-      await _watch?.refresh();
+      unawaited(_watch?.refresh());
     } finally {
       if (state?.roomId == s.roomId) state = state!.copyWith(sending: false);
     }

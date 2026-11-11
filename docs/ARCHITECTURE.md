@@ -371,7 +371,13 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   so nobody sees another hand). The app follows rooms/seats/views over Realtime and re-reads the rows on each
   notice (plus a 15 s poll); a view `version` one above the last plays its frames, a bigger jump just shows
   the last frame.
-* Someone leaving mid-game is replaced by the computer (`replaced`), which makes the game unranked.
+* 20 s per move (`TURN_MS`): after each change the server sets `game_rooms.turn_deadline` (moves still being
+  shown + 20 s). The app shows a countdown; once it is past, any seated person's app calls `timeout` and the
+  server lets the computer (medium) move for whoever the game waits for.
+* Someone leaving mid-game is replaced by the computer (`replaced`), which makes the game unranked. Joining a
+  game in progress takes a computer seat (the same seat for someone coming back, from `game_states.departed`)
+  and also makes it unranked. The app remembers the last game room so the home screen offers to go back.
+* `act` and `timeout` return the caller's own frames, so their app doesn't wait for Realtime.
 * Finished games go to `matches` (`kind = 'game'`) through `record_game_result()` (service role). Ranked only
   when asked, with four e-mail accounts and no computer seat; ratings and achievements are applied at once
   (no confirmations: the server saw every card). Hand results become `match_events`, so achievements that

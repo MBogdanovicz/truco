@@ -19,6 +19,7 @@ class GameTableModel {
     required this.wins,
     this.busy = false,
     this.status,
+    this.secondsLeft,
   });
 
   final TableView view;
@@ -34,6 +35,9 @@ class GameTableModel {
 
   /// Message over the table (e.g. "Reconectando…").
   final String? status;
+
+  /// Time left for the move the game waits for (online games).
+  final int? secondsLeft;
 
   bool get canAct => !busy && view.canAct;
 }
@@ -371,6 +375,15 @@ class _GameTableState extends State<GameTable> {
         break;
     }
 
+    final left = m.secondsLeft;
+    if (left != null && !m.busy) {
+      final active = _activeSeat();
+      if (prompt == null && v.phase == GamePhase.playing && active != null) {
+        prompt = 'Vez de ${m.names[active]}';
+      }
+      if (prompt != null) prompt = '$prompt  ⏱ $left s';
+    }
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 150),
       child: Padding(
@@ -554,7 +567,7 @@ class _TopBar extends StatelessWidget {
             child: Text('Vale ${view.handValue}', style: white),
           ),
           IconButton(
-            onPressed: () => context.push('/jogo/regras'),
+            onPressed: () => context.push('/jogo/regras', extra: view.rules),
             icon: const Icon(Icons.help_outline, color: Colors.white),
             tooltip: 'Regras',
           ),

@@ -92,7 +92,7 @@ class FakeRooms implements GameRoomBackend {
   }
 
   @override
-  Future<void> act(String roomId, Map<String, Object?> action) async {
+  Future<ViewUpdate?> act(String roomId, Map<String, Object?> action) async {
     final r = rooms[roomId]!;
     final seat = r.seats.values.firstWhere((s) => s.userId == userId).seat;
     try {
@@ -100,6 +100,18 @@ class FakeRooms implements GameRoomBackend {
     } on GameRuleError {
       throw const GameRoomError('illegal_move');
     }
+    return (version: r.version, frames: r.views[seat] ?? const <TableView>[]);
+  }
+
+  int timeouts = 0;
+
+  @override
+  Future<ViewUpdate?> timeout(String roomId) async {
+    timeouts++;
+    final r = rooms[roomId]!;
+    r.deadline = null;
+    r.publish(r.session!.timeout());
+    return null;
   }
 
   /// Another person at the table moves.
@@ -131,6 +143,7 @@ class _Room {
   GameRoomStatus status = GameRoomStatus.lobby;
   final seats = <int, GameSeat>{};
   GameSession? session;
+  DateTime? deadline;
   int version = 0;
   final views = <int, List<TableView>>{};
   (int, int) wins = (0, 0);
@@ -177,6 +190,7 @@ class _Room {
       bots: session?.bots ?? const [null, null, null, null],
       wins: wins,
       seats: [...seats.values]..sort((a, b) => a.seat.compareTo(b.seat)),
+      turnDeadline: deadline,
       viewVersion: mine == null ? 0 : version,
       frames: mine == null ? const [] : (views[mine.seat] ?? const []),
     );
@@ -252,7 +266,11 @@ void main() {
     // A friend sits across: my partner.
     rooms.seatOther('r1', 2, 'ana', 'Ana');
     await tester.pumpAndSettle();
-    expect(find.text('Ana', skipOffstage: false), findsOneWidget);
+    expect(ctrl.tableModel, isNull);
+    expect(
+      container.read(onlineGameControllerProvider)!.room!.at(2)!.name,
+      'Ana',
+    );
 
     await tester.scrollUntilVisible(
       find.text('Começar a partida'),
@@ -312,6 +330,21 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
     expect(room.status, GameRoomStatus.playing);
+
+    // Out of time: the app asks the server to let the computer move.
+    await tester.pump(const Duration(seconds: 5));
+    final before = room.version;
+    room.deadline = DateTime.now().add(const Duration(seconds: 3));
+    room.changed();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('⏱'), findsOneWidget);
+    expect(rooms.timeouts, 0);
+    room.deadline = DateTime.now().subtract(const Duration(seconds: 2));
+    room.changed();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    expect(rooms.timeouts, 1);
+    expect(room.version, greaterThan(before));
 
     await ctrl.leave();
     await tester.pumpAndSettle();

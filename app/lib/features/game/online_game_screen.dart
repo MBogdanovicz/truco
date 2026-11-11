@@ -7,12 +7,14 @@ import '../../config/env.dart';
 import '../../data/ads.dart';
 import '../../data/game_room_repository.dart';
 import '../../data/groups_repository.dart';
+import '../../data/last_room_repository.dart';
 import '../../domain/game/ai.dart';
 import '../../domain/game/truco_game.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
 import 'game_table.dart';
 import 'online_game_controller.dart';
+import 'rules_screen.dart';
 
 /// Invite link that opens the game room (the app's /sala route).
 String gameRoomInviteLink(String code) => '${Env.roomInviteLink(code)}&jogo=1';
@@ -307,9 +309,23 @@ class _Lobby extends ConsumerWidget {
           header: 'Eles (dupla 2)',
           children: [seatTile(1), seatTile(3)],
         ),
+        TableRulesSection(
+          rules: room.rules,
+          footer: isHost
+              ? 'Para mudar, saia e crie outra sala em "Jogar truco".'
+              : 'Escolhidas por quem criou a sala.',
+        ),
+        AppSection(
+          children: [
+            AppTile(
+              title: 'Ver as regras do truco',
+              leading: const AppTileIcon(AppIcon.info, color: Colors.blueGrey),
+              onTap: () => context.push('/jogo/regras', extra: room.rules),
+            ),
+          ],
+        ),
         AppSection(
           header: 'Partida',
-          footer: room.rules.summary,
           children: [
             AppTile(
               title: 'Partida rankeada',
@@ -428,6 +444,13 @@ class _JoinGameState extends ConsumerState<JoinGameScreen> {
       if (mounted) context.go('/jogo/sala');
     } on GameRoomError catch (e) {
       setState(() => _error = e.message);
+      if (e.code == 'room_not_found' || e.code == 'room_full') {
+        final last = ref.read(lastGameRoomRepositoryProvider);
+        if (await last.load() == code) {
+          await last.clear();
+          ref.invalidate(lastGameRoomCodeProvider);
+        }
+      }
     } on Object catch (e) {
       debugPrint('Join failed: $e');
       setState(

@@ -4,9 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Remembers the code of the last online room this device was in, so a
 /// player who left (or closed the app) can go back without retyping it.
 class LastRoomRepository {
-  LastRoomRepository(this._prefs);
+  LastRoomRepository(this._prefs, {this.key = 'scorekeeper.lastRoom.v1'});
 
-  static const _key = 'scorekeeper.lastRoom.v1';
+  final String key;
 
   /// After this long the room is most likely over.
   static const maxAge = Duration(hours: 6);
@@ -14,7 +14,7 @@ class LastRoomRepository {
   final SharedPreferencesAsync _prefs;
 
   Future<String?> load() async {
-    final raw = await _prefs.getString(_key);
+    final raw = await _prefs.getString(key);
     if (raw == null) return null;
     final [code, at] = raw.split('|');
     final saved = DateTime.tryParse(at);
@@ -26,11 +26,11 @@ class LastRoomRepository {
   }
 
   Future<void> save(String code) => _prefs.setString(
-    _key,
+    key,
     '$code|${DateTime.now().toUtc().toIso8601String()}',
   );
 
-  Future<void> clear() => _prefs.remove(_key);
+  Future<void> clear() => _prefs.remove(key);
 }
 
 final lastRoomRepositoryProvider = Provider<LastRoomRepository>(
@@ -39,4 +39,14 @@ final lastRoomRepositoryProvider = Provider<LastRoomRepository>(
 
 final lastRoomCodeProvider = FutureProvider<String?>(
   (ref) => ref.watch(lastRoomRepositoryProvider).load(),
+);
+
+/// The same for online game rooms.
+final lastGameRoomRepositoryProvider = Provider<LastRoomRepository>(
+  (ref) =>
+      LastRoomRepository(SharedPreferencesAsync(), key: 'game.lastRoom.v1'),
+);
+
+final lastGameRoomCodeProvider = FutureProvider<String?>(
+  (ref) => ref.watch(lastGameRoomRepositoryProvider).load(),
 );

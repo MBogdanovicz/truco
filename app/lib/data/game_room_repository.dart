@@ -42,6 +42,7 @@ class GameRoomSnapshot {
     required this.seats,
     this.viewVersion = 0,
     this.frames = const [],
+    this.turnDeadline,
   });
 
   final String id;
@@ -61,6 +62,9 @@ class GameRoomSnapshot {
   final List<GameSeat> seats;
   final int viewVersion;
   final List<TableView> frames;
+
+  /// When the person the game waits for runs out of time.
+  final DateTime? turnDeadline;
 
   GameSeat? seatOf(String userId) =>
       seats.where((s) => s.userId == userId).firstOrNull;
@@ -98,6 +102,7 @@ class GameRoomSnapshot {
             isGuest: s['is_guest'] == true,
           ),
       ]..sort((a, b) => a.seat.compareTo(b.seat)),
+      turnDeadline: DateTime.tryParse((room['turn_deadline'] as String?) ?? ''),
       viewVersion: (view?['version'] as int?) ?? 0,
       frames: [
         for (final f in (view?['frames'] as List?) ?? const [])
@@ -128,6 +133,21 @@ class GameRoomError implements Exception {
   String toString() => 'GameRoomError($code)';
 }
 
+/// The caller's own frames, returned right away by a move.
+typedef ViewUpdate = ({int version, List<TableView> frames});
+
+ViewUpdate? viewUpdateFrom(Map<String, dynamic> r) {
+  final version = r['version'];
+  if (version is! int) return null;
+  return (
+    version: version,
+    frames: [
+      for (final f in (r['frames'] as List?) ?? const [])
+        TableView.fromJson(Map<String, Object?>.from(f as Map)),
+    ],
+  );
+}
+
 /// A live room: snapshots on every change, and [refresh] to ask again.
 abstract class GameRoomWatch {
   Stream<GameRoomSnapshot> get snapshots;
@@ -154,7 +174,11 @@ abstract class GameRoomBackend {
     String? Function()? groupId,
   });
   Future<void> start(String roomId);
-  Future<void> act(String roomId, Map<String, Object?> action);
+  Future<ViewUpdate?> act(String roomId, Map<String, Object?> action);
+
+  /// Asks the computer to move for whoever ran out of time (the server
+  /// checks the deadline); null when it isn't time yet.
+  Future<ViewUpdate?> timeout(String roomId);
   Future<void> leave(String roomId);
   GameRoomWatch watch(String roomId);
 }
@@ -228,8 +252,12 @@ class SupabaseGameRooms implements GameRoomBackend {
   Future<void> start(String roomId) => _call('start', {'roomId': roomId});
 
   @override
-  Future<void> act(String roomId, Map<String, Object?> action) =>
-      _call('act', {'roomId': roomId, 'move': action});
+  Future<ViewUpdate?> act(String roomId, Map<String, Object?> action) async =>
+      viewUpdateFrom(await _call('act', {'roomId': roomId, 'move': action}));
+
+  @override
+  Future<ViewUpdate?> timeout(String roomId) async =>
+      viewUpdateFrom(await _call('timeout', {'roomId': roomId}));
 
   @override
   Future<void> leave(String roomId) => _call('leave', {'roomId': roomId});

@@ -27,6 +27,7 @@ class HomeScreen extends ConsumerWidget {
     final room = ref.watch(onlineRoomControllerProvider);
     final game = ref.watch(localGameControllerProvider);
     final gameRoom = ref.watch(onlineGameControllerProvider);
+    final lastGameRoom = ref.watch(lastGameRoomCodeProvider).value;
     // Mirrors achievements to Google Play Games (Android only).
     ref.watch(playGamesSyncProvider);
     final lastRoom = ref.watch(lastRoomCodeProvider).value;
@@ -42,6 +43,14 @@ class HomeScreen extends ConsumerWidget {
           title: 'Voltar para a sala de jogo',
           subtitle: 'Sala ${gameRoom.code}',
           onTap: () => context.go('/jogo/sala'),
+        )
+      else if (lastGameRoom != null && user != null)
+        _MenuItem(
+          icon: AppIcon.cards,
+          color: AppColors.red,
+          title: 'Voltar para a sala de jogo $lastGameRoom',
+          subtitle: 'Saiu sem querer? Toque para entrar de novo.',
+          onTap: () => context.go('/jogo/entrar?codigo=$lastGameRoom'),
         ),
       if (room != null)
         _MenuItem(

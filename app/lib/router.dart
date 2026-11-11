@@ -11,6 +11,7 @@ import 'features/groups/join_group_screen.dart';
 import 'features/game/game_setup_screen.dart';
 import 'features/game/game_table_screen.dart';
 import 'features/game/online_game_screen.dart';
+import 'domain/game/rules.dart';
 import 'features/game/rules_screen.dart';
 import 'features/history/history_screen.dart';
 import 'features/premium/premium_screen.dart';
@@ -139,6 +140,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'regras',
                 builder: (_, state) => RulesScreen(
                   fixedManilhas: state.uri.queryParameters['fixas'] == '1',
+                  table: state.extra is TrucoRules
+                      ? state.extra! as TrucoRules
+                      : null,
                 ),
               ),
             ],

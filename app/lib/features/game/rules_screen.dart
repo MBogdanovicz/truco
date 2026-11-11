@@ -5,16 +5,20 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 
 /// "Regras do jogo": how to play each variant.
 class RulesScreen extends StatefulWidget {
-  const RulesScreen({super.key, this.fixedManilhas = false});
+  const RulesScreen({super.key, this.fixedManilhas = false, this.table});
 
   final bool fixedManilhas;
+
+  /// Options of the table the person is at (shown first).
+  final TrucoRules? table;
 
   @override
   State<RulesScreen> createState() => _RulesScreenState();
 }
 
 class _RulesScreenState extends State<RulesScreen> {
-  late bool _fixed = widget.fixedManilhas;
+  late bool _fixed =
+      widget.table?.manilhaMode == ManilhaMode.fixed || widget.fixedManilhas;
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +114,7 @@ class _RulesScreenState extends State<RulesScreen> {
     return AppScaffold(
       title: 'Regras do truco paulista',
       children: [
+        if (widget.table != null) TableRulesSection(rules: widget.table!),
         Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: AppSegmented<bool>(
@@ -136,6 +141,45 @@ class _RulesScreenState extends State<RulesScreen> {
                 ),
               ),
             ],
+          ),
+      ],
+    );
+  }
+}
+
+/// The options chosen for one table (room), as a list.
+class TableRulesSection extends StatelessWidget {
+  const TableRulesSection({super.key, required this.rules, this.footer});
+
+  final TrucoRules rules;
+  final String? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    String yes(bool v) => v ? 'Sim' : 'Não';
+    final items = <(String, String)>[
+      ('Manilhas', rules.manilhaMode == ManilhaMode.vira ? 'Virada' : 'Fixas'),
+      ('Pode jogar coberta', yes(rules.allowCoveredCard)),
+      ('Mão de ferro no 11 × 11', yes(rules.ironHand)),
+      ('Ver o parceiro ao receber truco', yes(rules.seePartnerOnRaise)),
+      ('Mão de onze: as duas duplas veem', yes(rules.bothTeamsSeeOnDecision)),
+      (
+        'Quem dá vê a 3ª carta do parceiro',
+        yes(rules.dealerSeesPartnerThirdCard),
+      ),
+    ];
+    return AppSection(
+      header: 'Regras desta mesa',
+      footer: footer,
+      children: [
+        for (final (title, value) in items)
+          AppTile(
+            title: title,
+            trailing: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
           ),
       ],
     );
