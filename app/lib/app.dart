@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/premium_repository.dart';
+import 'features/groups/summon_widgets.dart';
 import 'router.dart';
 import 'ui/adaptive/platform_style.dart';
 import 'ui/theme/app_theme.dart';
@@ -34,6 +35,8 @@ class TrucoApp extends ConsumerWidget {
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         routerConfig: ref.watch(routerProvider),
+        builder: (context, child) =>
+            SummonsListener(child: child ?? const SizedBox.shrink()),
       ),
     );
   }

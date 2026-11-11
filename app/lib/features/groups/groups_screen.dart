@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/groups_repository.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import 'summon_widgets.dart';
 import '../../ui/theme/app_theme.dart';
 
 final _publicGroupsProvider = FutureProvider.family<List<Group>, String>(
@@ -169,6 +170,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
           header: 'Meus grupos',
           children: state(mine, 'Você ainda não participa de nenhum grupo.'),
         ),
+        const PushToggleTile(),
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: AppSearchField(

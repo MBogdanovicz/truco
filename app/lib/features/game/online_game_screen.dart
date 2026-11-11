@@ -15,6 +15,7 @@ import '../../ui/theme/app_theme.dart';
 import 'game_table.dart';
 import 'online_game_controller.dart';
 import 'rules_screen.dart';
+import '../groups/summon_widgets.dart';
 
 /// Invite link that opens the game room (the app's /sala route).
 String gameRoomInviteLink(String code) => '${Env.roomInviteLink(code)}&jogo=1';
@@ -290,6 +291,15 @@ class _Lobby extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 8),
+              AppButton(
+                label: 'Intimar o grupo',
+                icon: context.icon(AppIcon.groups),
+                tonal: true,
+                onPressed: () =>
+                    summonToRoom(context, ref, code: room.code, game: true),
+              ),
+              const SizedBox(height: 8),
               const Text(
                 'Em "Jogar truco", toque em "Entrar com código". Ou copie o '
                 'convite com o link e mande no grupo. Os lugares vazios '
