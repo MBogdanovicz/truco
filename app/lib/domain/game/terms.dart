@@ -31,6 +31,7 @@ enum ManilhaSlot {
   paus('Paus (a maior)', TermName('gato'), [TermName('gato'), TermName('zap')]),
   copas('Copas', TermName('copas', feminine: true), [
     TermName('copas', feminine: true),
+    TermName('copilha', feminine: true),
     TermName('copão'),
     TermName('sete copas'),
   ]),
@@ -41,6 +42,7 @@ enum ManilhaSlot {
   ]),
   ouros('Ouros (a menor)', TermName('salmoura', feminine: true), [
     TermName('salmoura', feminine: true),
+    TermName('mole', feminine: true),
     TermName('pica-fumo'),
     TermName('sete belo'),
   ]);
@@ -55,9 +57,10 @@ enum ManilhaSlot {
 /// (embucha, embuchou, embuchada, embuchar) keep their endings.
 enum TieVerb {
   embuchar('embuch'),
+  empachar('empach'),
   cangar('cang'),
-  empatar('empat'),
-  melar('mel');
+  melar('mel'),
+  empatar('empat');
 
   const TieVerb(this.stem);
   final String stem;

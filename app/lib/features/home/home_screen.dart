@@ -177,6 +177,21 @@ class HomeScreen extends ConsumerWidget {
         subtitle: 'Contra o computador ou online com os amigos.',
         onTap: () => context.go(game == null ? '/jogo' : '/jogo/partida'),
       ),
+      _MenuItem(
+        icon: AppIcon.info,
+        color: Colors.teal,
+        title: 'Treinar',
+        subtitle: 'Situações de jogo com o professor (Premium).',
+        onTap: () async {
+          final ent = await ref.read(entitlementsProvider.future);
+          if (!context.mounted) return;
+          if (!ent.canUseCoach) {
+            await showPremiumRequired(context, 'Treinar com o professor');
+            return;
+          }
+          context.push('/jogo/treinar');
+        },
+      ),
     ];
     final muted = theme.textTheme.bodySmall?.copyWith(
       color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),

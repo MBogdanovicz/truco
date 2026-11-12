@@ -102,16 +102,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
 
   bool _creating = false;
 
-  Future<void> _openTraining() async {
-    final ent = await ref.read(entitlementsProvider.future);
-    if (!mounted) return;
-    if (!ent.canUseCoach) {
-      await showPremiumRequired(context, 'Treinar com o professor');
-      return;
-    }
-    context.push('/jogo/treinar');
-  }
-
   Future<void> _setCoach(bool on) async {
     if (on) {
       final ent = await ref.read(entitlementsProvider.future);
@@ -227,12 +217,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
               title: 'Modo professor',
               subtitle: 'Dicas sobre as jogadas, só contra o computador.',
               trailing: AppSwitch(value: _coach, onChanged: _setCoach),
-            ),
-            AppTile(
-              title: 'Treinar',
-              subtitle: 'Situações de jogo com a explicação da melhor jogada.',
-              leading: const AppTileIcon(AppIcon.info, color: Colors.teal),
-              onTap: _openTraining,
             ),
           ],
         ),
