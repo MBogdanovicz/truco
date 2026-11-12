@@ -102,8 +102,10 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
         : room.tournamentId == null
         ? '/torneios'
         : '/torneios/${room.tournamentId}';
-    await _ctrl.leave();
+    // Go first: leaving takes a round trip to the server.
+    final leaving = _ctrl.leave();
     if (mounted) context.go(back);
+    await leaving;
   }
 
   @override
