@@ -187,6 +187,11 @@ class HomeScreen extends ConsumerWidget {
       largeTitle: true,
       maxWidth: 1040,
       actions: [
+        IconButton(
+          tooltip: 'Configurações',
+          icon: Icon(context.icon(AppIcon.settings)),
+          onPressed: () => context.go('/configuracoes'),
+        ),
         if (user != null)
           IconButton(
             tooltip: user.isGuest

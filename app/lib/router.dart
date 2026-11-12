@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'data/auth_repository.dart';
 import 'data/crash_reporting.dart';
+import 'features/settings/settings_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/groups/group_detail_screen.dart';
@@ -162,6 +163,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(path: 'historico', builder: (_, _) => const HistoryScreen()),
+          GoRoute(
+            path: 'configuracoes',
+            builder: (_, _) => const SettingsScreen(),
+          ),
           GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
           GoRoute(
             path: 'conquistas',

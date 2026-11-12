@@ -43,6 +43,7 @@ enum AppIcon {
   email(Icons.mail_outline, CupertinoIcons.mail),
   update(Icons.system_update, CupertinoIcons.arrow_down_circle),
   news(Icons.new_releases_outlined, CupertinoIcons.sparkles),
+  settings(Icons.settings_outlined, CupertinoIcons.gear),
   chevron(Icons.chevron_right, CupertinoIcons.chevron_forward);
 
   const AppIcon(this.material, this.cupertino);

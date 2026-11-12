@@ -84,6 +84,11 @@ class Tournament {
 
   bool get slow => rules.isSlow;
 
+  /// Finished or cancelled: listed in "Histórico", not in "Torneios".
+  bool get isOver =>
+      status == TournamentStatus.finished ||
+      status == TournamentStatus.cancelled;
+
   factory Tournament.fromRow(Map<String, dynamic> r) => Tournament(
     id: r['id'] as String,
     code: r['code'] as String,

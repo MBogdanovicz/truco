@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/game_prefs.dart';
 import '../../data/groups_repository.dart';
 import '../../data/tournaments.dart';
 import '../../domain/game/rules.dart';
@@ -29,7 +30,8 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
   bool _slow = false;
   int _roundDays = 2;
   int _slowDays = 1;
-  TrucoRules _rules = TrucoRules.paulista;
+  TrucoRules? _changed;
+  TrucoRules get _rules => _changed ?? ref.read(preferredRulesProvider);
   bool _saving = false;
 
   static const _koSizes = [4, 8, 16, 32];
@@ -82,6 +84,7 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(preferredRulesProvider);
     final groups = ref.watch(myGroupsProvider).value ?? const <Group>[];
     final sizes = switch (_format) {
       TournamentFormat.knockout => _koSizes,
@@ -268,8 +271,9 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
                       t: turnSecondsLabel(t),
                   },
                   value: _rules.turnSeconds,
-                  onChanged: (v) =>
-                      setState(() => _rules = _rules.copyWith(turnSeconds: v)),
+                  onChanged: (v) => setState(
+                    () => _changed = _rules.copyWith(turnSeconds: v),
+                  ),
                 ),
               ),
             ],
@@ -277,7 +281,13 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
         ),
         AppSection(
           header: 'Regras da mesa',
-          children: ruleOptionTiles(_rules, (r) => setState(() => _rules = r)),
+          children: [
+            RulesSummaryTile(
+              title: 'Regras dos jogos',
+              rules: _rules,
+              onChanged: (r) => setState(() => _changed = r),
+            ),
+          ],
         ),
         Center(
           child: ConstrainedBox(

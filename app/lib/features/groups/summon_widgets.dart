@@ -14,7 +14,8 @@ import '../game/online_game_controller.dart';
 import '../scorekeeper/online_room_controller.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 
-/// "Avisos de intimação": lets this device get the group's calls to play.
+/// Lets this device get push notifications: group calls to play, your turn
+/// in a slow game, tournament matches. Lives in "Configurações".
 class PushToggleTile extends ConsumerWidget {
   const PushToggleTile({super.key});
 
@@ -24,6 +25,7 @@ class PushToggleTile extends ConsumerWidget {
     final state = ref.watch(pushStateProvider).value;
     final on = state == PushState.on;
     return AppSection(
+      header: 'Notificações',
       footer: state == PushState.blocked
           ? 'As notificações do Truco estão bloqueadas. Libere nas '
                 'configurações do ${Theme.of(context).platform == TargetPlatform.android ? 'celular' : 'navegador'}.'
@@ -31,11 +33,12 @@ class PushToggleTile extends ConsumerWidget {
           ? 'Este navegador não conseguiu ativar os avisos. No Brave, ligue '
                 '"Usar os serviços do Google para mensagens push" em '
                 'Configurações > Privacidade e segurança, ou use o Chrome.'
-          : 'Quando alguém do seu grupo intimar para uma partida, você recebe '
-                'um aviso neste aparelho.',
+          : 'Avisos neste aparelho quando alguém do grupo intimar para uma '
+                'partida, quando for a sua vez numa partida lenta e quando um '
+                'jogo do seu torneio estiver pronto.',
       children: [
         AppTile(
-          title: 'Receber intimações',
+          title: 'Receber notificações',
           trailing: AppSwitch(
             value: on,
             onChanged: state == null || state == PushState.unsupported
