@@ -176,12 +176,16 @@ class TableView {
     final v = g.viewFor(seat);
     PlayView play(Play p) => PlayView(
       p.seat,
-      p.covered && p.seat != seat ? null : p.card,
+      // Covered cards: the partner sees which one it was too.
+      p.covered && p.seat != seat && p.seat != partnerOf(seat) ? null : p.card,
       covered: p.covered,
     );
     final team = teamOfSeat(seat);
     final mustAnswer = switch (g.phase) {
-      GamePhase.raisePending => g.pending!.team != team && mayAnswer(seat),
+      GamePhase.raisePending =>
+        g.pending!.team != team &&
+            g.pending!.refusedBy != seat &&
+            mayAnswer(seat),
       GamePhase.decision => g.decisionTeam == team && mayAnswer(seat),
       _ => false,
     };
@@ -236,7 +240,12 @@ class TableView {
     if (vira != null) 'vira': vira!.id,
     'value': handValue,
     'level': stakeLevel,
-    if (pending != null) 'pending': [pending!.seat, pending!.toLevel],
+    if (pending != null)
+      'pending': [
+        pending!.seat,
+        pending!.toLevel,
+        if (pending!.refusedBy != null) pending!.refusedBy!,
+      ],
     if (decisionTeam != null) 'decision': decisionTeam!.name,
     if (iron) 'iron': true,
     'scores': [scores[Team.a], scores[Team.b]],
@@ -277,7 +286,11 @@ class TableView {
       stakeLevel: j['level']! as int,
       pending: pending == null
           ? null
-          : PendingRaise(seat: pending[0], toLevel: pending[1]),
+          : PendingRaise(
+              seat: pending[0],
+              toLevel: pending[1],
+              refusedBy: pending.length > 2 ? pending[2] : null,
+            ),
       decisionTeam: j['decision'] == null
           ? null
           : Team.fromName(j['decision']! as String),
@@ -347,7 +360,7 @@ class TableTalk {
         case RaiseAccepted():
           speech[e.seat] = 'Cai dentro!';
         case Folded():
-          speech[e.seat] = 'Corro.';
+          speech[e.seat] = e.partnerDecides ? 'Eu corro… parceiro?' : 'Corro.';
         case DecisionMade():
           speech[e.seat] = e.play ? 'Vamos jogar!' : 'Corro.';
         case RoundEnded():

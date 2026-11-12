@@ -104,6 +104,11 @@ class GameSession {
             : game.pending!.team.other;
         final responder = game.responder;
         if (responder != null && isHuman(responder)) return responder;
+        // The partner who has the last word is a bot.
+        if (game.phase == GamePhase.raisePending &&
+            game.pending!.refusedBy != null) {
+          return null;
+        }
         for (var s = 0; s < 4; s++) {
           if (teamOfSeat(s) == team && isHuman(s)) return s;
         }
@@ -170,6 +175,11 @@ class GameSession {
         final team = game.phase == GamePhase.decision
             ? game.decisionTeam!
             : game.pending!.team.other;
+        if (game.phase == GamePhase.raisePending &&
+            game.pending!.refusedBy != null) {
+          final last = game.responder!;
+          return isHuman(last) ? null : last;
+        }
         final seats = [
           for (var s = 0; s < 4; s++)
             if (teamOfSeat(s) == team) s,

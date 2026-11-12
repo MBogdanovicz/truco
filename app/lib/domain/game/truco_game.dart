@@ -115,8 +115,11 @@ class RaiseAccepted extends GameEvent {
 }
 
 class Folded extends GameEvent {
-  const Folded(this.seat);
+  const Folded(this.seat, {this.partnerDecides = false});
   final int seat;
+
+  /// The first of the team to answer wants to run: the partner decides.
+  final bool partnerDecides;
 }
 
 class RoundEnded extends GameEvent {
@@ -159,11 +162,18 @@ class RoundResult {
 }
 
 class PendingRaise {
-  const PendingRaise({required this.seat, required this.toLevel});
+  const PendingRaise({
+    required this.seat,
+    required this.toLevel,
+    this.refusedBy,
+  });
 
   /// Who called it.
   final int seat;
   final int toLevel;
+
+  /// The answering seat that wanted to run; its partner now decides.
+  final int? refusedBy;
   Team get team => teamOfSeat(seat);
 }
 
@@ -251,7 +261,8 @@ class TrucoGame {
   int? get responder {
     switch (_phase) {
       case GamePhase.raisePending:
-        return nextSeat(_pending!.seat);
+        final refused = _pending!.refusedBy;
+        return refused != null ? partnerOf(refused) : nextSeat(_pending!.seat);
       case GamePhase.decision:
         final t = _decisionTeam!;
         final first = nextSeat(_dealer);
@@ -315,6 +326,8 @@ class TrucoGame {
         return [Accept(seat), Fold(seat)];
       case GamePhase.raisePending:
         if (team == _pending!.team) return const [];
+        // The one who wanted to run waits for the partner's answer.
+        if (_pending!.refusedBy == seat) return const [];
         return [
           Accept(seat),
           Fold(seat),
@@ -402,6 +415,17 @@ class TrucoGame {
     if (_phase == GamePhase.decision) {
       events.add(DecisionMade(seat, play: false));
       _endHand(teamOfSeat(seat).other, rules.baseValue);
+      return;
+    }
+    final p = _pending!;
+    if (p.refusedBy == null) {
+      // The first to answer wants to run: the partner has the last word.
+      _pending = PendingRaise(
+        seat: p.seat,
+        toLevel: p.toLevel,
+        refusedBy: seat,
+      );
+      events.add(Folded(seat, partnerDecides: true));
       return;
     }
     events.add(Folded(seat));

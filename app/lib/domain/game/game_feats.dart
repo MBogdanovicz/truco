@@ -89,6 +89,8 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
         lastRound.clear();
       case RaiseCalled():
         lastRaise = e.value;
+      case Folded(partnerDecides: true):
+        break; // The partner still decides.
       case Folded():
         folded = true;
         ran.add(teamOfSeat(e.seat));

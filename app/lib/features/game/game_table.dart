@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -270,6 +272,14 @@ class _GameTableState extends State<GameTable> {
                       alignment: playSpot(p.seat),
                       child: p.card == null
                           ? CardBack(width: cw)
+                          : p.covered
+                          ? _CoveredPlay(
+                              key: ValueKey(
+                                'cov-${v.handNumber}-${p.card!.id}',
+                              ),
+                              card: p.card!,
+                              width: cw,
+                            )
                           : Opacity(
                               opacity: p.covered ? 0.6 : 1,
                               child: PlayingCardView(
@@ -433,9 +443,11 @@ class _GameTableState extends State<GameTable> {
         final p = v.pending!;
         final asked = v.rules.stakes[p.toLevel];
         if (mine) {
+          final refused = p.refusedBy;
           prompt =
               '${m.names[p.seat]} pediu '
-              '${v.rules.raiseName(p.toLevel - 1).toLowerCase()} (vale $asked)';
+              '${v.rules.raiseName(p.toLevel - 1).toLowerCase()} (vale $asked)'
+              '${refused == null ? '' : '. ${m.names[refused]} quer correr: você decide'}';
           buttons.addAll([
             _ActionButton('Aceitar', AppColors.gold, a.accept),
             _ActionButton('Correr', Colors.white24, a.fold),
@@ -447,7 +459,14 @@ class _GameTableState extends State<GameTable> {
               ),
           ]);
         } else if (!m.busy) {
-          prompt = 'Esperando a resposta…';
+          final refused = p.refusedBy;
+          prompt = refused == v.me
+              ? 'Você quer correr. Esperando a decisão do parceiro…'
+              : refused != null && teamOfSeat(refused) == v.team
+              ? '${m.names[refused]} quer correr. Esperando…'
+              : refused != null
+              ? '${m.names[refused]} quer correr. O parceiro decide…'
+              : 'Esperando a resposta…';
         }
       case GamePhase.playing:
         if (mine) {
@@ -920,4 +939,50 @@ String timeLeftLabel(int seconds) {
   if (hours < 24) return '$hours h';
   final d = hours ~/ 24, h = hours % 24;
   return h == 0 ? '$d d' : '$d d $h h';
+}
+
+/// A covered card the viewer may know (their own, or the partner's): shown
+/// faded for a moment, then turned face down, so it reads as covered.
+class _CoveredPlay extends StatefulWidget {
+  const _CoveredPlay({super.key, required this.card, required this.width});
+  final deck.Card card;
+  final double width;
+
+  @override
+  State<_CoveredPlay> createState() => _CoveredPlayState();
+}
+
+class _CoveredPlayState extends State<_CoveredPlay> {
+  bool _down = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _down = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 350),
+    transitionBuilder: (child, anim) => ScaleTransition(
+      scale: Tween(begin: 0.85, end: 1.0).animate(anim),
+      child: FadeTransition(opacity: anim, child: child),
+    ),
+    child: _down
+        ? CardBack(key: const ValueKey('down'), width: widget.width)
+        : Opacity(
+            key: const ValueKey('up'),
+            opacity: 0.55,
+            child: PlayingCardView(card: widget.card, width: widget.width),
+          ),
+  );
 }
