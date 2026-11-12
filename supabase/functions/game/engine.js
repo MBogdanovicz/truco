@@ -3785,7 +3785,7 @@ o.toString
 r.i(0,p,o+1)}}},
 bC(a){var s,r=this.b
 if(r!=null){s=r.b
-if(s==null)return"Empatou tudo, ningu\xe9m marca."
+if(s==null)return"Embuchou tudo, ningu\xe9m marca."
 s=s===a?"N\xf3s":"Eles"
 return s+" +"+r.a}if(this.c)return"M\xe3o de ferro! Ningu\xe9m v\xea as cartas."
 return null}}

@@ -66,13 +66,13 @@ class _RulesScreenState extends State<RulesScreen> {
         ],
       ),
       (
-        'Rodadas e empates',
+        'Rodadas embuchadas',
         [
           'Em cada rodada vence a carta mais forte. Se as cartas mais fortes '
-              'das duas duplas forem iguais, a rodada empata ("embuchou").',
-          'Empatou a primeira: quem ganhar a segunda leva a mão. Ganhou a '
-              'primeira e empatou a segunda (ou a terceira): leva quem ganhou '
-              'a primeira. Empatou tudo: ninguém marca.',
+              'das duas duplas forem iguais, a rodada embucha.',
+          'Embuchou a primeira: quem ganhar a segunda leva a mão. Ganhou a '
+              'primeira e embuchou a segunda (ou a terceira): leva quem ganhou '
+              'a primeira. Embuchou tudo: ninguém marca.',
           'Opcional: da segunda rodada em diante você pode jogar uma carta coberta '
               '(virada para baixo). Ela não vale nada, mas esconde a carta.',
         ],

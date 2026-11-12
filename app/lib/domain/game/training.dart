@@ -200,16 +200,16 @@ final trainingScenarios = <TrainingScenario>[
         'perdendo a segunda vocês ainda têm o ás para a terceira.',
     alsoGood: {
       0:
-          'Jogar o ás também vale: com a primeira ganha, ganhar ou empatar a '
+          'Jogar o ás também vale: com a primeira ganha, ganhar ou embuchar a '
           'segunda já fecha a mão, e o ás obriga os adversários a gastar '
           'cartas fortes.',
     },
   ),
   TrainingScenario(
     id: 'tied_first',
-    title: 'Primeira empatada',
+    title: 'Primeira embuchada',
     situation:
-        'A primeira rodada empatou ("embuchou"). Agora quem ganhar a segunda '
+        'A primeira rodada embuchou. Agora quem ganhar a segunda '
         'leva a mão. Você é o primeiro. Vira 3♣: as manilhas são os 4.',
     vira: _c('3p'),
     hand: _h('2c Qe'),
@@ -217,7 +217,7 @@ final trainingScenarios = <TrainingScenario>[
     options: ['2♥', 'Q♠'],
     answer: 0,
     explanation:
-        'Depois de um empate na primeira, a segunda decide a mão. Jogue a '
+        'Depois de embuchar a primeira, a segunda decide a mão. Jogue a '
         'sua melhor carta.',
   ),
   TrainingScenario(

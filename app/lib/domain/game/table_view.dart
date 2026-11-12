@@ -378,7 +378,7 @@ class TableTalk {
   String? toastFor(Team viewer) {
     final r = _handResult;
     if (r != null) {
-      if (r.winner == null) return 'Empatou tudo, ninguém marca.';
+      if (r.winner == null) return 'Embuchou tudo, ninguém marca.';
       return '${r.winner == viewer ? 'Nós' : 'Eles'} +${r.points}';
     }
     if (_ironStarted) return 'Mão de ferro! Ninguém vê as cartas.';
