@@ -544,15 +544,10 @@ class TournamentsRepository {
           }))['code']
           as String?;
 
-  /// The code of the pair [teamId] signed up (only its creator reads it).
-  Future<String?> pairCode(String teamId) async {
-    final row = await _client
-        .from('tournament_team_codes')
-        .select('code')
-        .eq('team_id', teamId)
-        .maybeSingle();
-    return row?['code'] as String?;
-  }
+  /// The code of the caller's pair waiting for the partner in tournament
+  /// [id] (the server makes one if it's missing).
+  Future<String?> pairCode(String id) async =>
+      (await _call('pairCode', {'tournamentId': id}))['code'] as String?;
 
   Future<void> unregister(String id) =>
       _call('unregister', {'tournamentId': id});
@@ -572,10 +567,10 @@ final tournamentUserIdProvider = Provider<String?>(
   (ref) => ref.watch(tournamentsRepositoryProvider)?.userId,
 );
 
-/// The code of a pair waiting for the partner (for whoever signed it up).
+/// The code of the caller's pair waiting for the partner, by tournament id.
 final pairCodeProvider = FutureProvider.autoDispose.family<String?, String>(
-  (ref, teamId) async =>
-      ref.watch(tournamentsRepositoryProvider)?.pairCode(teamId),
+  (ref, tournamentId) async =>
+      ref.watch(tournamentsRepositoryProvider)?.pairCode(tournamentId),
 );
 
 final tournamentsProvider =

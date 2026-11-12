@@ -10,7 +10,8 @@
 //
 // Actions: create, join, sit, options, start (also rematch), act ({roomId,
 // move: {t, c?, x?, i?}}), timeout, leave, watch (tournament spectators); tournaments (tournament.ts):
-// tournament.create, tournament.register, tournament.unregister,
+// tournament.create, tournament.register, tournament.pairCode,
+// tournament.unregister,
 // tournament.start, tournament.cancel.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
 // by the platform.
@@ -77,6 +78,8 @@ Deno.serve(async (req) => {
         return reply(200, await tournaments.create(body));
       case "tournament.register":
         return reply(200, await tournaments.register(body));
+      case "tournament.pairCode":
+        return reply(200, await tournaments.pairCode(body));
       case "tournament.unregister":
         return reply(200, await tournaments.unregister(body));
       case "tournament.start":

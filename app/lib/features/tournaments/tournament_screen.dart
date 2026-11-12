@@ -26,8 +26,6 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     setState(() => _busy = true);
     try {
       await action();
-      ref.invalidate(tournamentProvider(widget.id));
-      ref.invalidate(tournamentsProvider);
       if (done != null && mounted) showAppToast(context, done);
     } on TournamentError catch (e) {
       if (mounted) showAppToast(context, e.message);
@@ -36,6 +34,9 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
         showAppToast(context, 'Não deu certo. Verifique sua internet.');
       }
     } finally {
+      // Even after an error the server may have done it: read again.
+      ref.invalidate(tournamentProvider(widget.id));
+      ref.invalidate(tournamentsProvider);
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -213,7 +214,7 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
               leading: const AppTileIcon(AppIcon.check, color: Colors.teal),
             ),
             if (!mine.solo && !mine.complete && mine.playerA == _me)
-              _PairCodeTile(teamId: mine.id),
+              _PairCodeTile(tournamentId: t.id),
             AppTile(
               title: 'Sair do torneio',
               leading: const AppTileIcon(
@@ -473,26 +474,35 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
 
 /// "Código da sua dupla", for the person who signed the pair up.
 class _PairCodeTile extends ConsumerWidget {
-  const _PairCodeTile({required this.teamId});
-  final String teamId;
+  const _PairCodeTile({required this.tournamentId});
+  final String tournamentId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final code = ref.watch(pairCodeProvider(teamId)).value;
+    final async = ref.watch(pairCodeProvider(tournamentId));
+    final code = async.value;
+    if (code == null) {
+      return AppTile(
+        title: async.isLoading
+            ? 'Buscando o código da sua dupla…'
+            : 'Não deu para buscar o código da dupla',
+        subtitle: async.isLoading ? null : 'Toque para tentar de novo.',
+        leading: const AppTileIcon(AppIcon.key, color: Colors.indigo),
+        onTap: async.isLoading
+            ? null
+            : () => ref.invalidate(pairCodeProvider(tournamentId)),
+      );
+    }
     return AppTile(
-      title: code == null
-          ? 'Código da sua dupla'
-          : 'Código da sua dupla: $code',
+      title: 'Código da sua dupla: $code',
       subtitle:
           'Mande para o seu parceiro: ele toca em "Entrar na dupla de um '
           'amigo" e digita o código. Só ele entra na sua dupla.',
       leading: const AppTileIcon(AppIcon.key, color: Colors.indigo),
-      onTap: code == null
-          ? null
-          : () {
-              Clipboard.setData(ClipboardData(text: code));
-              showAppToast(context, 'Código copiado.');
-            },
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: code));
+        showAppToast(context, 'Código copiado.');
+      },
     );
   }
 }

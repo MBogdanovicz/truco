@@ -403,15 +403,38 @@ export class Tournaments {
     }).select("id").single();
     if (error) throw error;
     if (solo) return { teamId: data.id };
-    // Only the partner who gets this code can join the pair.
+    try {
+      return { teamId: data.id, code: await this.newPairCode(data.id) };
+    } catch (e) {
+      // No half sign-ups: without its code nobody could join the pair.
+      await this.db.from("tournament_teams").delete().eq("id", data.id);
+      throw e;
+    }
+  }
+
+  /** Only the partner who gets this code can join the pair. */
+  private async newPairCode(teamId: string): Promise<string> {
     const code = Array.from(
       crypto.getRandomValues(new Uint8Array(4)),
       (b) => ALPHABET[b % ALPHABET.length],
     ).join("");
-    const { error: codeError } = await this.db.from("tournament_team_codes")
-      .insert({ team_id: data.id, code });
-    if (codeError) throw codeError;
-    return { teamId: data.id, code };
+    const { error } = await this.db.from("tournament_team_codes")
+      .upsert({ team_id: teamId, code });
+    if (error) throw error;
+    return code;
+  }
+
+  /** The code of the caller's pair, still waiting for the partner (made
+   * now if the pair has none). */
+  async pairCode(body: Json) {
+    const t = await this.get(body.tournamentId as string);
+    const team = (await this.teams(t.id)).find((x) =>
+      x.player_a === this.userId && !x.solo && !x.player_b
+    );
+    if (!team) return { code: null };
+    const { data } = await this.db.from("tournament_team_codes").select("code")
+      .eq("team_id", team.id).maybeSingle();
+    return { code: data?.code ?? await this.newPairCode(team.id) };
   }
 
   async unregister(body: Json) {

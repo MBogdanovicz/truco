@@ -55,7 +55,7 @@ Future<void> _pump(
         tournamentUserIdProvider.overrideWithValue('me'),
         tournamentProvider(d.tournament.id).overrideWith((ref) async => d),
         myGroupsProvider.overrideWith((ref) async => const <Group>[]),
-        pairCodeProvider('w').overrideWith((ref) async => 'K7QX'),
+        pairCodeProvider('knockout').overrideWith((ref) async => 'K7QX'),
       ],
       child: MaterialApp(home: screen),
     ),
