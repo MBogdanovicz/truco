@@ -7,11 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/entitlements.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
-import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
+import '../premium/premium_screen.dart';
+import 'score_art.dart';
 
 /// How the 12 tentos of a team are drawn.
-enum TallyStyle { pips, holes, matches }
+enum TallyStyle { pips, holes, matches, art }
 
 /// Look of the scoreboard. Inspired by what's used at a real truco table:
 /// the felt of the table, the wooden marker with 12 holes per side, and
@@ -51,6 +52,30 @@ enum ScoreboardSkin {
     strip: AppColors.felt,
     text: Colors.white,
     tally: TallyStyle.pips,
+  ),
+  card10(
+    label: 'Carta 10',
+    description: 'Um 10 na mesa e outra carta por cima, mostrando os tentos.',
+    bar: Color(0xFF2A0F16),
+    strip: Color(0xFF1A080D),
+    text: Color(0xFFF6EAD7),
+    tally: TallyStyle.art,
+  ),
+  beans(
+    label: 'Feijões',
+    description: 'Cada tento é um feijão que sai da tigela para o monte.',
+    bar: Color(0xFF4A3520),
+    strip: Color(0xFF2E2012),
+    text: Color(0xFF3A2614),
+    tally: TallyStyle.art,
+  ),
+  chalk(
+    label: 'Lousa de giz',
+    description: 'Risquinhos de giz no quadro, de cinco em cinco.',
+    bar: Color(0xFF1C2622),
+    strip: Color(0xFF5B3A1E),
+    text: Color(0xFFEFEFE8),
+    tally: TallyStyle.art,
   );
 
   const ScoreboardSkin({
@@ -77,12 +102,26 @@ enum ScoreboardSkin {
 
   bool get isWood => this == wood;
 
+  /// Skins that draw the score instead of showing a big number.
+  ScoreArtKind? get art => switch (this) {
+    card10 => ScoreArtKind.card10,
+    beans => ScoreArtKind.beans,
+    chalk => ScoreArtKind.chalk,
+    _ => null,
+  };
+
+  /// Light panels need dark buttons.
+  bool get isLight => this == wood || this == beans;
+
   /// Team identity: the name, the "você" chip and the filled tentos.
   Color accent(Team team) => switch (this) {
     felt => team == Team.a ? AppColors.gold : const Color(0xFFE9E1CF),
     wood => team == Team.a ? const Color(0xFF7A1F12) : const Color(0xFF1F3A5F),
     matches => team == Team.a ? AppColors.gold : const Color(0xFFE9E1CF),
     colors => Colors.white,
+    card10 => team == Team.a ? AppColors.gold : const Color(0xFFF6EAD7),
+    beans => team == Team.a ? const Color(0xFF8A2A12) : const Color(0xFF1F4A3A),
+    chalk => team == Team.a ? const Color(0xFFF7E08A) : const Color(0xFF9FD3F0),
   };
 
   /// Panel background.
@@ -111,10 +150,32 @@ enum ScoreboardSkin {
     colors => BoxDecoration(
       color: team == Team.a ? AppColors.teamA : AppColors.teamB,
     ),
+    card10 => const BoxDecoration(
+      gradient: RadialGradient(
+        center: Alignment(0, -0.2),
+        radius: 1.1,
+        colors: [Color(0xFF7A2333), Color(0xFF4A1220)],
+      ),
+    ),
+    beans => const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFE8D6B0), Color(0xFFD8C094), Color(0xFFC9AE7E)],
+      ),
+    ),
+    chalk => BoxDecoration(
+      gradient: const RadialGradient(
+        center: Alignment(-0.3, -0.4),
+        radius: 1.3,
+        colors: [Color(0xFF3A4A43), Color(0xFF26322D)],
+      ),
+      border: Border.all(color: const Color(0xFF7A5230), width: 6),
+    ),
   };
 
   /// Point buttons.
-  Color button(bool enabled) => isWood
+  Color button(bool enabled) => isLight
       ? const Color(0xFF5A3518).withValues(alpha: enabled ? 0.3 : 0.1)
       : Colors.white.withValues(alpha: enabled ? 0.13 : 0.05);
 
@@ -210,6 +271,7 @@ class Tally extends StatelessWidget {
     TallyStyle.pips => _pips(),
     TallyStyle.holes => _holes(),
     TallyStyle.matches => _matches(),
+    TallyStyle.art => const SizedBox.shrink(),
   };
 
   Widget _pips() => Row(

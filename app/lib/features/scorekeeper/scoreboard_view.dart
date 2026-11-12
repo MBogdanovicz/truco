@@ -8,6 +8,7 @@ import '../../domain/scorekeeper/match_state.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/app_icons.dart';
 import '../../ui/theme/app_theme.dart';
+import 'score_art.dart';
 import 'scoreboard_skin.dart';
 
 /// Everything the scoreboard needs, independent of how the game is synced.
@@ -306,18 +307,27 @@ class _TeamPanel extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
-                        child: FittedBox(
-                          child: Text(
-                            '$score',
-                            key: ValueKey('score-${team.name}'),
-                            style: TextStyle(
-                              color: onColor,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 120,
-                              height: 1,
-                            ),
-                          ),
-                        ),
+                        flex: skin.art == null ? 1 : 3,
+                        child: skin.art != null
+                            ? ScoreArt(
+                                kind: skin.art!,
+                                team: team,
+                                score: score,
+                                target: state.rules.targetScore,
+                                text: onColor,
+                              )
+                            : FittedBox(
+                                child: Text(
+                                  '$score',
+                                  key: ValueKey('score-${team.name}'),
+                                  style: TextStyle(
+                                    color: onColor,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 120,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
                       ),
                       if (canMark) ...[
                         const SizedBox(width: 12),
@@ -346,13 +356,15 @@ class _TeamPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Tally(
-                  skin: skin,
-                  team: team,
-                  score: score,
-                  target: state.rules.targetScore,
-                ),
+                if (skin.art == null) ...[
+                  const SizedBox(height: 8),
+                  Tally(
+                    skin: skin,
+                    team: team,
+                    score: score,
+                    target: state.rules.targetScore,
+                  ),
+                ],
                 if (canMark && extraDeltas.isNotEmpty) ...[
                   SizedBox(height: compact ? 6 : 10),
                   Row(
