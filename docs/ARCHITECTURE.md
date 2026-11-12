@@ -437,6 +437,13 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
 * `game-sweep` also decides live matches past their deadline (not being played): ahead in the series wins,
   else the team that entered the room (`present`), else a draw (knockout) or a loss for both (round robin).
 * Round robin order: wins, tento balance, tentos made.
+* Repescagem (`double_elimination`, migration `20261113020000`): the whole bracket is created at start
+  (`doubleElimination()`), each match with `bracket` and `sources` (winner/loser of earlier matches);
+  `resolveDouble()` fills and opens matches as results come in, passes lone teams through, and plays the
+  grand final again (round 201) only if the losers' bracket champion wins round 200.
+* Spectators: people in the tournament may watch other matches (`watch` action: the newest seat view
+  with hands, partner cards, covered cards and actions removed; the app polls every 3 s).
+* Each finished tournament game is saved to the device history ("Torneio <name>").
 
 ### 10.9 Next (see ROADMAP G5+)
 

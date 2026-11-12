@@ -229,4 +229,61 @@ void main() {
     expect(find.text('Assistir'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('repescagem shows its brackets', (tester) async {
+    const matches = [
+      TournamentMatch(
+        id: '1',
+        round: 1,
+        slot: 0,
+        teamA: 'a',
+        teamB: 'b',
+        status: 'done',
+        bestOf: 1,
+        winner: 'a',
+        scoreA: 12,
+        scoreB: 3,
+        bracket: 'winners',
+      ),
+      TournamentMatch(
+        id: '2',
+        round: 101,
+        slot: 0,
+        teamA: 'b',
+        teamB: 'c',
+        status: 'pending',
+        bestOf: 1,
+        bracket: 'losers',
+      ),
+      TournamentMatch(
+        id: '3',
+        round: 200,
+        slot: 0,
+        teamA: null,
+        teamB: null,
+        status: 'pending',
+        bestOf: 1,
+        bracket: 'final',
+      ),
+    ];
+    await _pump(
+      tester,
+      const TournamentScreen(id: 'doubleElimination'),
+      TournamentDetail(
+        tournament: _t(
+          TournamentStatus.running,
+          TournamentFormat.doubleElimination,
+        ),
+        teams: _teams,
+        matches: matches,
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Repescagem: rodada 1'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Grande final'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

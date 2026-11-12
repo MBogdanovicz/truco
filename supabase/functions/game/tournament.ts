@@ -21,7 +21,7 @@ export interface Tourney {
   name: string;
   owner_id: string;
   group_id: string | null;
-  format: "knockout" | "round_robin";
+  format: "knockout" | "round_robin" | "double_elimination";
   entry: "pairs" | "solo" | "both";
   rules: Json;
   round_days: number;
@@ -60,7 +60,16 @@ export interface Match {
   score_b: number | null;
   walkover: boolean;
   present: string[];
+  /** Double elimination: "winners", "losers" or "final". */
+  bracket?: string | null;
+  /** Double elimination: where each team comes from. */
+  sources?: (Source | null)[] | null;
 }
+
+/** A team of a double elimination match: the winner ("w") or loser ("l")
+ * of another match, or ("reset") the second grand final, played only if
+ * the losers' bracket champion wins the first. */
+export type Source = { w: string } | { l: string } | { reset: string };
 
 function randomInt(max: number): number {
   return crypto.getRandomValues(new Uint32Array(1))[0] % max;
@@ -76,7 +85,120 @@ export function shuffle<T>(list: T[]): T[] {
 }
 
 /** Largest number of teams per format. */
-export const MAX_TEAMS = { knockout: 32, round_robin: 8 } as const;
+export const MAX_TEAMS = { knockout: 32, round_robin: 8, double_elimination: 16 } as const;
+
+/** Round numbers of the losers' bracket and the grand finals. */
+export const LOSERS_ROUND = 100;
+export const FINAL_ROUND = 200;
+
+/** The whole double elimination ("repescagem") bracket for [teams] in draw
+ * order. Winners' bracket round 1 has the teams (byes as in a knockout);
+ * every other match takes the winner or loser of earlier ones. Losing twice
+ * is out; the grand final is played again if the team from the losers'
+ * bracket wins it. */
+export function doubleElimination(teams: string[]) {
+  const first = knockoutFirstRound(teams);
+  const size = first.length * 2;
+  const k = Math.log2(size);
+  type Spec = {
+    id: string;
+    bracket: "winners" | "losers" | "final";
+    round: number;
+    slot: number;
+    team_a: string | null;
+    team_b: string | null;
+    sources: (Source | null)[];
+  };
+  const out: Spec[] = [];
+  const add = (s: Omit<Spec, "id">) => {
+    const spec = { ...s, id: crypto.randomUUID() };
+    out.push(spec);
+    return spec;
+  };
+  const wb: Spec[][] = [];
+  wb.push(first.map(([a, b], slot) =>
+    add({ bracket: "winners", round: 1, slot, team_a: a, team_b: b, sources: [null, null] })
+  ));
+  for (let r = 2; r <= k; r++) {
+    const prev = wb[r - 2];
+    const round: Spec[] = [];
+    for (let i = 0; i < prev.length / 2; i++) {
+      round.push(add({
+        bracket: "winners",
+        round: r,
+        slot: i,
+        team_a: null,
+        team_b: null,
+        sources: [{ w: prev[2 * i].id }, { w: prev[2 * i + 1].id }],
+      }));
+    }
+    wb.push(round);
+  }
+  let lb: Spec[] = [];
+  let lr = 1;
+  // Losers of the first round play each other.
+  for (let i = 0; i < wb[0].length / 2; i++) {
+    lb.push(add({
+      bracket: "losers",
+      round: LOSERS_ROUND + lr,
+      slot: i,
+      team_a: null,
+      team_b: null,
+      sources: [{ l: wb[0][2 * i].id }, { l: wb[0][2 * i + 1].id }],
+    }));
+  }
+  for (let j = 1; j <= k - 1; j++) {
+    // Winners so far meet the losers coming down from round j + 1 (in
+    // reverse order every other time, to avoid quick rematches).
+    lr++;
+    const down = wb[j];
+    const next: Spec[] = [];
+    lb.forEach((m, i) => {
+      const from = j % 2 ? down[down.length - 1 - i] : down[i];
+      next.push(add({
+        bracket: "losers",
+        round: LOSERS_ROUND + lr,
+        slot: i,
+        team_a: null,
+        team_b: null,
+        sources: [{ w: m.id }, { l: from.id }],
+      }));
+    });
+    lb = next;
+    if (j < k - 1) {
+      lr++;
+      const paired: Spec[] = [];
+      for (let i = 0; i < lb.length / 2; i++) {
+        paired.push(add({
+          bracket: "losers",
+          round: LOSERS_ROUND + lr,
+          slot: i,
+          team_a: null,
+          team_b: null,
+          sources: [{ w: lb[2 * i].id }, { w: lb[2 * i + 1].id }],
+        }));
+      }
+      lb = paired;
+    }
+  }
+  const final = add({
+    bracket: "final",
+    round: FINAL_ROUND,
+    slot: 0,
+    team_a: null,
+    team_b: null,
+    sources: [{ w: wb[k - 1][0].id }, { w: lb[0].id }],
+  });
+  add({
+    bracket: "final",
+    round: FINAL_ROUND + 1,
+    slot: 0,
+    team_a: null,
+    team_b: null,
+    sources: [{ reset: final.id }, { reset: final.id }],
+  });
+  return out;
+}
 export const MIN_TEAMS = 3;
 
 /** First round of a knockout for [teams] (in draw order): pairs of team
@@ -190,7 +312,11 @@ export class Tournaments {
     const { data: profile } = await this.db.from("profiles").select("is_premium")
       .eq("id", this.userId).maybeSingle();
     if (!profile?.is_premium) throw new Refused("premium_required");
-    const format = body.format === "round_robin" ? "round_robin" : "knockout";
+    const format = body.format === "round_robin"
+      ? "round_robin"
+      : body.format === "double_elimination"
+      ? "double_elimination"
+      : "knockout";
     const entry = ["pairs", "solo", "both"].includes(body.entry as string)
       ? body.entry as string
       : "pairs";
@@ -202,7 +328,9 @@ export class Tournaments {
     const days = Math.max(1, Math.min(14, Number(body.roundDays) || 2));
     const series = (v: unknown) => [1, 3, 5].includes(Number(v)) ? Number(v) : 1;
     const bestOf = series(body.bestOf);
-    const finalBestOf = format === "knockout" ? series(body.finalBestOf ?? bestOf) : bestOf;
+    const finalBestOf = format !== "round_robin"
+      ? series(body.finalBestOf ?? bestOf)
+      : bestOf;
     for (let attempt = 0; ; attempt++) {
       const code = Array.from(
         crypto.getRandomValues(new Uint8Array(6)),
@@ -399,6 +527,18 @@ export class Tournaments {
           deadline: b ? this.deadline(t, now, 1) : null,
         })
       );
+    } else if (t.format === "double_elimination") {
+      for (const s of doubleElimination(ids)) {
+        const bye = s.round === 1 && !s.team_b;
+        rows.push({
+          ...s,
+          tournament_id: t.id,
+          best_of: s.bracket === "final" ? t.final_best_of : t.best_of,
+          status: bye ? "done" : "pending",
+          winner: bye ? s.team_a : null,
+          deadline: s.round === 1 && s.team_b ? this.deadline(t, now, 1) : null,
+        });
+      }
     } else {
       roundRobin(ids).forEach((round, r) =>
         round.forEach(([a, b], slot) =>
@@ -553,6 +693,10 @@ export class Tournaments {
       }
       return;
     }
+    if (t.format === "double_elimination") {
+      await this.resolveDouble(t, matches, teams);
+      return;
+    }
     const last = Math.max(...matches.map((m) => m.round));
     const round = matches.filter((m) => m.round === last);
     if (round.length === 1) {
@@ -575,6 +719,73 @@ export class Tournaments {
       if (error) throw error;
       await this.open(t, data as Match, teams);
     }
+  }
+
+  /** Double elimination: fills in every match whose teams are now known,
+   * opens it (or passes a lone team through), and ends the tournament after
+   * the grand final. */
+  private async resolveDouble(t: Tourney, matches: Match[], teams: Team[]) {
+    const byId = new Map(matches.map((m) => [m.id, m]));
+    const loser = (m: Match) =>
+      !m.winner ? null : m.winner === m.team_a ? m.team_b : m.team_a;
+    for (let changed = true; changed;) {
+      changed = false;
+      for (const m of matches) {
+        if (m.status === "done" || m.room_id) continue;
+        const sources = m.sources ?? [null, null];
+        const reset = sources[0] && "reset" in sources[0] ? byId.get(sources[0].reset) : null;
+        if (reset) {
+          if (reset.status !== "done") continue;
+          // The champion of the winners' bracket (team A) won: it's over.
+          const over = reset.winner === reset.team_a;
+          const patch = over
+            ? { status: "done", team_a: null, team_b: null, winner: null }
+            : { team_a: reset.team_a, team_b: reset.team_b };
+          Object.assign(m, patch);
+          await this.db.from("tournament_matches").update(patch).eq("id", m.id);
+          if (over) {
+            await this.finish(t, reset.winner, teams);
+            return;
+          }
+          changed = true;
+          await this.openDouble(t, m, teams);
+          continue;
+        }
+        const side = (i: number): { ready: boolean; team: string | null } => {
+          const s = sources[i];
+          if (!s) return { ready: true, team: i ? m.team_b : m.team_a };
+          const from = byId.get("w" in s ? s.w : "l" in s ? s.l : "");
+          if (!from || from.status !== "done") return { ready: false, team: null };
+          return { ready: true, team: "w" in s ? from.winner : loser(from) };
+        };
+        const [a, b] = [side(0), side(1)];
+        if (!a.ready || !b.ready) continue;
+        changed = true;
+        if (a.team && b.team) {
+          Object.assign(m, { team_a: a.team, team_b: b.team });
+          await this.db.from("tournament_matches")
+            .update({ team_a: a.team, team_b: b.team }).eq("id", m.id);
+          await this.openDouble(t, m, teams);
+        } else {
+          // One team (it goes through) or none (an empty match).
+          const team = a.team ?? b.team;
+          const patch = { status: "done", team_a: team, team_b: null, winner: team };
+          Object.assign(m, patch);
+          await this.db.from("tournament_matches").update(patch).eq("id", m.id);
+        }
+      }
+    }
+    const last = matches.find((m) => m.round === FINAL_ROUND + 1);
+    if (last?.status === "done" && last.winner) await this.finish(t, last.winner, teams);
+  }
+
+  private async openDouble(t: Tourney, m: Match, teams: Team[]) {
+    const deadline = this.deadline(t, Date.now(), 1);
+    m.deadline = deadline;
+    await this.db.from("tournament_matches").update({ deadline }).eq("id", m.id);
+    await this.open(t, m, teams);
+    // open() set the room; keep this copy from opening it twice.
+    m.room_id = m.room_id ?? "opened";
   }
 
   private async finish(t: Tourney, champion: string | null, teams: Team[]) {
@@ -637,7 +848,7 @@ export class Tournaments {
       : cb > ca
       ? m.team_b
       : null;
-    if (!winner && t.format === "knockout") {
+    if (!winner && t.format !== "round_robin") {
       winner = randomInt(2) ? m.team_a : m.team_b;
     }
     const { data: done } = await this.db.from("tournament_matches").update({

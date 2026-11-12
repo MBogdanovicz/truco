@@ -34,6 +34,7 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
 
   static const _koSizes = [4, 8, 16, 32];
   static const _rrSizes = [3, 4, 5, 6, 8];
+  static const _deSizes = [4, 8, 16];
   static const _roundDayOptions = [1, 2, 3, 7];
 
   @override
@@ -61,9 +62,7 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
             roundDays: _roundDays,
             maxTeams: _maxTeams,
             bestOf: _bestOf,
-            finalBestOf: _format == TournamentFormat.knockout
-                ? _finalBestOf
-                : _bestOf,
+            finalBestOf: _format.hasFinal ? _finalBestOf : _bestOf,
           );
       ref.invalidate(tournamentsProvider);
       if (mounted) context.go('/torneios/$id');
@@ -84,7 +83,11 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
   @override
   Widget build(BuildContext context) {
     final groups = ref.watch(myGroupsProvider).value ?? const <Group>[];
-    final sizes = _format == TournamentFormat.knockout ? _koSizes : _rrSizes;
+    final sizes = switch (_format) {
+      TournamentFormat.knockout => _koSizes,
+      TournamentFormat.doubleElimination => _deSizes,
+      TournamentFormat.roundRobin => _rrSizes,
+    };
     if (!sizes.contains(_maxTeams)) _maxTeams = sizes[1];
     const series = {1: 'Única', 3: 'Melhor de 3', 5: 'Melhor de 5'};
     return AppScaffold(
@@ -130,6 +133,11 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
               ? 'A chave é sorteada quando o torneio começa. Se faltar dupla '
                     'para completar a chave, algumas passam direto para a '
                     'rodada seguinte.'
+              : _format == TournamentFormat.doubleElimination
+              ? 'Eliminação dupla: quem perde vai para a repescagem e só sai '
+                    'com a segunda derrota. Na final, o campeão da chave '
+                    'principal enfrenta o da repescagem; se o da repescagem '
+                    'ganhar, tem um jogo de desempate.'
               : 'Todas as duplas se enfrentam uma vez. Vale o número de '
                     'vitórias, depois o saldo de tentos e depois os tentos '
                     'feitos.',
@@ -160,7 +168,7 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
                 }),
               ),
             ),
-            if (_format == TournamentFormat.knockout) ...[
+            if (_format.hasFinal) ...[
               AppTile(title: 'A final'),
               _pad(
                 AppSegmented<int>(

@@ -5,7 +5,7 @@ import '../domain/game/rules.dart';
 import '../domain/game/table_view.dart';
 import 'auth_repository.dart';
 
-enum TournamentFormat { knockout, roundRobin }
+enum TournamentFormat { knockout, doubleElimination, roundRobin }
 
 enum TournamentEntry { pairs, solo, both }
 
@@ -14,13 +14,24 @@ enum TournamentStatus { open, running, finished, cancelled }
 extension TournamentFormatLabel on TournamentFormat {
   String get label => switch (this) {
     TournamentFormat.knockout => 'Mata-mata',
+    TournamentFormat.doubleElimination => 'Repescagem',
     TournamentFormat.roundRobin => 'Todos contra todos',
   };
-  String get json =>
-      this == TournamentFormat.knockout ? 'knockout' : 'round_robin';
+  String get json => switch (this) {
+    TournamentFormat.knockout => 'knockout',
+    TournamentFormat.doubleElimination => 'double_elimination',
+    TournamentFormat.roundRobin => 'round_robin',
+  };
+
+  /// Has a bracket with a final (its series may differ).
+  bool get hasFinal => this != TournamentFormat.roundRobin;
 
   /// Most teams allowed.
-  int get maxTeams => this == TournamentFormat.knockout ? 32 : 8;
+  int get maxTeams => switch (this) {
+    TournamentFormat.knockout => 32,
+    TournamentFormat.doubleElimination => 16,
+    TournamentFormat.roundRobin => 8,
+  };
 }
 
 extension TournamentEntryLabel on TournamentEntry {
@@ -80,9 +91,11 @@ class Tournament {
     ownerId: r['owner_id'] as String,
     groupId: r['group_id'] as String?,
     groupName: (r['groups'] as Map?)?['name'] as String?,
-    format: r['format'] == 'round_robin'
-        ? TournamentFormat.roundRobin
-        : TournamentFormat.knockout,
+    format: switch (r['format']) {
+      'round_robin' => TournamentFormat.roundRobin,
+      'double_elimination' => TournamentFormat.doubleElimination,
+      _ => TournamentFormat.knockout,
+    },
     entry:
         TournamentEntry.values.asNameMap()[r['entry']] ?? TournamentEntry.pairs,
     rules: TrucoRules.fromJson(
@@ -107,7 +120,7 @@ class Tournament {
       TournamentEntry.both => 'dupla ou individual',
     },
     bestOfLabel(bestOf).toLowerCase() +
-        (format == TournamentFormat.knockout && finalBestOf != bestOf
+        (format.hasFinal && finalBestOf != bestOf
             ? ' (final: ${bestOfLabel(finalBestOf).toLowerCase()})'
             : ''),
     slow
@@ -162,6 +175,7 @@ class TournamentMatch {
     required this.bestOf,
     this.roomCode,
     this.roomId,
+    this.bracket,
     this.deadline,
     this.winner,
     this.gamesA = 0,
@@ -182,6 +196,9 @@ class TournamentMatch {
   final int bestOf;
   final String? roomCode;
   final String? roomId;
+
+  /// Repescagem: "winners", "losers" or "final".
+  final String? bracket;
   final DateTime? deadline;
   final String? winner;
   final int gamesA;
@@ -203,6 +220,7 @@ class TournamentMatch {
     bestOf: (r['best_of'] as int?) ?? 1,
     roomCode: r['room_code'] as String?,
     roomId: r['room_id'] as String?,
+    bracket: r['bracket'] as String?,
     deadline: DateTime.tryParse((r['deadline'] as String?) ?? '')?.toLocal(),
     winner: r['winner'] as String?,
     gamesA: (r['games_a'] as int?) ?? 0,

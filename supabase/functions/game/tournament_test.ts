@@ -1,7 +1,13 @@
 // deno test supabase/functions/game/tournament_test.ts
 // Whole tournaments against the in-memory database.
 import { Game, type Json } from "./game.ts";
-import { knockoutFirstRound, roundRobin, Tournaments } from "./tournament.ts";
+import {
+  doubleElimination,
+  FINAL_ROUND,
+  knockoutFirstRound,
+  roundRobin,
+  Tournaments,
+} from "./tournament.ts";
 import { spectatorView } from "./game.ts";
 import { asDb, assert, FakeDb, playToEnd, refused } from "./fake_db.ts";
 
@@ -206,4 +212,57 @@ Deno.test("slow knockout: games start by themselves", async () => {
   await playMatch(db, m, all);
   assert(m.status === "done");
   assert(((m.games_a as number) + (m.games_b as number)) >= 2, "a series");
+});
+
+Deno.test("double elimination bracket: shape", () => {
+  for (const n of [3, 4, 5, 8, 11, 16]) {
+    const ms = doubleElimination(Array.from({ length: n }, (_, i) => `t${i}`));
+    const size = 2 ** Math.ceil(Math.log2(Math.max(n, 4)));
+    // Winners: size - 1 matches; losers: size - 2; two grand finals.
+    assert(ms.filter((m) => m.bracket === "winners").length === size - 1, `w ${n}`);
+    assert(ms.filter((m) => m.bracket === "losers").length === size - 2, `l ${n}`);
+    assert(ms.filter((m) => m.bracket === "final").length === 2);
+  }
+});
+
+Deno.test("repescagem: nobody is out with one loss", async () => {
+  const db = new FakeDb();
+  const ids = Array.from({ length: 10 }, (_, i) => `d${i}`);
+  const all = people(db, ids, ["d0"]);
+  const { id } = await all.get("d0")!.t.create({
+    name: "Repescagem",
+    format: "double_elimination",
+    entry: "pairs",
+    maxTeams: 8,
+    bestOf: 1,
+    finalBestOf: 1,
+    rules: { tempo: 0 },
+  });
+  for (let i = 0; i < 10; i += 2) {
+    const { code } = await all.get(ids[i])!.t.register({ tournamentId: id, as: "pair" }) as Json;
+    await all.get(ids[i + 1])!.t.register({ tournamentId: id, as: "join", code });
+  }
+  await all.get("d0")!.t.start({ tournamentId: id });
+  const t = db.tables.tournaments[0];
+  for (let i = 0; i < 40 && t.status === "running"; i++) {
+    const next = live(db);
+    assert(next, "a match to play");
+    await playMatch(db, next, all);
+  }
+  assert((t.status as string) === "finished", `status ${t.status}`);
+  // Every team but the champion lost exactly twice (or once, if it only
+  // lost the second grand final... that is still two losses overall).
+  const losses = new Map<string, number>();
+  for (const m of db.tables.tournament_matches) {
+    if (m.status !== "done" || !m.team_b || !m.winner) continue;
+    const lost = m.winner === m.team_a ? m.team_b : m.team_a;
+    losses.set(lost as string, (losses.get(lost as string) ?? 0) + 1);
+  }
+  for (const team of db.tables.tournament_teams) {
+    const n = losses.get(team.id as string) ?? 0;
+    if (team.id === t.champion) assert(n <= 1, "champion lost at most once");
+    else assert(n === 2, `team lost ${n} times`);
+  }
+  const reset = db.tables.tournament_matches.find((m) => m.round === FINAL_ROUND + 1)!;
+  assert(reset.status === "done");
 });

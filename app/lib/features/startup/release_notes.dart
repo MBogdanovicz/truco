@@ -71,4 +71,13 @@ const releaseNotes = <ReleaseNote>[
         'o truco.',
     'Marcador e jogo contra o computador funcionam sem internet.',
   ]),
+  ReleaseNote(9, [
+    'Novo: torneios! Mata-mata, repescagem ou todos contra todos, públicos '
+        'ou do grupo, com inscrição por dupla ou individual. Criar é Premium; '
+        'participar é grátis.',
+    'Novo: partida lenta, para 4 pessoas jogarem sem combinar horário, com '
+        'dias para cada jogada e aviso na sua vez.',
+    'Ao receber truco, se o primeiro correr, o parceiro decide.',
+    'A carta coberta aparece para o parceiro.',
+  ]),
 ];

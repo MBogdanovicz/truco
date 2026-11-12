@@ -375,12 +375,23 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
       );
     }
     for (final entry in rounds.entries) {
+      // Repescagem: matches whose teams aren't known yet, and empty ones.
+      final shown = [
+        for (final m in entry.value)
+          if (m.teamA != null || m.teamB != null) m,
+      ];
+      if (t.format == TournamentFormat.doubleElimination && shown.isEmpty) {
+        continue;
+      }
       out.add(
         AppSection(
           header: _roundName(t, entry.key, entry.value.length),
           children: [
             for (final m in entry.value)
-              if (!(t.format == TournamentFormat.roundRobin && m.bye))
+              if (!(t.format == TournamentFormat.roundRobin && m.bye) &&
+                  !(t.format == TournamentFormat.doubleElimination &&
+                      m.teamA == null &&
+                      m.teamB == null))
                 _matchTile(d, m),
           ],
         ),
@@ -391,6 +402,14 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
 
   String _roundName(Tournament t, int round, int matches) {
     if (t.format == TournamentFormat.roundRobin) return 'Rodada $round';
+    if (t.format == TournamentFormat.doubleElimination) {
+      if (round >= 201) return 'Final: jogo de desempate';
+      if (round >= 200) return 'Grande final';
+      if (round > 100) return 'Repescagem: rodada ${round - 100}';
+      return matches == 1
+          ? 'Final da chave principal'
+          : 'Chave principal: rodada $round';
+    }
     return switch (matches) {
       1 => 'Final',
       2 => 'Semifinal',
