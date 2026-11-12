@@ -128,8 +128,8 @@ class _GameTableState extends State<GameTable> {
   String? _shout;
   int _shoutId = 0;
 
-  /// The start balloon was shown for the current game.
-  bool _startShouted = false;
+  /// The raise the last balloon was for (hand, seat, level).
+  String? _shoutedFor;
 
   @override
   void initState() {
@@ -143,23 +143,23 @@ class _GameTableState extends State<GameTable> {
     _checkShout();
   }
 
+  /// Shouts when someone calls truco (or raises: seis, nove, doze, once
+  /// they have phrases in [shoutPhrases]).
   void _checkShout() {
-    final fresh =
-        v.handNumber <= 1 &&
-        v.scoreOf(Team.a) == 0 &&
-        v.scoreOf(Team.b) == 0 &&
-        v.rounds.isEmpty &&
-        v.tablePlays.isEmpty &&
-        v.phase != GamePhase.gameOver;
-    if (!fresh) {
-      if (v.handNumber > 1 || v.phase == GamePhase.gameOver) {
-        _startShouted = false;
-      }
-      return;
-    }
-    if (_startShouted) return;
-    _startShouted = true;
-    _shout = pickShout(ShoutEvent.gameStart);
+    final p = v.pending;
+    if (p == null || p.refusedBy != null) return;
+    final key = '${v.handNumber}-${p.seat}-${p.toLevel}';
+    if (key == _shoutedFor) return;
+    _shoutedFor = key;
+    final event = switch (p.toLevel) {
+      1 => ShoutEvent.truco,
+      2 => ShoutEvent.seis,
+      3 => ShoutEvent.nove,
+      _ => ShoutEvent.doze,
+    };
+    final text = pickShout(event);
+    if (text == null) return;
+    _shout = text;
     _shoutId++;
   }
 
@@ -357,7 +357,9 @@ class _GameTableState extends State<GameTable> {
               ),
             ),
             if (_shout != null)
-              Center(
+              Align(
+                // Above the middle, so the call's label stays visible.
+                alignment: const Alignment(0, -0.5),
                 child: TableShout(
                   key: ValueKey(_shoutId),
                   text: said(context, _shout!),

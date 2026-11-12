@@ -3,12 +3,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Moments when the table "shouts" a comic-book balloon.
-enum ShoutEvent { gameStart, truco, seis, nove, doze }
+enum ShoutEvent { truco, seis, nove, doze }
 
-/// What can be shouted at each moment; one is picked at random. Only the
-/// game start shouts for now; more phrases and events can be added here.
+/// What can be shouted at each moment; one is picked at random. Only truco
+/// shouts for now; add phrases here for seis, nove and doze.
 const shoutPhrases = <ShoutEvent, List<String>>{
-  ShoutEvent.gameStart: ['Truco! Sofá de zona!'],
+  ShoutEvent.truco: ['Truco! Sofá de zona!'],
 };
 
 String? pickShout(ShoutEvent event, [math.Random? random]) {

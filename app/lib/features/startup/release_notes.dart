@@ -97,6 +97,6 @@ const releaseNotes = <ReleaseNote>[
     'O Treinar agora fica na tela inicial.',
     'Mesa nova: a vira fica no meio, com o baralho por cima, e logo abaixo '
         'quanto a mão vale.',
-    'Truco! Sofá de zona! Um grito no começo de cada partida.',
+    'Truco! Sofá de zona! Um grito na mesa quando alguém pede truco.',
   ]),
 ];
