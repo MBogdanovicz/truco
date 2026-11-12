@@ -93,14 +93,23 @@ class ScoreArt extends StatelessWidget {
       children: [
         Expanded(child: Center(child: art)),
         const SizedBox(width: 6),
-        Text(
-          '$score',
-          key: ValueKey('score-${team.name}'),
-          style: TextStyle(
-            color: text,
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            height: 1,
+        // A fixed width, so the drawing doesn't move when the score gets a
+        // second digit: marks stay where they were made.
+        SizedBox(
+          width: 44,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              '$score',
+              key: ValueKey('score-${team.name}'),
+              style: TextStyle(
+                color: text,
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
           ),
         ),
       ],
