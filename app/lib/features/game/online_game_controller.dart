@@ -139,6 +139,7 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   }
 
   void _close() {
+    _standing = false;
     _clock?.cancel();
     _clock = null;
     _player.reset();
@@ -163,8 +164,10 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
         ref.invalidate(lastGameRoomCodeProvider);
       }, onError: (_) {});
     }
+    final seated = myId == null || room.seatOf(myId!) != null;
+    if (seated) _standing = false;
     if (room.status == GameRoomStatus.closed ||
-        (myId != null && room.seatOf(myId!) == null)) {
+        (!seated && !(_standing && room.status == GameRoomStatus.lobby))) {
       state = s.copyWith(room: room, closed: true);
       return;
     }
@@ -262,6 +265,18 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   // ------------------------------------------------------------ lobby --
 
   Future<void> sit(int seat) => _send((b, id) => b.sit(id, seat));
+
+  /// Standing up in the lobby: the room stays open without a seat.
+  bool _standing = false;
+  Future<void> stand() async {
+    _standing = true;
+    try {
+      await _send((b, id) => b.stand(id));
+    } on Object {
+      _standing = false;
+      rethrow;
+    }
+  }
 
   Future<void> setBotLevel(AiLevel level) =>
       _send((b, id) => b.options(id, botLevel: level));

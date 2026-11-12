@@ -450,7 +450,7 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   round is over; claimed via `room_code = ''`). The champions get their own push (kind `champion`).
 * The app draws knockout and repescagem as a bracket (`bracket_view.dart`): rounds side by side, each
   match centred between the two that feed it.
-* Normal rooms: sitting on a taken seat (lobby) swaps the two people; the table shows the room code.
+* Normal rooms: in the lobby a seated person can stand up (`stand`) and then sit only on a free seat; the table shows the room code.
 
 ### 10.9 Next (see ROADMAP G5+)
 

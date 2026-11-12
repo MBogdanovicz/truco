@@ -316,24 +316,10 @@ export class Game {
     const seat = Number(body.seat);
     if (!(seat >= 0 && seat <= 3)) throw new Refused("bad_seat");
     const seats = await this.seats(room.id);
-    const mine = this.mySeat(seats);
-    const other = seats.find((s) => s.seat === seat);
-    if (other && other.user_id === this.userId) return {};
-    if (other) {
-      // Taken: the two swap places (so a full table can still fix the pairs).
-      await this.db.from("game_seats").delete().eq("room_id", room.id)
-        .eq("user_id", other.user_id);
-      const { error } = await this.db.from("game_seats").update({ seat })
-        .eq("room_id", room.id).eq("user_id", this.userId);
-      if (error) throw error;
-      const { error: back } = await this.db.from("game_seats").insert({
-        room_id: room.id,
-        seat: mine.seat,
-        user_id: other.user_id,
-        name: other.name,
-        is_guest: other.is_guest,
-      });
-      if (back) throw back;
+    if (seats.some((s) => s.seat === seat)) throw new Refused("seat_taken");
+    if (!seats.some((s) => s.user_id === this.userId)) {
+      // Standing (see stand): sits down on a free seat.
+      await this.seat(room.id, seat);
       await this.touch(room.id);
       return {};
     }
@@ -341,6 +327,20 @@ export class Game {
       .eq("room_id", room.id).eq("user_id", this.userId);
     if (error?.code === "23505") throw new Refused("seat_taken");
     if (error) throw error;
+    return {};
+  }
+
+  /** Gets up from the table in the lobby (to sit somewhere else later):
+   * the seat is freed, but the person stays in the room. */
+  async stand(body: Json) {
+    const room = await this.room(body.roomId as string);
+    if (room.tournament_match_id) throw new Refused("tournament_room");
+    if (room.status === "playing") throw new Refused("game_started");
+    const seats = await this.seats(room.id);
+    this.mySeat(seats);
+    await this.db.from("game_seats").delete().eq("room_id", room.id)
+      .eq("user_id", this.userId);
+    await this.touch(room.id);
     return {};
   }
 
@@ -382,6 +382,8 @@ export class Game {
       }
     } else {
       this.hostOnly(room);
+      // Standing up (see stand): sit down first.
+      if (!internal) this.mySeat(await this.seats(room.id));
     }
     if (slowDays(room.rules) && (await this.seats(room.id)).length < 4) {
       throw new Refused("slow_needs_four");
@@ -728,7 +730,15 @@ export class Game {
     const room = await this.room(body.roomId as string);
     const seats = await this.seats(room.id);
     const me = seats.find((s) => s.user_id === this.userId);
-    if (!me) return {};
+    if (!me) {
+      // Leaving while standing (see stand): hand the room on, or close it.
+      if (room.tournament_match_id || room.status === "playing") return {};
+      if (seats.length === 0) await this.touch(room.id, { status: "closed" });
+      else if (room.host_id === this.userId) {
+        await this.touch(room.id, { host_id: seats[0].user_id });
+      }
+      return {};
+    }
     await this.db.from("game_seats").delete().eq("room_id", room.id).eq("user_id", this.userId);
     await this.db.from("game_views").delete().eq("room_id", room.id).eq("user_id", this.userId);
     const rest = seats.filter((s) => s.user_id !== this.userId);

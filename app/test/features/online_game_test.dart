@@ -53,12 +53,22 @@ class FakeRooms implements GameRoomBackend {
   }
 
   @override
+  Future<void> stand(String roomId) async {
+    rooms[roomId]!.seats.removeWhere((_, s) => s.userId == userId);
+    rooms[roomId]!.changed();
+  }
+
+  @override
   Future<void> sit(String roomId, int seat) async {
     final r = rooms[roomId]!;
     if (r.seats.containsKey(seat)) throw const GameRoomError('seat_taken');
-    final me = r.seats.values.firstWhere((s) => s.userId == userId);
-    r.seats.remove(me.seat);
-    r.seats[seat] = GameSeat(seat: seat, userId: userId, name: me.name);
+    final me = r.seats.values.where((s) => s.userId == userId).firstOrNull;
+    r.seats.remove(me?.seat);
+    r.seats[seat] = GameSeat(
+      seat: seat,
+      userId: userId,
+      name: me?.name ?? 'Eu',
+    );
     r.changed();
   }
 
@@ -230,6 +240,55 @@ void main() {
   setUp(() {
     SharedPreferencesAsyncPlatform.instance =
         InMemorySharedPreferencesAsync.empty();
+  });
+
+  testWidgets('standing up in the lobby, then sitting on a free seat', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final rooms = FakeRooms('me');
+    final container = ProviderContainer(
+      overrides: [gameRoomBackendProvider.overrideWithValue(rooms)],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const TrucoApp(style: AppPlatformStyle.material),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final ctrl = container.read(onlineGameControllerProvider.notifier);
+    await ctrl.create(
+      rules: TrucoRules.paulista,
+      botLevel: AiLevel.easy,
+      ranked: true,
+    );
+    container.read(routerProvider).go('/jogo/sala');
+    await tester.pumpAndSettle();
+    rooms.seatOther('r1', 2, 'ana', 'Ana');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Levantar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Você está em pé'), findsOneWidget);
+    expect(container.read(onlineGameControllerProvider)!.closed, isFalse);
+    // Ana's seat can't be taken; a free one can.
+    await tester.tap(find.text('Ana'));
+    await tester.pumpAndSettle();
+    expect(rooms.rooms['r1']!.seats[2]!.userId, 'ana');
+    await tester.tap(find.textContaining('Computador').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Você está em pé'), findsNothing);
+    expect(
+      rooms.rooms['r1']!.seats.values.where((s) => s.userId == 'me'),
+      hasLength(1),
+    );
+    expect(tester.takeException(), isNull);
+    ctrl.close();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('online room: lobby, a whole game with a friend, rematch', (

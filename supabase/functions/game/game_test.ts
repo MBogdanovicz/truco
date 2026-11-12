@@ -175,15 +175,20 @@ Deno.test("anyone with the code watches a normal room", async () => {
   assert((frame.hand as unknown[]).length === 0, "no cards in hand");
 });
 
-Deno.test("sitting on a taken seat swaps the two", async () => {
+Deno.test("standing up and sitting on a free seat", async () => {
   const db = new FakeDb();
   const ana = new Game(asDb(db), "ana", false, "Ana");
   const bia = new Game(asDb(db), "bia", false, "Bia");
   const { roomId, code } = await ana.create({});
   await bia.join({ code });
-  const seatOf = (id: string) => db.tables.game_seats.find((s) => s.user_id === id)!.seat;
-  const before = seatOf("bia");
-  await bia.sit({ roomId, seat: seatOf("ana") });
-  assert(seatOf("bia") === 0 && seatOf("ana") === before, "swapped");
-  assert(db.tables.game_seats.find((s) => s.user_id === "ana")!.name === "Ana");
+  const seatOf = (id: string) => db.tables.game_seats.find((s) => s.user_id === id)?.seat;
+  // Nobody takes someone else's seat.
+  await refused(() => bia.sit({ roomId, seat: seatOf("ana") }), "seat_taken");
+  await ana.stand({ roomId });
+  assert(seatOf("ana") === undefined, "standing");
+  await refused(() => ana.start({ roomId }), "not_seated");
+  await bia.sit({ roomId, seat: 0 });
+  await ana.sit({ roomId, seat: 2 });
+  assert(seatOf("bia") === 0 && seatOf("ana") === 2, "partners now");
+  await ana.start({ roomId });
 });

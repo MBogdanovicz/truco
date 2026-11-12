@@ -62,6 +62,8 @@ Deno.serve(async (req) => {
         return reply(200, await game.join(body));
       case "sit":
         return reply(200, await game.sit(body));
+      case "stand":
+        return reply(200, await game.stand(body));
       case "options":
         return reply(200, await game.options(body));
       case "start":

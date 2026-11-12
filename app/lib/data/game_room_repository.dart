@@ -194,6 +194,9 @@ abstract class GameRoomBackend {
   });
   Future<({String roomId, String code})> join(String code);
   Future<void> sit(String roomId, int seat);
+
+  /// Gets up in the lobby: the seat is freed, the person stays in the room.
+  Future<void> stand(String roomId);
   Future<void> options(
     String roomId, {
     AiLevel? botLevel,
@@ -264,6 +267,9 @@ class SupabaseGameRooms implements GameRoomBackend {
   @override
   Future<void> sit(String roomId, int seat) =>
       _call('sit', {'roomId': roomId, 'seat': seat});
+
+  @override
+  Future<void> stand(String roomId) => _call('stand', {'roomId': roomId});
 
   @override
   Future<void> options(

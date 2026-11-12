@@ -295,6 +295,8 @@ class _Lobby extends ConsumerWidget {
               .firstOrNull
               ?.name;
 
+    final standing = myId != null && room.seatOf(myId!) == null;
+
     Widget seatTile(int seat) {
       final who = room.at(seat);
       final me = who != null && who.userId == myId;
@@ -312,13 +314,17 @@ class _Lobby extends ConsumerWidget {
             ? (room.isTournament
                   ? 'Lugar de quem joga este jogo do torneio.'
                   : 'Lugar vazio. Toque para sentar aqui.')
-            : room.isTournament || me
-            ? null
-            : [
-                if (who.userId == room.hostId) 'Criou a sala',
-                'Toque para trocar de lugar.',
-              ].join('. '),
-        onTap: !me && !sending && !room.isTournament
+            : (who.userId == room.hostId && !room.isTournament
+                  ? 'Criou a sala'
+                  : null),
+        // Getting up frees the seat; nobody takes someone else's.
+        trailing: me && !room.isTournament
+            ? AppTextButton(
+                label: 'Levantar',
+                onPressed: sending ? null : () => run(ctrl.stand),
+              )
+            : null,
+        onTap: who == null && !sending && !room.isTournament
             ? () => run(() => ctrl.sit(seat))
             : null,
       );
@@ -413,6 +419,15 @@ class _Lobby extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
+        if (standing)
+          const AppSection(
+            children: [
+              AppTile(
+                title: 'Você está em pé',
+                subtitle: 'Toque num lugar vazio para sentar.',
+              ),
+            ],
+          ),
         AppSection(
           header: 'Nós (dupla 1)',
           children: [seatTile(0), seatTile(2)],
@@ -510,6 +525,7 @@ class _Lobby extends ConsumerWidget {
                       icon: context.icon(AppIcon.play),
                       onPressed:
                           sending ||
+                              standing ||
                               (room.rules.isSlow && room.seats.length < 4)
                           ? null
                           : () async {

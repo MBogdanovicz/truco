@@ -81,7 +81,7 @@ const releaseNotes = <ReleaseNote>[
     'A carta coberta aparece para o parceiro.',
     'Se a rodada embuchar, o pé continua o mesmo.',
     'Dá para assistir um jogo pelo código da sala e sentar à mesa quando '
-        'alguém sai. Na sala, dá para trocar de lugar e ver o código durante '
-        'o jogo.',
+        'alguém sai. Na sala, dá para levantar e sentar num lugar vago, e ver o '
+        'código durante o jogo.',
   ]),
 ];
