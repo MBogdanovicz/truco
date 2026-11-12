@@ -241,6 +241,9 @@ final pushStateProvider = FutureProvider.autoDispose<PushState>((ref) async {
     } on Object catch (e) {
       // ignore: avoid_print
       print('Push register failed: $e'); // shows in the browser console
+      // Allowed, but the browser's push service refused (Brave without
+      // Google push services): show it as failed, with the tip.
+      if (kIsWeb && '$e'.contains('push service')) return PushState.failed;
     }
   }
   return state;

@@ -2,16 +2,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../data/entitlements.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
-import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
+import 'score_art.dart';
 
 /// How the 12 tentos of a team are drawn.
-enum TallyStyle { pips, holes, matches }
+enum TallyStyle { pips, holes, art }
 
 /// Look of the scoreboard. Inspired by what's used at a real truco table:
 /// the felt of the table, the wooden marker with 12 holes per side, and
@@ -38,11 +38,11 @@ enum ScoreboardSkin {
   ),
   matches(
     label: 'Palitos de fósforo',
-    description: 'Cada tento é um palito na mesa.',
+    description: 'Cada tento é um palito que sai da caixinha para a mesa.',
     bar: Color(0xFF151816),
     strip: Color(0xFF0B0D0C),
     text: Color(0xFFF1E6D2),
-    tally: TallyStyle.matches,
+    tally: TallyStyle.art,
   ),
   colors(
     label: 'Cores',
@@ -51,6 +51,30 @@ enum ScoreboardSkin {
     strip: AppColors.felt,
     text: Colors.white,
     tally: TallyStyle.pips,
+  ),
+  card10(
+    label: 'Carta 10',
+    description: 'Um 10 na mesa e outra carta por cima, mostrando os tentos.',
+    bar: Color(0xFF2A0F16),
+    strip: Color(0xFF1A080D),
+    text: Color(0xFFF6EAD7),
+    tally: TallyStyle.art,
+  ),
+  beans(
+    label: 'Feijões',
+    description: 'Cada tento é um feijão que sai da tigela para o monte.',
+    bar: Color(0xFF4A3520),
+    strip: Color(0xFF2E2012),
+    text: Color(0xFF3A2614),
+    tally: TallyStyle.art,
+  ),
+  chalk(
+    label: 'Lousa de giz',
+    description: 'Risquinhos de giz no quadro, de cinco em cinco.',
+    bar: Color(0xFF1C2622),
+    strip: Color(0xFF5B3A1E),
+    text: Color(0xFFEFEFE8),
+    tally: TallyStyle.art,
   );
 
   const ScoreboardSkin({
@@ -77,12 +101,27 @@ enum ScoreboardSkin {
 
   bool get isWood => this == wood;
 
+  /// Skins that draw the score instead of showing a big number.
+  ScoreArtKind? get art => switch (this) {
+    card10 => ScoreArtKind.card10,
+    beans => ScoreArtKind.beans,
+    chalk => ScoreArtKind.chalk,
+    matches => ScoreArtKind.matches,
+    _ => null,
+  };
+
+  /// Light panels need dark buttons.
+  bool get isLight => this == wood || this == beans;
+
   /// Team identity: the name, the "você" chip and the filled tentos.
   Color accent(Team team) => switch (this) {
     felt => team == Team.a ? AppColors.gold : const Color(0xFFE9E1CF),
     wood => team == Team.a ? const Color(0xFF7A1F12) : const Color(0xFF1F3A5F),
     matches => team == Team.a ? AppColors.gold : const Color(0xFFE9E1CF),
     colors => Colors.white,
+    card10 => team == Team.a ? AppColors.gold : const Color(0xFFF6EAD7),
+    beans => team == Team.a ? const Color(0xFF8A2A12) : const Color(0xFF1F4A3A),
+    chalk => team == Team.a ? const Color(0xFFF7E08A) : const Color(0xFF9FD3F0),
   };
 
   /// Panel background.
@@ -111,10 +150,32 @@ enum ScoreboardSkin {
     colors => BoxDecoration(
       color: team == Team.a ? AppColors.teamA : AppColors.teamB,
     ),
+    card10 => const BoxDecoration(
+      gradient: RadialGradient(
+        center: Alignment(0, -0.2),
+        radius: 1.1,
+        colors: [Color(0xFF7A2333), Color(0xFF4A1220)],
+      ),
+    ),
+    beans => const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFE8D6B0), Color(0xFFD8C094), Color(0xFFC9AE7E)],
+      ),
+    ),
+    chalk => BoxDecoration(
+      gradient: const RadialGradient(
+        center: Alignment(-0.3, -0.4),
+        radius: 1.3,
+        colors: [Color(0xFF3A4A43), Color(0xFF26322D)],
+      ),
+      border: Border.all(color: const Color(0xFF7A5230), width: 6),
+    ),
   };
 
   /// Point buttons.
-  Color button(bool enabled) => isWood
+  Color button(bool enabled) => isLight
       ? const Color(0xFF5A3518).withValues(alpha: enabled ? 0.3 : 0.1)
       : Colors.white.withValues(alpha: enabled ? 0.13 : 0.05);
 
@@ -209,7 +270,7 @@ class Tally extends StatelessWidget {
   Widget build(BuildContext context) => switch (skin.tally) {
     TallyStyle.pips => _pips(),
     TallyStyle.holes => _holes(),
-    TallyStyle.matches => _matches(),
+    TallyStyle.art => const SizedBox.shrink(),
   };
 
   Widget _pips() => Row(
@@ -295,89 +356,9 @@ class Tally extends StatelessWidget {
       );
     },
   );
-
-  /// Matchsticks in groups of three; missing ones are faint outlines.
-  Widget _matches() => SizedBox(
-    height: 34,
-    child: Row(
-      children: [
-        for (var i = 0; i < target; i++) ...[
-          Expanded(
-            child: Center(child: _Match(lit: i < score)),
-          ),
-          if (i % 3 == 2 && i != target - 1) const SizedBox(width: 10),
-        ],
-      ],
-    ),
-  );
 }
 
-class _Match extends StatelessWidget {
-  const _Match({required this.lit});
-
-  final bool lit;
-
-  @override
-  Widget build(BuildContext context) => Opacity(
-    opacity: lit ? 1 : 0.14,
-    child: Column(
-      children: [
-        Container(
-          width: 7,
-          height: 9,
-          decoration: BoxDecoration(
-            color: lit ? const Color(0xFFC0392B) : Colors.white,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        Expanded(
-          child: Container(
-            width: 3.5,
-            decoration: BoxDecoration(
-              color: lit ? const Color(0xFFE6C89B) : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(1),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// Lets the player choose the scoreboard look.
-Future<void> pickScoreboardSkin(BuildContext context, WidgetRef ref) async {
-  final current = ref.read(scoreboardSkinProvider);
-  final picked = await showAppDialog<ScoreboardSkin>(
-    context,
-    title: 'Visual do placar',
-    message: 'Escolha como o marcador aparece na mesa.',
-    actions: [
-      for (final s in ScoreboardSkin.values)
-        AppDialogAction(
-          label: s == current ? '✓ ${s.label}' : s.label,
-          value: s,
-          isPrimary: s == current,
-        ),
-    ],
-  );
-  if (picked != null && picked != ScoreboardSkin.felt) {
-    final allowed = (await ref.read(entitlementsProvider.future))
-        .canChooseScoreboardLook;
-    if (!allowed) {
-      if (context.mounted) {
-        await showPremiumRequired(context, 'Escolher o visual do placar');
-      }
-      return;
-    }
-  }
-  if (picked != null) {
-    await ref.read(scoreboardSkinProvider.notifier).choose(picked);
-  }
-}
-
-/// App bar button that opens [pickScoreboardSkin].
+/// App bar button that opens the "Visual do placar" screen.
 class ScoreboardSkinButton extends ConsumerWidget {
   const ScoreboardSkinButton({super.key});
 
@@ -386,6 +367,6 @@ class ScoreboardSkinButton extends ConsumerWidget {
     tooltip: 'Visual do placar',
     color: Colors.white,
     icon: Icon(context.icon(AppIcon.palette)),
-    onPressed: () => pickScoreboardSkin(context, ref),
+    onPressed: () => context.push('/configuracoes/placar'),
   );
 }

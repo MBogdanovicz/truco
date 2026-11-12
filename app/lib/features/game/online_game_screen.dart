@@ -192,6 +192,8 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
           raise: () => _run(_ctrl.raise),
           accept: () => _run(_ctrl.accept),
           fold: () => _run(_ctrl.fold),
+          showCards: () => _run(_ctrl.showCards),
+          skipShow: () => _run(_ctrl.skipShow),
           onLeave: model.view.phase == GamePhase.gameOver
               ? _leave
               : _confirmLeave,

@@ -77,31 +77,7 @@ class TournamentsScreen extends ConsumerWidget {
     }
     List<Widget> tiles(List<Tournament> ts, String empty) => ts.isEmpty
         ? [AppTile(title: empty)]
-        : [
-            for (final t in ts)
-              AppTile(
-                leading: AppTileIcon(
-                  AppIcon.trophy,
-                  color: switch (t.status) {
-                    TournamentStatus.open => Colors.teal,
-                    TournamentStatus.running => Colors.red,
-                    _ => Colors.blueGrey,
-                  },
-                ),
-                title: t.name,
-                subtitle: [
-                  switch (t.status) {
-                    TournamentStatus.open => 'Inscrições abertas',
-                    TournamentStatus.running => 'Em andamento',
-                    TournamentStatus.finished => 'Encerrado',
-                    TournamentStatus.cancelled => 'Cancelado',
-                  },
-                  t.groupName == null ? 'público' : 'grupo ${t.groupName}',
-                  t.format.label.toLowerCase(),
-                ].join(' · '),
-                onTap: () => context.push('/torneios/${t.id}'),
-              ),
-          ];
+        : [for (final t in ts) TournamentTile(t)];
     return AppScaffold(
       title: 'Torneios',
       onRefresh: () async => ref.invalidate(tournamentsProvider),
@@ -139,8 +115,12 @@ class TournamentsScreen extends ConsumerWidget {
           ],
           data: (d) => [
             AppSection(
-              header: 'Meus torneios',
-              children: tiles(d.mine, 'Você ainda não está em nenhum torneio.'),
+              header: 'Meus torneios em andamento',
+              footer: 'Os torneios encerrados ficam no Histórico.',
+              children: tiles(
+                d.mine.where((t) => !t.isOver).toList(),
+                'Nenhum torneio seu em andamento.',
+              ),
             ),
             AppSection(
               header: 'Inscrições abertas',
@@ -154,4 +134,35 @@ class TournamentsScreen extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// One tournament in a list (name, status, who can join, format).
+class TournamentTile extends StatelessWidget {
+  const TournamentTile(this.t, {super.key});
+
+  final Tournament t;
+
+  @override
+  Widget build(BuildContext context) => AppTile(
+    leading: AppTileIcon(
+      AppIcon.trophy,
+      color: switch (t.status) {
+        TournamentStatus.open => Colors.teal,
+        TournamentStatus.running => Colors.red,
+        _ => Colors.blueGrey,
+      },
+    ),
+    title: t.name,
+    subtitle: [
+      switch (t.status) {
+        TournamentStatus.open => 'Inscrições abertas',
+        TournamentStatus.running => 'Em andamento',
+        TournamentStatus.finished => 'Encerrado',
+        TournamentStatus.cancelled => 'Cancelado',
+      },
+      t.groupName == null ? 'público' : 'grupo ${t.groupName}',
+      t.format.label.toLowerCase(),
+    ].join(' · '),
+    onTap: () => context.push('/torneios/${t.id}'),
+  );
 }

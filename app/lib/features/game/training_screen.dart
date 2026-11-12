@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/game_prefs.dart';
 import '../../domain/game/cards.dart' as deck;
 import '../../domain/game/rules.dart';
 import '../../domain/game/training.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
-import '../../ui/theme/app_theme.dart';
 import 'playing_card.dart';
+import 'table_look.dart';
 
 /// "Modo professor": situations to practise, one after the other.
 class TrainingScreen extends StatefulWidget {
@@ -77,7 +78,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           children: [
             for (var i = 0; i < trainingScenarios.length; i++)
               AppTile(
-                title: trainingScenarios[i].title,
+                title: said(context, trainingScenarios[i].title),
                 leading: Icon(
                   _done.contains(trainingScenarios[i].id)
                       ? Icons.check_circle
@@ -124,16 +125,19 @@ class _TrainingScreenState extends State<TrainingScreen> {
       },
       child: AppScaffold(
         key: ValueKey(index),
-        title: '${index + 1}. ${s.title}',
+        title: '${index + 1}. ${said(context, s.title)}',
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-            child: Text(s.situation, style: theme.textTheme.bodyLarge),
+            child: Text(
+              said(context, s.situation),
+              style: theme.textTheme.bodyLarge,
+            ),
           ),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.felt,
+              color: TableLookScope.of(context).felt.light,
               borderRadius: BorderRadius.circular(16),
             ),
             child: DefaultTextStyle.merge(
@@ -176,7 +180,10 @@ class _TrainingScreenState extends State<TrainingScreen> {
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(s.question, style: theme.textTheme.titleMedium),
+            child: Text(
+              said(context, s.question),
+              style: theme.textTheme.titleMedium,
+            ),
           ),
           const SizedBox(height: 8),
           for (var i = 0; i < s.options.length; i++)
@@ -186,8 +193,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
                 width: double.infinity,
                 child: AppButton(
                   label: picked == null
-                      ? s.options[i]
-                      : '${s.options[i]}'
+                      ? said(context, s.options[i])
+                      : '${said(context, s.options[i])}'
                             '${s.isGood(i)
                                 ? '  ✓'
                                 : i == picked
@@ -222,11 +229,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 6),
-                  Text(s.explanation),
+                  Text(said(context, s.explanation)),
                   for (final MapEntry(:key, :value) in s.alsoGood.entries)
                     if (picked == key || picked == s.answer) ...[
                       const SizedBox(height: 6),
-                      Text(value),
+                      Text(said(context, value)),
                     ],
                 ],
               ),

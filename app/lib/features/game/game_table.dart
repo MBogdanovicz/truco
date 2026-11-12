@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/game_prefs.dart';
 import '../../domain/game/cards.dart' as deck;
 import '../../domain/game/coach.dart';
-import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
 import '../../domain/game/truco_game.dart';
 import '../../domain/scorekeeper/team.dart';
@@ -13,6 +14,8 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
 import 'playing_card.dart';
+import 'table_look.dart';
+import 'table_shout.dart';
 
 /// What a [GameTable] shows: the viewer's [TableView] plus who sits where.
 class GameTableModel {
@@ -85,6 +88,8 @@ class GameTableActions {
     this.gameOverExtra,
     this.onDismissTip,
     this.onShowCode,
+    this.showCards,
+    this.skipShow,
   });
 
   final void Function(deck.Card card, {bool covered}) playCard;
@@ -106,6 +111,10 @@ class GameTableActions {
 
   /// Online rooms: shows the room code (to call someone in).
   final VoidCallback? onShowCode;
+
+  /// "Mostrar cartas" after a hand worth 3+, and passing on it.
+  final VoidCallback? showCards;
+  final VoidCallback? skipShow;
 }
 
 /// The card table: the viewer at the bottom, partner on top, opponents at
@@ -123,6 +132,45 @@ class GameTable extends StatefulWidget {
 class _GameTableState extends State<GameTable> {
   bool _cover = false;
 
+  /// The comic balloon being shown, if any.
+  String? _shout;
+  int _shoutId = 0;
+
+  /// The raise the last balloon was for (hand, seat, level).
+  String? _shoutedFor;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkShout();
+  }
+
+  @override
+  void didUpdateWidget(GameTable old) {
+    super.didUpdateWidget(old);
+    _checkShout();
+  }
+
+  /// Shouts when someone calls truco (or raises: seis, nove, doze, once
+  /// they have phrases in [shoutPhrases]).
+  void _checkShout() {
+    final p = v.pending;
+    if (p == null || p.refusedBy != null) return;
+    final key = '${v.handNumber}-${p.seat}-${p.toLevel}';
+    if (key == _shoutedFor) return;
+    _shoutedFor = key;
+    final event = switch (p.toLevel) {
+      1 => ShoutEvent.truco,
+      2 => ShoutEvent.seis,
+      3 => ShoutEvent.nove,
+      _ => ShoutEvent.doze,
+    };
+    final text = pickShout(event);
+    if (text == null) return;
+    _shout = text;
+    _shoutId++;
+  }
+
   GameTableModel get m => widget.model;
   TableView get v => widget.model.view;
   GameTableActions get a => widget.actions;
@@ -133,14 +181,15 @@ class _GameTableState extends State<GameTable> {
 
   @override
   Widget build(BuildContext context) {
+    final felt = TableLookScope.of(context).felt;
     return KeepScreenOn(
       child: Scaffold(
-        backgroundColor: AppColors.feltDark,
+        backgroundColor: felt.dark,
         body: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: RadialGradient(
               radius: 1.1,
-              colors: [AppColors.felt, AppColors.feltDark],
+              colors: [felt.light, felt.dark],
             ),
           ),
           child: SafeArea(
@@ -199,7 +248,7 @@ class _GameTableState extends State<GameTable> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  tip.text,
+                  said(context, tip.text),
                   style: TextStyle(
                     color: tip.good
                         ? Colors.white
@@ -236,10 +285,10 @@ class _GameTableState extends State<GameTable> {
         final small = (cw * 0.42).clamp(20.0, 34.0).toDouble();
         final active = _activeSeat();
         Alignment playSpot(int seat) => switch (pos(seat)) {
-          0 => const Alignment(0, 0.75),
-          1 => const Alignment(0.8, 0),
-          2 => const Alignment(0, -0.75),
-          _ => const Alignment(-0.8, 0),
+          0 => const Alignment(0, 0.62),
+          1 => const Alignment(0.78, -0.04),
+          2 => const Alignment(0, -0.72),
+          _ => const Alignment(-0.78, -0.04),
         };
         Widget badge(int position, Alignment at) {
           final seat = seatAt(position);
@@ -259,13 +308,16 @@ class _GameTableState extends State<GameTable> {
         return Stack(
           children: [
             badge(2, const Alignment(0, -1)),
-            badge(1, const Alignment(1, -0.5)),
-            badge(3, const Alignment(-1, -0.5)),
+            badge(1, const Alignment(1, -0.42)),
+            badge(3, const Alignment(-1, -0.42)),
             badge(0, const Alignment(0, 1)),
-            Positioned(
-              left: 8,
-              top: 8,
-              child: _ViraBox(rules: v.rules, vira: v.vira, width: cw * 0.7),
+            Align(
+              alignment: const Alignment(0, -0.06),
+              child: _DeckPile(
+                vira: v.vira,
+                width: cw * 0.85,
+                handValue: v.handValue,
+              ),
             ),
             Positioned(
               right: 10,
@@ -313,6 +365,18 @@ class _GameTableState extends State<GameTable> {
                 ],
               ),
             ),
+            if (_shout != null)
+              Align(
+                // Above the middle, so the call's label stays visible.
+                alignment: const Alignment(0, -0.5),
+                child: TableShout(
+                  key: ValueKey(_shoutId),
+                  text: said(context, _shout!),
+                  onDone: () {
+                    if (mounted) setState(() => _shout = null);
+                  },
+                ),
+              ),
             if (v.toast != null || m.status != null)
               Center(
                 child: Container(
@@ -325,7 +389,7 @@ class _GameTableState extends State<GameTable> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    m.status ?? v.toast!,
+                    said(context, m.status ?? v.toast!),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -414,7 +478,7 @@ class _GameTableState extends State<GameTable> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '🎓 Professor\n${m.coachSummary}',
+                      said(context, '🎓 Professor\n${m.coachSummary}'),
                       style: const TextStyle(
                         color: Color(0xFF4A3B00),
                         height: 1.3,
@@ -520,6 +584,15 @@ class _GameTableState extends State<GameTable> {
           prompt = v.iron ? 'Sua vez: escolha uma carta às cegas.' : 'Sua vez.';
         }
       case GamePhase.handOver:
+        if (v.canShow && !m.busy) {
+          prompt = 'Quer mostrar suas cartas?';
+          buttons.addAll([
+            if (a.showCards != null)
+              _ActionButton('Mostrar cartas', AppColors.gold, a.showCards!),
+            if (a.skipShow != null)
+              _ActionButton('Não', Colors.white24, a.skipShow!),
+          ]);
+        }
       case GamePhase.gameOver:
         break;
     }
@@ -682,7 +755,6 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const white = TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
       child: Row(
@@ -707,14 +779,6 @@ class _TopBar extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black26,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text('Vale ${view.handValue}', style: white),
           ),
           if (onShowCode != null)
             IconButton(
@@ -790,12 +854,16 @@ class _SeatBadge extends StatelessWidget {
     final said = v.speech[seat];
     // The pé (last to play this round) gets an orange tag and outline.
     final foot = v.foot == seat && v.phase != GamePhase.gameOver;
-    // The partner's cards we may see are face up in their hand.
-    final shown = position == 2 ? (v.partnerHand ?? const []) : const [];
+    // Cards shown after the hand ("Mostrar cartas"), or the partner's
+    // cards we may see, face up in their hand.
+    final showedAll = v.shown[seat];
+    final shown =
+        showedAll ?? (position == 2 ? (v.partnerHand ?? const []) : const []);
     final big =
-        shown.isNotEmpty &&
-        (v.partnerShownForRaise || v.phase == GamePhase.decision);
-    final hidden = v.handCounts[seat] - shown.length;
+        showedAll != null ||
+        (shown.isNotEmpty &&
+            (v.partnerShownForRaise || v.phase == GamePhase.decision));
+    final hidden = max(0, v.handCounts[seat] - shown.length);
     final name = Container(
       padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
       decoration: BoxDecoration(
@@ -893,28 +961,62 @@ class _SeatBadge extends StatelessWidget {
   }
 }
 
-class _ViraBox extends StatelessWidget {
-  const _ViraBox({
-    required this.rules,
+/// The middle of the table, as in a real game: the vira face up with the
+/// rest of the deck across it, and what the hand is worth right below.
+class _DeckPile extends StatelessWidget {
+  const _DeckPile({
     required this.vira,
     required this.width,
+    required this.handValue,
   });
 
-  final TrucoRules rules;
   final deck.Card? vira;
   final double width;
+  final int handValue;
 
   @override
   Widget build(BuildContext context) {
-    const label = TextStyle(color: Colors.white70, fontSize: 11);
-    if (vira == null) {
-      return const Text('Manilhas fixas', style: label);
-    }
+    final height = width / cardAspect;
+    final raised = handValue > 1;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Vira', style: label),
-        const SizedBox(height: 2),
-        PlayingCardView(card: vira!, width: width),
+        SizedBox(
+          width: height,
+          height: height,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (vira != null) PlayingCardView(card: vira!, width: width),
+              // The deck, a few cards thick, lying across the vira.
+              for (var i = 2; i >= 0; i--)
+                Transform.translate(
+                  // Lower than the vira's middle, so its corner shows.
+                  offset: Offset(-i * 1.2, height * 0.2 - i * 1.2),
+                  child: RotatedBox(
+                    quarterTurns: 1,
+                    child: CardBack(width: width),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: raised ? AppColors.gold : Colors.black26,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            handValue == 1 ? 'Vale 1 tento' : 'Vale $handValue tentos',
+            style: TextStyle(
+              color: raised ? Colors.black87 : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: raised ? 15 : 13,
+            ),
+          ),
+        ),
       ],
     );
   }

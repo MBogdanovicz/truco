@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/entitlements.dart';
+import 'data/game_prefs.dart';
 import 'data/premium_repository.dart';
+import 'features/game/table_look.dart';
 import 'features/groups/summon_widgets.dart';
 import 'router.dart';
 import 'ui/adaptive/platform_style.dart';
@@ -18,6 +21,13 @@ class TrucoApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Keeps the Play purchase listener alive for the whole session.
     ref.listen(premiumStoreProvider, (_, _) {});
+    // Loads the player's words early, so every screen uses them.
+    ref.listen(termsProvider, (_, _) {});
+    // The table's look is Premium: everyone else gets the standard one.
+    final chosen = ref.watch(tableLookProvider);
+    final premium =
+        ref.watch(entitlementsProvider).value?.canChooseScoreboardLook ?? false;
+    final look = premium ? chosen : TableLook.standard;
     final effective = style ?? defaultPlatformStyle;
     final cupertino = effective == AppPlatformStyle.cupertino;
     return PlatformStyleScope(
@@ -35,8 +45,10 @@ class TrucoApp extends ConsumerWidget {
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         routerConfig: ref.watch(routerProvider),
-        builder: (context, child) =>
-            SummonsListener(child: child ?? const SizedBox.shrink()),
+        builder: (context, child) => TableLookScope(
+          look: look,
+          child: SummonsListener(child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
   }

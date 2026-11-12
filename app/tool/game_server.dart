@@ -5,9 +5,11 @@
 // function that takes and returns JSON text:
 //
 //   in:  {rules, seed, firstDealer, bots: [level|null x4], log,
-//         act?: {seat, action}             // action: {t, c?, x?, i?}
+//         act?: {seat, action}             // action: {t, c?, x?, i?};
+//                                          // t "show"/"ready" after a hand
 //         timeout?: true,                  // the computer moves for the
-//                                          // person the game waits for
+//                                          // person the game waits for (or
+//                                          // the time to show cards ends)
 //         missLimit?: n,                   // with timeout: n moves missed
 //                                          // in a row give the game up
 //         forfeit?: seat}                  // seat's team gives up (W.O.)
@@ -15,6 +17,8 @@
 //         scores: [a, b], hands: [{w?, p}],
 //         feats?: {"<seat>": [achievement id]}   // when the game is over
 //         forfeit?: "a"|"b"                // the team that gave up
+//         reveal?: true                    // waiting a moment for people
+//                                          // to show their cards
 //         error?}
 //
 // Without "act" the computer plays until a person must act (game start).
@@ -79,6 +83,7 @@ String run(String input) {
     if (g.winner != null) 'winner': g.winner!.name,
     'scores': [g.scores[Team.a], g.scores[Team.b]],
     'waitingFor': ?session.waitingFor,
+    if (session.revealing) 'reveal': true,
     'hands': [
       for (final e in g.events.whereType<HandEnded>())
         {if (e.winner != null) 'w': e.winner!.name, 'p': e.points},

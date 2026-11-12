@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/game_prefs.dart';
 import '../../domain/game/rules.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 
@@ -56,12 +57,11 @@ class _RulesScreenState extends State<RulesScreen> {
             'Manilhas: depois de dar as cartas, vira-se uma carta (a "vira"). '
                 'As manilhas são as cartas logo acima dela (vira 7, manilha é '
                 'a dama; vira 3, manilha é o 4). Entre manilhas vale o naipe: '
-                'paus (gato) > copas > espadas (espadilha) > ouros (salmoura ou '
-                'pica-fumo).'
+                'paus (gato) > copas > espadas (espadilha) > ouros (salmoura).'
           else
             'Manilhas fixas, da mais forte para a mais fraca: 4 de paus '
                 '(gato), 7 de copas (copas), ás de espadas (espadilha) e 7 de '
-                'ouros (salmoura ou pica-fumo), como no truco mineiro. Não tem vira.',
+                'ouros (salmoura), como no truco mineiro. Não tem vira.',
           'No app as manilhas têm uma estrelinha e borda dourada.',
         ],
       ),
@@ -126,7 +126,7 @@ class _RulesScreenState extends State<RulesScreen> {
         ),
         for (final (title, items) in sections)
           AppSection(
-            header: title,
+            header: said(context, title),
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -136,7 +136,10 @@ class _RulesScreenState extends State<RulesScreen> {
                     for (final t in items)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(t, style: theme.textTheme.bodyMedium),
+                        child: Text(
+                          said(context, t),
+                          style: theme.textTheme.bodyMedium,
+                        ),
                       ),
                   ],
                 ),

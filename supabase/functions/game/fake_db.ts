@@ -259,8 +259,10 @@ export function assert(cond: unknown, msg = "assertion failed"): asserts cond {
 // deno-lint-ignore no-explicit-any
 export const asDb = (db: FakeDb) => db as any;
 
-/** Plays for [seat] like a simple person: accept, else the first card. */
+/** Plays for [seat] like a simple person: accept, else the first card.
+ * After a hand worth 3+, shows the cards (even seats) or passes. */
 export function move(view: Json): Json {
+  if (view.canShow) return { t: (view.me as number) % 2 === 0 ? "show" : "ready" };
   if (view.mustAnswer) return { t: "accept" };
   if (view.iron) return { t: "blind", i: 0 };
   return { t: "play", c: (view.hand as string[])[0] };
@@ -278,7 +280,7 @@ export async function playToEnd(db: FakeDb, roomId: string, players: Map<number,
     let moved = false;
     for (const [seat, game] of players) {
       const v = lastFrame(db, roomId, seat);
-      if (v && (v.myTurn || v.mustAnswer)) {
+      if (v && (v.myTurn || v.mustAnswer || v.canShow)) {
         await game.act({ roomId, move: move(v) });
         moved = true;
         break;

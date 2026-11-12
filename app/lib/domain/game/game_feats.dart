@@ -131,6 +131,7 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
           }
         }
       case Forfeited():
+      case CardsShown():
         break;
       case GameEnded():
         if (!raisedHand) team(e.winner, GameFeat.comadre);

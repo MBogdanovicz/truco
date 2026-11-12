@@ -350,7 +350,14 @@ void main() {
     while (room.status == GameRoomStatus.playing) {
       final g = room.session!.game;
       final model = ctrl.tableModel;
-      if (model != null && model.canAct) {
+      if (room.session!.revealing && !(model?.busy ?? true)) {
+        // After a hand worth 3+: I show my cards, Ana passes.
+        if (model!.view.canShow) {
+          await ctrl.showCards();
+        } else if (room.session!.canShowFor(2)) {
+          room.publish(room.session!.pass(2));
+        }
+      } else if (model != null && model.canAct) {
         switch (me.decide(g.viewFor(0))) {
           case PlayCard(:final card, :final covered):
             g.iron

@@ -78,6 +78,9 @@ class TableView {
     required this.myTurn,
     required this.winner,
     this.forfeited,
+    this.shown = const {},
+    this.revealing = false,
+    this.canShow = false,
     this.speech = const {},
     this.toast,
     this.showLastRound = false,
@@ -118,6 +121,16 @@ class TableView {
 
   /// The team that gave the game up (W.O.).
   final Team? forfeited;
+
+  /// Cards shown after the hand ("Mostrar cartas"), by seat.
+  final Map<int, List<Card>> shown;
+
+  /// The hand is over and the game waits a moment for people to show
+  /// their cards.
+  final bool revealing;
+
+  /// The viewer may show their cards now.
+  final bool canShow;
   final Map<int, String> speech;
   final String? toast;
   final bool showLastRound;
@@ -163,6 +176,9 @@ class TableView {
     myTurn: myTurn,
     winner: winner,
     forfeited: forfeited,
+    shown: shown,
+    revealing: revealing,
+    canShow: canShow,
     speech: speech,
     toast: toast,
     showLastRound: showLastRound,
@@ -177,6 +193,8 @@ class TableView {
     required TableTalk talk,
     required bool Function(int seat) mayAnswer,
     int delayMs = 0,
+    bool revealing = false,
+    bool canShow = false,
   }) {
     final v = g.viewFor(seat);
     PlayView play(Play p) => PlayView(
@@ -228,6 +246,9 @@ class TableView {
       myTurn: g.phase == GamePhase.playing && g.turn == seat,
       winner: g.winner,
       forfeited: g.forfeited,
+      shown: g.shown,
+      revealing: revealing,
+      canShow: canShow,
       speech: Map.unmodifiable(talk.speech),
       toast: talk.toastFor(team),
       showLastRound: talk.showLastRound,
@@ -267,6 +288,13 @@ class TableView {
     if (myTurn) 'myTurn': true,
     if (winner != null) 'winner': winner!.name,
     if (forfeited != null) 'wo': forfeited!.name,
+    if (shown.isNotEmpty)
+      'shown': {
+        for (final e in shown.entries)
+          '${e.key}': [for (final c in e.value) c.id],
+      },
+    if (revealing) 'reveal': true,
+    if (canShow) 'canShow': true,
     if (speech.isNotEmpty)
       'speech': {for (final e in speech.entries) '${e.key}': e.value},
     if (toast != null) 'toast': toast,
@@ -323,6 +351,12 @@ class TableView {
           ? null
           : Team.fromName(j['winner']! as String),
       forfeited: j['wo'] == null ? null : Team.fromName(j['wo']! as String),
+      shown: {
+        for (final e in ((j['shown'] as Map?) ?? const {}).entries)
+          int.parse(e.key as String): cards(e.value),
+      },
+      revealing: j['reveal'] == true,
+      canShow: j['canShow'] == true,
       speech: {
         for (final e in ((j['speech'] as Map?) ?? const {}).entries)
           int.parse(e.key as String): e.value as String,
@@ -382,6 +416,8 @@ class TableTalk {
         case Forfeited():
           _handResult = null;
           showLastRound = false;
+        case CardsShown():
+          break;
       }
     }
   }

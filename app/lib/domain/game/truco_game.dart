@@ -144,6 +144,14 @@ class GameEnded extends GameEvent {
   final Team winner;
 }
 
+/// After a hand with a truco call, [seat] showed the cards they still held
+/// (not the ones played), as people do at a real table.
+class CardsShown extends GameEvent {
+  const CardsShown(this.seat, this.cards);
+  final int seat;
+  final List<Card> cards;
+}
+
 /// A team gave the game up (left a tournament game): W.O.
 class Forfeited extends GameEvent {
   const Forfeited(this.team);
@@ -228,6 +236,10 @@ class TrucoGame {
   bool _bothAtDecision = false;
   Team? _winner;
 
+  /// Someone called truco this hand (so the cards may be shown after it).
+  bool _trucoCalled = false;
+  final Map<int, List<Card>> _shown = {};
+
   int get dealer => _dealer;
   int get handNumber => _handNumber;
   GamePhase get phase => _phase;
@@ -304,6 +316,8 @@ class TrucoGame {
     _stakeLevel = 0;
     _lastRaiser = null;
     _pending = null;
+    _trucoCalled = false;
+    _shown.clear();
     _turn = nextSeat(_dealer);
     _leader = _turn;
 
@@ -395,6 +409,7 @@ class TrucoGame {
   };
 
   void _raise(int seat) {
+    _trucoCalled = true;
     final from = _pending?.toLevel ?? _stakeLevel;
     if (_pending != null) {
       // Answering with a higher bet accepts the current one first.
@@ -513,6 +528,31 @@ class TrucoGame {
   }
 
   PlayerView viewFor(int seat) => PlayerView._(this, seat);
+
+  // ------------------------------------------------------- showing cards --
+
+  /// The hand just ended and was worth 3 or more at some point (someone
+  /// called truco, or a mão de onze): players may show their cards before
+  /// the next one is dealt.
+  bool get revealOpen =>
+      _phase == GamePhase.handOver && (_trucoCalled || _decisionTeam != null);
+
+  /// Cards shown after this hand, by seat.
+  Map<int, List<Card>> get shown => Map.unmodifiable(_shown);
+
+  /// What [seat] would show: the cards still in their hand (never the
+  /// ones played, not even face down).
+  List<Card> unshownOf(int seat) => List.unmodifiable(_hands[seat]);
+
+  bool canShow(int seat) =>
+      revealOpen && !_shown.containsKey(seat) && unshownOf(seat).isNotEmpty;
+
+  void showCards(int seat) {
+    if (!canShow(seat)) throw GameRuleError('nothing to show');
+    final cards = unshownOf(seat);
+    _shown[seat] = List.unmodifiable(cards);
+    events.add(CardsShown(seat, cards));
+  }
 }
 
 /// Who won a hand given its finished rounds, or null while undecided.
