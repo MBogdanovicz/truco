@@ -2,6 +2,10 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import "./engine.js";
+import { sendPush } from "../_shared/push.ts";
+import { Tournaments } from "./tournament.ts";
+
+const WEB_APP_URL = Deno.env.get("WEB_APP_URL") ?? "https://truco.mytrophies.app";
 
 export type Json = Record<string, unknown>;
 type Level = "easy" | "medium" | "hard";
@@ -16,6 +20,8 @@ interface EngineOut {
   waitingFor?: number;
   /** Achievement ids earned per seat, when the game is over. */
   feats?: Record<string, string[]>;
+  /** The team that gave the game up (W.O.). */
+  forfeit?: "a" | "b";
   error?: string;
 }
 
@@ -23,14 +29,59 @@ interface EngineOut {
  * unless the room's rules say otherwise ("tempo", seconds; 0 = no limit). */
 export const TURN_MS = 20_000;
 
+/** Days per move of a slow game ("partida lenta", rules "lento"); 0 for a
+ * normal game. A slow game is for 4 people, who play whenever they can. */
+export function slowDays(rules: Json): number {
+  const d = (rules as Record<string, unknown>)?.lento;
+  return typeof d === "number" && d > 0 ? Math.min(Math.floor(d), 7) : 0;
+}
+
 export function turnMs(rules: Json): number | null {
+  const days = slowDays(rules);
+  if (days) return days * 86_400_000;
   const t = (rules as Record<string, unknown>)?.tempo;
   if (typeof t !== "number") return TURN_MS;
   return t > 0 ? Math.min(t, 120) * 1000 : null;
 }
 
+/** A seat's table view (TableView JSON) with everything private taken
+ * out: no hand, no partner's cards, covered cards face down, no actions. */
+export function spectatorView(frame: Json): Json {
+  const hide = (plays: unknown) =>
+    ((plays as Json[] | undefined) ?? []).map((p) => {
+      if (!p.x) return p;
+      const { c: _c, ...rest } = p;
+      return rest;
+    });
+  const out: Json = { ...frame, hand: [] };
+  for (
+    const k of [
+      "partner",
+      "partnerRaise",
+      "canCover",
+      "canRaise",
+      "mustAnswer",
+      "myTurn",
+      "toast",
+      "delay",
+    ]
+  ) {
+    delete out[k];
+  }
+  out.plays = hide(frame.plays);
+  out.rounds = ((frame.rounds as Json[] | undefined) ?? []).map((r) => ({
+    ...r,
+    p: hide(r.p),
+  }));
+  return out;
+}
+
 const engine = (globalThis as unknown as { trucoEngine: (s: string) => string })
   .trucoEngine;
+
+/** Tournament games: moves missed in a row (time ran out) that give the
+ * game up. */
+export const MISS_LIMIT = 3;
 
 function runEngine(input: Json): EngineOut {
   return JSON.parse(engine(JSON.stringify(input)));
@@ -64,6 +115,10 @@ interface Room {
   wins_b: number;
   game_no: number;
   turn_deadline?: string | null;
+  /** Seat the game waits for (null when nobody, e.g. between games). */
+  waiting_seat?: number | null;
+  /** The tournament match played in this room (seats are fixed). */
+  tournament_match_id?: string | null;
 }
 
 interface Seat {
@@ -146,6 +201,56 @@ export class Game {
     }
   }
 
+  /** A room for a tournament match (see tournament.ts): [seats] are
+   * filled now (slow games), or as each person enters. */
+  async createForTournament(opts: {
+    rules: Json;
+    groupId: string | null;
+    matchId: string;
+    seats: { user_id: string; name: string }[];
+  }) {
+    for (let attempt = 0; ; attempt++) {
+      const { data, error } = await this.db.from("game_rooms").insert({
+        code: newCode(),
+        host_id: this.userId,
+        rules: opts.rules,
+        bot_level: "medium",
+        mode: "ranked",
+        group_id: opts.groupId,
+        tournament_match_id: opts.matchId,
+      }).select().single();
+      if (error?.code === "23505" && attempt < 5) continue;
+      if (error) throw error;
+      if (opts.seats.length) {
+        const { error: seatError } = await this.db.from("game_seats").insert(
+          opts.seats.map((s, seat) => ({
+            room_id: data.id,
+            seat,
+            user_id: s.user_id,
+            name: s.name,
+            is_guest: false,
+          })),
+        );
+        if (seatError) throw seatError;
+      }
+      return { roomId: data.id as string, code: data.code as string };
+    }
+  }
+
+  /** The seat of this person in a tournament room (team A in 0 and 2, team
+   * B in 1 and 3), or -1 when they don't play this match. */
+  private async tournamentSeat(room: Room): Promise<number> {
+    const { data: m } = await this.db.from("tournament_matches")
+      .select("team_a, team_b").eq("id", room.tournament_match_id!).maybeSingle();
+    if (!m) return -1;
+    const { data: teams } = await this.db.from("tournament_teams")
+      .select("id, player_a, player_b").in("id", [m.team_a, m.team_b]);
+    const a = teams?.find((t) => t.id === m.team_a);
+    const b = teams?.find((t) => t.id === m.team_b);
+    const order = [a?.player_a, b?.player_a, a?.player_b, b?.player_b];
+    return order.indexOf(this.userId);
+  }
+
   private async seat(roomId: string, seat: number) {
     const { error } = await this.db.from("game_seats").insert({
       room_id: roomId,
@@ -165,6 +270,9 @@ export class Game {
     if (!data) throw new Refused("room_not_found");
     const room = await this.room(data.id);
     const seats = await this.seats(room.id);
+    if (room.tournament_match_id) {
+      return await this.joinTournament(room, seats);
+    }
     if (seats.some((s) => s.user_id === this.userId)) {
       return { roomId: room.id, code: room.code };
     }
@@ -179,15 +287,48 @@ export class Game {
     return { roomId: room.id, code: room.code };
   }
 
+  private async joinTournament(room: Room, seats: Seat[]) {
+    const seat = await this.tournamentSeat(room);
+    if (seat < 0) throw new Refused("not_in_match");
+    const tournaments = new Tournaments(this.db, this.userId, false, this.name);
+    await tournaments.arrived(room.tournament_match_id!, this.userId);
+    if (seats.some((s) => s.user_id === this.userId)) {
+      return { roomId: room.id, code: room.code };
+    }
+    if (room.status === "playing") {
+      await this.joinGame(room, seats, seat);
+      return { roomId: room.id, code: room.code };
+    }
+    await this.seat(room.id, seat);
+    await this.touch(room.id);
+    // Everyone is here: the (live) match starts. Counted again after
+    // sitting, since the 4 often arrive at the same moment.
+    const now = await this.seats(room.id);
+    if (room.status === "lobby" && now.length === 4) {
+      try {
+        await this.start({ roomId: room.id }, true);
+      } catch (e) {
+        if (!(e instanceof Refused)) throw e;
+      }
+    }
+    return { roomId: room.id, code: room.code };
+  }
+
   /** Moves to another free seat (to pick a partner) before a game. */
   async sit(body: Json) {
     const room = await this.room(body.roomId as string);
+    if (room.tournament_match_id) throw new Refused("tournament_room");
     if (room.status === "playing") throw new Refused("game_started");
     const seat = Number(body.seat);
     if (!(seat >= 0 && seat <= 3)) throw new Refused("bad_seat");
     const seats = await this.seats(room.id);
-    this.mySeat(seats);
     if (seats.some((s) => s.seat === seat)) throw new Refused("seat_taken");
+    if (!seats.some((s) => s.user_id === this.userId)) {
+      // Standing (see stand): sits down on a free seat.
+      await this.seat(room.id, seat);
+      await this.touch(room.id);
+      return {};
+    }
     const { error } = await this.db.from("game_seats").update({ seat })
       .eq("room_id", room.id).eq("user_id", this.userId);
     if (error?.code === "23505") throw new Refused("seat_taken");
@@ -195,9 +336,24 @@ export class Game {
     return {};
   }
 
+  /** Gets up from the table in the lobby (to sit somewhere else later):
+   * the seat is freed, but the person stays in the room. */
+  async stand(body: Json) {
+    const room = await this.room(body.roomId as string);
+    if (room.tournament_match_id) throw new Refused("tournament_room");
+    if (room.status === "playing") throw new Refused("game_started");
+    const seats = await this.seats(room.id);
+    this.mySeat(seats);
+    await this.db.from("game_seats").delete().eq("room_id", room.id)
+      .eq("user_id", this.userId);
+    await this.touch(room.id);
+    return {};
+  }
+
   async options(body: Json) {
     const room = await this.room(body.roomId as string);
     this.hostOnly(room);
+    if (room.tournament_match_id) throw new Refused("tournament_room");
     if (room.status === "playing") throw new Refused("game_started");
     const patch: Json = { updated_at: new Date().toISOString() };
     if (LEVELS.has(body.botLevel as string)) patch.bot_level = body.botLevel;
@@ -217,10 +373,27 @@ export class Game {
 
   // ------------------------------------------------------------- game --
 
-  /** Starts a game (or a rematch); the computer takes the empty seats. */
-  async start(body: Json) {
+  /** Starts a game (or a rematch); the computer takes the empty seats.
+   * In a tournament room: the next game of the match, by anyone seated,
+   * once all 4 are there ([internal]: by the server itself). */
+  async start(body: Json, internal = false) {
     const room = await this.room(body.roomId as string);
-    this.hostOnly(room);
+    if (room.tournament_match_id) {
+      const seated = await this.seats(room.id);
+      if (!internal) this.mySeat(seated);
+      if (seated.length < 4) throw new Refused("match_needs_four");
+      const tournaments = new Tournaments(this.db, this.userId, false, this.name);
+      if (!(await tournaments.seriesOpen(room.tournament_match_id))) {
+        throw new Refused("match_over");
+      }
+    } else {
+      this.hostOnly(room);
+      // Standing up (see stand): sit down first.
+      if (!internal) this.mySeat(await this.seats(room.id));
+    }
+    if (slowDays(room.rules) && (await this.seats(room.id)).length < 4) {
+      throw new Refused("slow_needs_four");
+    }
     // Claim the start, so a double tap doesn't deal twice.
     const { data: claimed, error: claimError } = await this.db.from("game_rooms")
       .update({ status: "playing", updated_at: new Date().toISOString() })
@@ -261,9 +434,15 @@ export class Game {
         bots,
         game_no: room.game_no + 1,
         turn_deadline: this.deadline(room, out, seats),
+        waiting_seat: out.waitingFor ?? null,
       }),
       this.writeViews(room.id, seats, out, version),
     ]);
+    await this.notifyTurn({ ...room, waiting_seat: null }, seats, out);
+    if (room.tournament_match_id) {
+      await new Tournaments(this.db, this.userId, false, this.name)
+        .matchStarted(room.tournament_match_id);
+    }
     return {};
   }
 
@@ -288,18 +467,50 @@ export class Game {
   /** Someone ran out of time: the computer moves for them. Any seated
    * person's app may ask; it does nothing before the deadline. */
   async timeout(body: Json) {
+    const seats = await this.seats(body.roomId as string);
+    const me = this.mySeat(seats);
+    const res = await this.expire(body.roomId as string);
+    return res ? this.mine(res.out, me.seat, res.version) : { waiting: true };
+  }
+
+  /** Slow games: lets the computer move for whoever ran out of days. Called
+   * by the game-sweep function (hourly), since nobody may be online. */
+  async sweep() {
+    const { data, error } = await this.db.from("game_rooms").select("id")
+      .eq("status", "playing").not("rules->lento", "is", null)
+      .lt("turn_deadline", new Date().toISOString()).limit(50);
+    if (error) throw error;
+    let moved = 0;
+    for (const { id } of data ?? []) {
+      try {
+        if (await this.expire(id)) moved++;
+      } catch (e) {
+        console.error("sweep", id, e);
+      }
+    }
+    return { rooms: data?.length ?? 0, moved };
+  }
+
+  private async expire(roomId: string) {
     for (let attempt = 0; attempt < 4; attempt++) {
-      const { room, seats, state } = await this.load(body.roomId as string);
-      const me = this.mySeat(seats);
+      const { room, seats, state } = await this.load(roomId);
       const deadline = room.turn_deadline ? Date.parse(room.turn_deadline) : NaN;
       // A little slack for clocks that run a bit fast.
       if (room.status !== "playing" || !(Date.now() >= deadline - 2000)) {
-        return { waiting: true };
+        return null;
       }
-      const out = runEngine({ ...this.input(room, state), timeout: true });
-      if (out.error) return { waiting: true };
-      const version = await this.save(room, seats, state, out);
-      if (version) return this.mine(out, me.seat, version);
+      const out = runEngine({
+        ...this.input(room, state),
+        timeout: true,
+        // Tournament games: 3 moves missed in a row give the game up.
+        ...(room.tournament_match_id ? { missLimit: MISS_LIMIT } : {}),
+      });
+      if (out.error) return null;
+      // In a slow game, the computer moving for someone takes it out of
+      // the ranking (like leaving a normal game).
+      const patch = slowDays(room.rules) ? { replaced: true } : {};
+      const version = await this.save(room, seats, state, out, patch);
+      if (version) return { out, version };
     }
     throw new Refused("busy");
   }
@@ -360,26 +571,75 @@ export class Game {
       this.writeViews(room.id, seats, out, version),
       over ? this.finish(room, state, out) : this.touch(room.id, {
         turn_deadline: this.deadline(room, out, seats),
+        waiting_seat: out.waitingFor ?? null,
       }),
     ]);
+    await this.notifyTurn(room, seats, out);
     return version;
   }
 
-  private async finish(room: Room, state: State, out: EngineOut) {
-    const { error } = await this.db.rpc("record_game_result", {
-      p_room: room.id,
-      p_scores: out.scores,
-      p_hands: out.hands,
-      p_started_at: state.started_at,
-      p_feats: out.feats ?? {},
+  /** Slow games: a push to the person whose turn it now is, and to
+   * everyone when the game ends. */
+  private async notifyTurn(room: Room, seats: Seat[], out: EngineOut) {
+    const days = slowDays(room.rules);
+    if (!days) return;
+    const path = `/jogo/entrar?codigo=${room.code}`;
+    const link = `${WEB_APP_URL}/sala/?codigo=${room.code}&jogo=1`;
+    const tag = `slow-${room.id}`;
+    if (out.phase === "gameOver") {
+      const [a, b] = out.scores;
+      await sendPush(this.db, seats.map((s) => s.user_id), {
+        title: "Fim da partida lenta",
+        body: `Sala ${room.code}: ${a} × ${b}. Veja como terminou.`,
+        path,
+        link,
+        tag,
+        kind: "end",
+      });
+      return;
+    }
+    const seat = out.waitingFor;
+    if (seat === undefined || seat === room.waiting_seat) return;
+    const who = seats.find((s) => s.seat === seat);
+    if (!who) return;
+    await sendPush(this.db, [who.user_id], {
+      title: "Sua vez no truco!",
+      body: `Partida lenta (sala ${room.code}): é a sua vez. Você tem ` +
+        `${days === 1 ? "1 dia" : `${days} dias`} para jogar.`,
+      path,
+      link,
+      tag,
+      kind: "turn",
     });
-    if (error) console.error("record_game_result", error);
+  }
+
+  private async finish(room: Room, state: State, out: EngineOut) {
+    // A game given up (W.O.) counts for the tournament, not the ranking.
+    if (!out.forfeit) {
+      const { error } = await this.db.rpc("record_game_result", {
+        p_room: room.id,
+        p_scores: out.scores,
+        p_hands: out.hands,
+        p_started_at: state.started_at,
+        p_feats: out.feats ?? {},
+      });
+      if (error) console.error("record_game_result", error);
+    }
     await this.touch(room.id, {
       status: "finished",
       turn_deadline: null,
+      waiting_seat: null,
       wins_a: room.wins_a + (out.winner === "a" ? 1 : 0),
       wins_b: room.wins_b + (out.winner === "b" ? 1 : 0),
     });
+    if (room.tournament_match_id) {
+      const more = await new Tournaments(this.db, this.userId, false, this.name)
+        .matchFinished(room.tournament_match_id, out.scores);
+      // A slow series goes straight on to its next game.
+      if (more && slowDays(room.rules)) {
+        await this.start({ roomId: room.id }, true);
+      }
+    }
   }
 
   private async writeViews(roomId: string, seats: Seat[], out: EngineOut, version: number) {
@@ -400,11 +660,15 @@ export class Game {
 
   /** Takes a seat the computer is playing (the one this person left, if
    * they come back), so a game in progress can be joined. */
-  private async joinGame(room: Room, seats: Seat[]) {
+  private async joinGame(room: Room, seats: Seat[], fixed?: number) {
     const state = await this.state(room.id);
     const bots = [...room.bots];
     const back = state.departed?.[this.userId];
-    const seat = back !== undefined && bots[back] ? back : bots.findIndex((b) => b);
+    const seat = fixed !== undefined
+      ? (bots[fixed] ? fixed : -1)
+      : back !== undefined && bots[back]
+      ? back
+      : bots.findIndex((b) => b);
     if (seat < 0) throw new Refused("room_full");
     await this.seat(room.id, seat);
     bots[seat] = null;
@@ -419,17 +683,92 @@ export class Game {
     throw new Refused("busy");
   }
 
+  /** Watching a tournament match ("assistir"): for people in the same
+   * tournament who don't play this match. Returns the table as a spectator
+   * sees it (no hands, covered cards hidden), from the newest view. */
+  async watch(body: Json) {
+    // A normal room is watched by its code (whoever has it can watch); a
+    // tournament match by its id, by the people of the tournament.
+    const code = body.code ? String(body.code).trim().toUpperCase() : null;
+    let roomId = body.roomId as string;
+    if (code) {
+      const { data } = await this.db.from("game_rooms").select("id")
+        .eq("code", code).neq("status", "closed").maybeSingle();
+      if (!data) throw new Refused("room_not_found");
+      roomId = data.id;
+    }
+    const room = await this.room(roomId);
+    if (!room.tournament_match_id) {
+      if (!code || code !== room.code) throw new Refused("not_tournament");
+    } else {
+      const { data: m } = await this.db.from("tournament_matches")
+        .select("tournament_id").eq("id", room.tournament_match_id).maybeSingle();
+      if (!m) throw new Refused("not_tournament");
+      const [{ data: asA }, { data: asB }, { data: t }] = await Promise.all([
+        this.db.from("tournament_teams").select("id")
+          .eq("tournament_id", m.tournament_id).eq("player_a", this.userId),
+        this.db.from("tournament_teams").select("id")
+          .eq("tournament_id", m.tournament_id).eq("player_b", this.userId),
+        this.db.from("tournaments").select("owner_id")
+          .eq("id", m.tournament_id).maybeSingle(),
+      ]);
+      if (!asA?.length && !asB?.length && t?.owner_id !== this.userId) {
+        throw new Refused("not_in_tournament");
+      }
+    }
+    const seats = await this.seats(room.id);
+    const { data: views, error } = await this.db.from("game_views")
+      .select("seat, version, frames").eq("room_id", room.id);
+    if (error) throw error;
+    const newest = (views ?? []).reduce(
+      (best: Json | null, v: Json) =>
+        !best || (v.version as number) > (best.version as number) ? v : best,
+      null,
+    );
+    const frames = (newest?.frames ?? []) as Json[];
+    const frame = frames.length ? spectatorView(frames[frames.length - 1]) : null;
+    return {
+      roomId: room.id,
+      code: room.code,
+      status: room.status,
+      version: newest?.version ?? 0,
+      seats: seats.map((s) => ({ seat: s.seat, name: s.name })),
+      bots: room.bots,
+      wins: [room.wins_a, room.wins_b],
+      frame,
+    };
+  }
+
   /** Leaves the room; during a game the computer takes the seat. */
   async leave(body: Json) {
     const room = await this.room(body.roomId as string);
     const seats = await this.seats(room.id);
     const me = seats.find((s) => s.user_id === this.userId);
-    if (!me) return {};
+    if (!me) {
+      // Leaving while standing (see stand): hand the room on, or close it.
+      if (room.tournament_match_id || room.status === "playing") return {};
+      if (seats.length === 0) await this.touch(room.id, { status: "closed" });
+      else if (room.host_id === this.userId) {
+        await this.touch(room.id, { host_id: seats[0].user_id });
+      }
+      return {};
+    }
     await this.db.from("game_seats").delete().eq("room_id", room.id).eq("user_id", this.userId);
     await this.db.from("game_views").delete().eq("room_id", room.id).eq("user_id", this.userId);
     const rest = seats.filter((s) => s.user_id !== this.userId);
+    // Leaving a tournament game gives it up: the pair loses it by W.O.
+    if (room.tournament_match_id && room.status === "playing") {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const state = await this.state(room.id);
+        const out = runEngine({ ...this.input(room, state), forfeit: me.seat });
+        if (out.error) break;
+        if (await this.save(room, rest, state, out)) break;
+      }
+      return {};
+    }
     const patch: Json = {};
-    if (rest.length === 0) patch.status = "closed";
+    // A tournament room waits for its people (until the match deadline).
+    if (rest.length === 0 && !room.tournament_match_id) patch.status = "closed";
     if (room.host_id === this.userId && rest.length > 0) patch.host_id = rest[0].user_id;
 
     if (room.status === "playing" && rest.length > 0) {
@@ -450,3 +789,4 @@ export class Game {
     return {};
   }
 }
+

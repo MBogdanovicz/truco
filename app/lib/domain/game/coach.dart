@@ -278,10 +278,10 @@ class Coach {
     if (r.isEmpty) return 'Ainda é a primeira rodada.';
     if (r.length == 1) {
       if (r.first.tied) {
-        return 'A primeira empatou: quem ganhar a próxima leva a mão.';
+        return 'A primeira embuchou: quem ganhar a próxima leva a mão.';
       }
       return r.first.winner == v.team
-          ? 'Vocês ganharam a primeira: ganhar ou empatar mais uma fecha a mão.'
+          ? 'Vocês ganharam a primeira: ganhar ou embuchar mais uma fecha a mão.'
           : 'Vocês perderam a primeira: precisam ganhar as duas próximas.';
     }
     return 'Está uma a uma: a terceira rodada decide.';

@@ -77,6 +77,7 @@ class TableView {
     required this.mustAnswer,
     required this.myTurn,
     required this.winner,
+    this.forfeited,
     this.speech = const {},
     this.toast,
     this.showLastRound = false,
@@ -114,6 +115,9 @@ class TableView {
   /// This seat must play a card (or may raise).
   final bool myTurn;
   final Team? winner;
+
+  /// The team that gave the game up (W.O.).
+  final Team? forfeited;
   final Map<int, String> speech;
   final String? toast;
   final bool showLastRound;
@@ -158,6 +162,7 @@ class TableView {
     mustAnswer: mustAnswer,
     myTurn: myTurn,
     winner: winner,
+    forfeited: forfeited,
     speech: speech,
     toast: toast,
     showLastRound: showLastRound,
@@ -176,12 +181,16 @@ class TableView {
     final v = g.viewFor(seat);
     PlayView play(Play p) => PlayView(
       p.seat,
-      p.covered && p.seat != seat ? null : p.card,
+      // Covered cards: the partner sees which one it was too.
+      p.covered && p.seat != seat && p.seat != partnerOf(seat) ? null : p.card,
       covered: p.covered,
     );
     final team = teamOfSeat(seat);
     final mustAnswer = switch (g.phase) {
-      GamePhase.raisePending => g.pending!.team != team && mayAnswer(seat),
+      GamePhase.raisePending =>
+        g.pending!.team != team &&
+            g.pending!.refusedBy != seat &&
+            mayAnswer(seat),
       GamePhase.decision => g.decisionTeam == team && mayAnswer(seat),
       _ => false,
     };
@@ -218,6 +227,7 @@ class TableView {
       mustAnswer: mustAnswer,
       myTurn: g.phase == GamePhase.playing && g.turn == seat,
       winner: g.winner,
+      forfeited: g.forfeited,
       speech: Map.unmodifiable(talk.speech),
       toast: talk.toastFor(team),
       showLastRound: talk.showLastRound,
@@ -236,7 +246,12 @@ class TableView {
     if (vira != null) 'vira': vira!.id,
     'value': handValue,
     'level': stakeLevel,
-    if (pending != null) 'pending': [pending!.seat, pending!.toLevel],
+    if (pending != null)
+      'pending': [
+        pending!.seat,
+        pending!.toLevel,
+        if (pending!.refusedBy != null) pending!.refusedBy!,
+      ],
     if (decisionTeam != null) 'decision': decisionTeam!.name,
     if (iron) 'iron': true,
     'scores': [scores[Team.a], scores[Team.b]],
@@ -251,6 +266,7 @@ class TableView {
     if (mustAnswer) 'mustAnswer': true,
     if (myTurn) 'myTurn': true,
     if (winner != null) 'winner': winner!.name,
+    if (forfeited != null) 'wo': forfeited!.name,
     if (speech.isNotEmpty)
       'speech': {for (final e in speech.entries) '${e.key}': e.value},
     if (toast != null) 'toast': toast,
@@ -277,7 +293,11 @@ class TableView {
       stakeLevel: j['level']! as int,
       pending: pending == null
           ? null
-          : PendingRaise(seat: pending[0], toLevel: pending[1]),
+          : PendingRaise(
+              seat: pending[0],
+              toLevel: pending[1],
+              refusedBy: pending.length > 2 ? pending[2] : null,
+            ),
       decisionTeam: j['decision'] == null
           ? null
           : Team.fromName(j['decision']! as String),
@@ -302,6 +322,7 @@ class TableView {
       winner: j['winner'] == null
           ? null
           : Team.fromName(j['winner']! as String),
+      forfeited: j['wo'] == null ? null : Team.fromName(j['wo']! as String),
       speech: {
         for (final e in ((j['speech'] as Map?) ?? const {}).entries)
           int.parse(e.key as String): e.value as String,
@@ -347,7 +368,7 @@ class TableTalk {
         case RaiseAccepted():
           speech[e.seat] = 'Cai dentro!';
         case Folded():
-          speech[e.seat] = 'Corro.';
+          speech[e.seat] = e.partnerDecides ? 'Eu corro… parceiro?' : 'Corro.';
         case DecisionMade():
           speech[e.seat] = e.play ? 'Vamos jogar!' : 'Corro.';
         case RoundEnded():
@@ -358,6 +379,9 @@ class TableTalk {
           handJustEnded = true;
         case GameEnded():
           wins[e.winner] = wins[e.winner]! + 1;
+        case Forfeited():
+          _handResult = null;
+          showLastRound = false;
       }
     }
   }
@@ -365,7 +389,7 @@ class TableTalk {
   String? toastFor(Team viewer) {
     final r = _handResult;
     if (r != null) {
-      if (r.winner == null) return 'Empatou tudo, ninguém marca.';
+      if (r.winner == null) return 'Embuchou tudo, ninguém marca.';
       return '${r.winner == viewer ? 'Nós' : 'Eles'} +${r.points}';
     }
     if (_ironStarted) return 'Mão de ferro! Ninguém vê as cartas.';

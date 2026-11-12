@@ -32,6 +32,7 @@ class TrucoRules {
     this.bothTeamsSeeOnDecision = true,
     this.dealerSeesPartnerThirdCard = true,
     this.turnSeconds = 20,
+    this.slowDays = 0,
   });
 
   /// Stable id ("paulista"), stored with results.
@@ -79,6 +80,14 @@ class TrucoRules {
   /// The choices offered for [turnSeconds].
   static const turnSecondsOptions = [10, 20, 30, 0];
 
+  /// "Partida lenta": days for each move (0 = a normal game). Only for 4
+  /// people; the server pushes whoever's turn it is.
+  final int slowDays;
+
+  static const slowDaysOptions = [1, 2, 3];
+
+  bool get isSlow => slowDays > 0;
+
   int get baseValue => stakes.first;
 
   /// Name of the call that raises the hand from [stakes][level] to the next
@@ -104,6 +113,7 @@ class TrucoRules {
     bool? bothTeamsSeeOnDecision,
     bool? dealerSeesPartnerThirdCard,
     int? turnSeconds,
+    int? slowDays,
   }) => TrucoRules(
     id: id,
     name: name,
@@ -120,6 +130,7 @@ class TrucoRules {
     dealerSeesPartnerThirdCard:
         dealerSeesPartnerThirdCard ?? this.dealerSeesPartnerThirdCard,
     turnSeconds: turnSeconds ?? this.turnSeconds,
+    slowDays: slowDays ?? this.slowDays,
   );
 
   /// Table options as stored with a room (Paulista base + variations).
@@ -131,6 +142,7 @@ class TrucoRules {
     'verNaMaoDeOnze': bothTeamsSeeOnDecision,
     'terceiraCarta': dealerSeesPartnerThirdCard,
     'tempo': turnSeconds,
+    if (slowDays > 0) 'lento': slowDays,
   };
 
   static TrucoRules fromJson(Map<String, Object?> j) => paulista.copyWith(
@@ -141,6 +153,7 @@ class TrucoRules {
     bothTeamsSeeOnDecision: j['verNaMaoDeOnze'] as bool?,
     dealerSeesPartnerThirdCard: j['terceiraCarta'] as bool?,
     turnSeconds: (j['tempo'] as num?)?.toInt(),
+    slowDays: (j['lento'] as num?)?.toInt(),
   );
 
   /// Short description of the options, e.g. for results and the rules page.

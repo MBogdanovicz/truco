@@ -1,3 +1,5 @@
+import 'package:truco/domain/game/table_view.dart';
+
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -67,6 +69,7 @@ void main() {
       g.apply(const Raise(1)); // seis: accepts truco (3) and raises
       expect(g.stakeLevel, 1);
       g.apply(const Fold(2));
+      g.apply(const Fold(0)); // the partner runs too
       expect(g.scores[Team.b], 3);
       expect(g.phase, GamePhase.handOver);
     });
@@ -81,10 +84,24 @@ void main() {
       expect(g.canRaise(1), isTrue);
     });
 
+    test('the first to answer runs: the partner decides', () {
+      final g = TrucoGame(rules: TrucoRules.paulista, seed: 3, firstDealer: 3);
+      g.apply(const Raise(0));
+      g.apply(const Fold(1));
+      expect(g.phase, GamePhase.raisePending);
+      expect(g.pending!.refusedBy, 1);
+      expect(g.legalActions(1), isEmpty);
+      expect(g.responder, 3);
+      g.apply(const Accept(3));
+      expect(g.handValue, 3);
+      expect(g.phase, GamePhase.playing);
+    });
+
     test('running from a truco gives the base value', () {
       final g = TrucoGame(rules: TrucoRules.paulista, seed: 3, firstDealer: 3);
       g.apply(const Raise(0));
       g.apply(const Fold(1));
+      g.apply(const Fold(3)); // the partner runs too
       expect(g.scores[Team.a], 1);
     });
 
@@ -114,6 +131,7 @@ void main() {
       // Finish the first hand by a run and set the score.
       g.apply(const Raise(0));
       g.apply(const Fold(1));
+      g.apply(const Fold(3)); // the partner runs too
       g.scores[Team.a] = a;
       g.scores[Team.b] = b;
       g.startNextHand();
@@ -146,6 +164,7 @@ void main() {
       );
       g.apply(const Raise(0));
       g.apply(const Fold(1));
+      g.apply(const Fold(3)); // the partner runs too
       g.scores[Team.a] = 11;
       g.scores[Team.b] = 11;
       g.startNextHand();
@@ -253,7 +272,8 @@ void main() {
     TrucoGame atScores(TrucoRules r, int a, int b) {
       final g = fresh(r, 5)
         ..apply(const Raise(0))
-        ..apply(const Fold(1));
+        ..apply(const Fold(1))
+        ..apply(const Fold(3));
       g.scores[Team.a] = a;
       g.scores[Team.b] = b;
       g.startNextHand();
@@ -292,6 +312,24 @@ void main() {
       }
     });
 
+    test('after a tied round the same seat leads and the pé stays', () {
+      var found = false;
+      for (var seed = 1; seed < 400 && !found; seed++) {
+        final g = fresh(TrucoRules.paulista, seed);
+        final leader = g.turn, foot = g.foot;
+        for (var i = 0; i < 4; i++) {
+          g.apply(PlayCard(g.turn, g.handOf(g.turn).first));
+        }
+        if (g.phase != GamePhase.playing || g.rounds.last.winner != null) {
+          continue;
+        }
+        found = true;
+        expect(g.turn, leader);
+        expect(g.foot, foot);
+      }
+      expect(found, isTrue, reason: 'no tied first round found');
+    });
+
     test('the dealer sees the third card dealt to the partner', () {
       final g = fresh(TrucoRules.paulista, 9);
       final dealer = g.dealer;
@@ -314,5 +352,21 @@ void main() {
       );
       expect(off.viewFor(off.dealer).partnerHand, isNull);
     });
+  });
+
+  test('the partner sees a covered card; the others do not', () {
+    final g = TrucoGame(rules: TrucoRules.paulista, seed: 4, firstDealer: 3);
+    for (var i = 0; i < 4; i++) {
+      final s = g.turn;
+      g.apply(PlayCard(s, g.handOf(s).first));
+    }
+    if (g.phase != GamePhase.playing) return;
+    final s = g.turn;
+    final card = g.handOf(s).first;
+    g.apply(PlayCard(s, card, covered: true));
+    TableView view(int seat) =>
+        TableView.of(g, seat, talk: TableTalk(), mayAnswer: (_) => true);
+    expect(view(partnerOf(s)).currentPlays.single.card, card);
+    expect(view(nextSeat(s)).currentPlays.single.card, isNull);
   });
 }

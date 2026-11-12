@@ -6,11 +6,15 @@
 //
 //   in:  {rules, seed, firstDealer, bots: [level|null x4], log,
 //         act?: {seat, action}             // action: {t, c?, x?, i?}
-//         timeout?: true}                  // the computer moves for the
+//         timeout?: true,                  // the computer moves for the
 //                                          // person the game waits for
+//         missLimit?: n,                   // with timeout: n moves missed
+//                                          // in a row give the game up
+//         forfeit?: seat}                  // seat's team gives up (W.O.)
 //   out: {log, frames: {"<seat>": [TableView json]}, phase, winner?,
 //         scores: [a, b], hands: [{w?, p}],
 //         feats?: {"<seat>": [achievement id]}   // when the game is over
+//         forfeit?: "a"|"b"                // the team that gave up
 //         error?}
 //
 // Without "act" the computer plays until a person must act (game start).
@@ -46,8 +50,10 @@ String run(String input) {
   String? error;
   final act = (j['act'] as Map?)?.cast<String, Object?>();
   try {
-    final f = j['timeout'] == true
-        ? session.timeout()
+    final f = j['forfeit'] is int
+        ? session.forfeit(j['forfeit']! as int)
+        : j['timeout'] == true
+        ? session.timeout(missLimit: j['missLimit'] as int?)
         : act == null
         ? session.advance()
         : session.actJson(
@@ -82,6 +88,7 @@ String run(String input) {
         for (final e in gameFeats(g.events, g.rules).entries)
           if (e.value.isNotEmpty) '${e.key}': e.value.toList(),
       },
+    if (g.forfeited != null) 'forfeit': g.forfeited!.name,
     'error': ?error,
   });
 }

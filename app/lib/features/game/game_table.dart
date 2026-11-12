@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,9 +26,13 @@ class GameTableModel {
     this.tip,
     this.hint,
     this.coachSummary,
+    this.spectator = false,
   });
 
   final TableView view;
+
+  /// Someone watching (a tournament match): the end names the winners.
+  final bool spectator;
 
   /// Names by absolute seat.
   final List<String> names;
@@ -78,6 +84,7 @@ class GameTableActions {
     this.rematchLabel = 'Revanche',
     this.gameOverExtra,
     this.onDismissTip,
+    this.onShowCode,
   });
 
   final void Function(deck.Card card, {bool covered}) playCard;
@@ -96,6 +103,9 @@ class GameTableActions {
 
   /// Closes the professor's comment.
   final VoidCallback? onDismissTip;
+
+  /// Online rooms: shows the room code (to call someone in).
+  final VoidCallback? onShowCode;
 }
 
 /// The card table: the viewer at the bottom, partner on top, opponents at
@@ -139,7 +149,11 @@ class _GameTableState extends State<GameTable> {
                 constraints: const BoxConstraints(maxWidth: 820),
                 child: Column(
                   children: [
-                    _TopBar(view: v, onBack: a.onLeave),
+                    _TopBar(
+                      view: v,
+                      onBack: a.onLeave,
+                      onShowCode: a.onShowCode,
+                    ),
                     Expanded(child: _table()),
                     if (m.tip != null) _tip(m.tip!),
                     if (m.hint != null) _tip(m.hint!),
@@ -270,6 +284,14 @@ class _GameTableState extends State<GameTable> {
                       alignment: playSpot(p.seat),
                       child: p.card == null
                           ? CardBack(width: cw)
+                          : p.covered
+                          ? _CoveredPlay(
+                              key: ValueKey(
+                                'cov-${v.handNumber}-${p.card!.id}',
+                              ),
+                              card: p.card!,
+                              width: cw,
+                            )
                           : Opacity(
                               opacity: p.covered ? 0.6 : 1,
                               child: PlayingCardView(
@@ -333,9 +355,18 @@ class _GameTableState extends State<GameTable> {
   };
 
   Widget _gameOver() {
-    final won = v.winner == v.team;
-    final ours = v.scoreOf(v.team), theirs = v.scoreOf(v.team.other);
+    final watching = m.spectator && v.winner != null;
+    // Watching: the winners' side of the score comes first.
+    final side = watching ? v.winner! : v.team;
+    final won = watching || v.winner == v.team;
+    final ours = v.scoreOf(side), theirs = v.scoreOf(side.other);
     final shutout = ours == 0 || theirs == 0;
+    final winners = watching
+        ? [
+            for (var s = 0; s < 4; s++)
+              if (teamOfSeat(s) == side) m.names[s],
+          ].join(' e ')
+        : null;
     return Container(
       color: Colors.black.withValues(alpha: 0.45),
       alignment: Alignment.center,
@@ -354,15 +385,23 @@ class _GameTableState extends State<GameTable> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  won ? 'Vocês venceram!' : 'Eles venceram',
+                  winners != null
+                      ? '$winners venceram!'
+                      : won
+                      ? 'Vocês venceram!'
+                      : 'Eles venceram',
                   style: Theme.of(context).textTheme.headlineSmall
                       ?.copyWith(color: Colors.black),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '$ours × $theirs'
-                  '${shutout ? (won ? '\nDoze a zero! Pra baixo da mesa!' : '\nDoze a zero… pra baixo da mesa!') : ''}'
-                  '\nPlacar da noite: ${m.wins[v.team]} × ${m.wins[v.team.other]}',
+                  '${v.forfeited != null
+                      ? '\n${v.forfeited == side ? 'A dupla saiu do jogo: W.O.' : 'Vitória por W.O.: a outra dupla saiu.'}'
+                      : shutout
+                      ? (won ? '\nDoze a zero! Pra baixo da mesa!' : '\nDoze a zero… pra baixo da mesa!')
+                      : ''}'
+                  '\nPlacar da noite: ${m.wins[side]} × ${m.wins[side.other]}',
                   textAlign: TextAlign.center,
                 ),
                 if (m.coachSummary != null) ...[
@@ -433,9 +472,11 @@ class _GameTableState extends State<GameTable> {
         final p = v.pending!;
         final asked = v.rules.stakes[p.toLevel];
         if (mine) {
+          final refused = p.refusedBy;
           prompt =
               '${m.names[p.seat]} pediu '
-              '${v.rules.raiseName(p.toLevel - 1).toLowerCase()} (vale $asked)';
+              '${v.rules.raiseName(p.toLevel - 1).toLowerCase()} (vale $asked)'
+              '${refused == null ? '' : '. ${m.names[refused]} quer correr: você decide'}';
           buttons.addAll([
             _ActionButton('Aceitar', AppColors.gold, a.accept),
             _ActionButton('Correr', Colors.white24, a.fold),
@@ -447,7 +488,14 @@ class _GameTableState extends State<GameTable> {
               ),
           ]);
         } else if (!m.busy) {
-          prompt = 'Esperando a resposta…';
+          final refused = p.refusedBy;
+          prompt = refused == v.me
+              ? 'Você quer correr. Esperando a decisão do parceiro…'
+              : refused != null && teamOfSeat(refused) == v.team
+              ? '${m.names[refused]} quer correr. Esperando…'
+              : refused != null
+              ? '${m.names[refused]} quer correr. O parceiro decide…'
+              : 'Esperando a resposta…';
         }
       case GamePhase.playing:
         if (mine) {
@@ -482,7 +530,7 @@ class _GameTableState extends State<GameTable> {
       if (prompt == null && v.phase == GamePhase.playing && active != null) {
         prompt = 'Vez de ${m.names[active]}';
       }
-      if (prompt != null) prompt = '$prompt  ⏱ $left s';
+      if (prompt != null) prompt = '$prompt  ⏱ ${timeLeftLabel(left)}';
     }
 
     return AnimatedSize(
@@ -626,10 +674,11 @@ class _ActionButton extends StatelessWidget {
 // ------------------------------------------------------------- top bar --
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.view, required this.onBack});
+  const _TopBar({required this.view, required this.onBack, this.onShowCode});
 
   final TableView view;
   final VoidCallback onBack;
+  final VoidCallback? onShowCode;
 
   @override
   Widget build(BuildContext context) {
@@ -667,6 +716,12 @@ class _TopBar extends StatelessWidget {
             ),
             child: Text('Vale ${view.handValue}', style: white),
           ),
+          if (onShowCode != null)
+            IconButton(
+              onPressed: onShowCode,
+              icon: const Icon(Icons.tag, color: Colors.white),
+              tooltip: 'Código da sala',
+            ),
           IconButton(
             onPressed: () => context.push('/jogo/regras', extra: view.rules),
             icon: const Icon(Icons.help_outline, color: Colors.white),
@@ -910,4 +965,60 @@ Future<bool> confirmLeaveGame(BuildContext context, {String? message}) async {
     ],
   );
   return leave == true;
+}
+
+/// "15 s", "12 min", "5 h", "1 d 4 h" (slow games count days).
+String timeLeftLabel(int seconds) {
+  if (seconds < 100) return '$seconds s';
+  if (seconds < 3600) return '${(seconds / 60).ceil()} min';
+  final hours = (seconds / 3600).ceil();
+  if (hours < 24) return '$hours h';
+  final d = hours ~/ 24, h = hours % 24;
+  return h == 0 ? '$d d' : '$d d $h h';
+}
+
+/// A covered card the viewer may know (their own, or the partner's): shown
+/// faded for a moment, then turned face down, so it reads as covered.
+class _CoveredPlay extends StatefulWidget {
+  const _CoveredPlay({super.key, required this.card, required this.width});
+  final deck.Card card;
+  final double width;
+
+  @override
+  State<_CoveredPlay> createState() => _CoveredPlayState();
+}
+
+class _CoveredPlayState extends State<_CoveredPlay> {
+  bool _down = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _down = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: const Duration(milliseconds: 350),
+    transitionBuilder: (child, anim) => ScaleTransition(
+      scale: Tween(begin: 0.85, end: 1.0).animate(anim),
+      child: FadeTransition(opacity: anim, child: child),
+    ),
+    child: _down
+        ? CardBack(key: const ValueKey('down'), width: widget.width)
+        : Opacity(
+            key: const ValueKey('up'),
+            opacity: 0.55,
+            child: PlayingCardView(card: widget.card, width: widget.width),
+          ),
+  );
 }

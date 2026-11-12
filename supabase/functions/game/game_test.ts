@@ -1,215 +1,8 @@
 // deno test supabase/functions/game/game_test.ts
 // Plays whole online games against an in-memory stand-in for the database.
-import { Game, type Json, Refused, turnMs } from "./game.ts";
+import { Game, type Json, Refused, slowDays, turnMs } from "./game.ts";
 
-type Row = Json;
-
-const KEYS: Record<string, string[]> = {
-  game_rooms: ["id"],
-  game_seats: ["room_id", "seat"],
-  game_states: ["room_id"],
-  game_views: ["room_id", "seat"],
-};
-
-class FakeDb {
-  tables: Record<string, Row[]> = {
-    game_rooms: [],
-    game_seats: [],
-    game_states: [],
-    game_views: [],
-  };
-  rpcs: { fn: string; args: Json }[] = [];
-
-  from(table: string) {
-    return new Query(this, table);
-  }
-
-  rpc(fn: string, args: Json) {
-    this.rpcs.push({ fn, args });
-    return Promise.resolve({ data: null, error: null });
-  }
-
-  violates(table: string, row: Row, except?: Row): boolean {
-    const rows = this.tables[table].filter((r) => r !== except);
-    const same = (keys: string[]) =>
-      rows.some((r) => keys.every((k) => r[k] === row[k]));
-    if (same(KEYS[table])) return true;
-    if (table === "game_seats" && same(["room_id", "user_id"])) return true;
-    if (table === "game_rooms") {
-      return rows.some((r) =>
-        r.code === row.code && r.status !== "closed" && row.status !== "closed"
-      );
-    }
-    return false;
-  }
-}
-
-class Query {
-  private op: "select" | "insert" | "update" | "upsert" | "delete" = "select";
-  private payload: Row | Row[] | null = null;
-  private filters: ((r: Row) => boolean)[] = [];
-  private returning = false;
-  private mode: "many" | "single" | "maybe" = "many";
-
-  constructor(private db: FakeDb, private table: string) {}
-
-  select(_cols?: string) {
-    if (this.op !== "select") this.returning = true;
-    return this;
-  }
-  insert(p: Row) {
-    this.op = "insert";
-    this.payload = p;
-    return this;
-  }
-  update(p: Row) {
-    this.op = "update";
-    this.payload = p;
-    return this;
-  }
-  upsert(p: Row | Row[]) {
-    this.op = "upsert";
-    this.payload = p;
-    return this;
-  }
-  delete() {
-    this.op = "delete";
-    return this;
-  }
-  eq(k: string, v: unknown) {
-    this.filters.push((r) => r[k] === v);
-    return this;
-  }
-  neq(k: string, v: unknown) {
-    this.filters.push((r) => r[k] !== v);
-    return this;
-  }
-  in(k: string, vs: unknown[]) {
-    this.filters.push((r) => vs.includes(r[k]));
-    return this;
-  }
-  order(k: string) {
-    this.filters.push(() => true);
-    this.sortKey = k;
-    return this;
-  }
-  private sortKey?: string;
-  single() {
-    this.mode = "single";
-    return this;
-  }
-  maybeSingle() {
-    this.mode = "maybe";
-    return this;
-  }
-
-  then<T>(resolve: (v: { data: unknown; error: unknown }) => T) {
-    return Promise.resolve(resolve(this.run()));
-  }
-
-  private run(): { data: unknown; error: unknown } {
-    const rows = this.db.tables[this.table];
-    const match = () => rows.filter((r) => this.filters.every((f) => f(r)));
-    const copy = (r: Row) => structuredClone(r);
-    let out: Row[] = [];
-    switch (this.op) {
-      case "select":
-        out = match().map(copy);
-        if (this.sortKey) {
-          const k = this.sortKey;
-          out.sort((a, b) => (a[k] as number) - (b[k] as number));
-        }
-        break;
-      case "insert": {
-        const row = { ...defaults(this.table), ...structuredClone(this.payload as Row) };
-        if (this.db.violates(this.table, row)) return { data: null, error: { code: "23505" } };
-        rows.push(row);
-        out = [copy(row)];
-        break;
-      }
-      case "update":
-        for (const r of match()) {
-          const next = { ...r, ...structuredClone(this.payload as Row) };
-          if (this.db.violates(this.table, next, r)) return { data: null, error: { code: "23505" } };
-          Object.assign(r, next);
-          out.push(copy(r));
-        }
-        break;
-      case "upsert":
-        for (const p of [this.payload].flat() as Row[]) {
-          const keys = KEYS[this.table];
-          const old = rows.find((r) => keys.every((k) => r[k] === p[k]));
-          if (old) Object.assign(old, structuredClone(p));
-          else rows.push({ ...defaults(this.table), ...structuredClone(p) });
-        }
-        break;
-      case "delete":
-        for (const r of match()) rows.splice(rows.indexOf(r), 1);
-        break;
-    }
-    if (this.mode === "single") {
-      return out.length === 1 ? { data: out[0], error: null } : { data: null, error: { code: "PGRST116" } };
-    }
-    if (this.mode === "maybe") return { data: out[0] ?? null, error: null };
-    return { data: out, error: null };
-  }
-}
-
-function defaults(table: string): Row {
-  if (table === "game_rooms") {
-    return {
-      id: crypto.randomUUID(),
-      status: "lobby",
-      rules: {},
-      bot_level: "medium",
-      mode: "ranked",
-      group_id: null,
-      bots: [null, null, null, null],
-      wins_a: 0,
-      wins_b: 0,
-      game_no: 0,
-    };
-  }
-  if (table === "game_states") return { replaced: false, match_id: null, version: 0 };
-  return {};
-}
-
-function assert(cond: unknown, msg = "assertion failed"): asserts cond {
-  if (!cond) throw new Error(msg);
-}
-
-// deno-lint-ignore no-explicit-any
-const asDb = (db: FakeDb) => db as any;
-
-/** Plays for [seat] like a simple person: accept, else the first card. */
-function move(view: Json): Json {
-  if (view.mustAnswer) return { t: "accept" };
-  if (view.iron) return { t: "blind", i: 0 };
-  return { t: "play", c: (view.hand as string[])[0] };
-}
-
-function lastFrame(db: FakeDb, roomId: string, seat: number): Json | undefined {
-  const v = db.tables.game_views.find((r) => r.room_id === roomId && r.seat === seat);
-  return (v?.frames as Json[] | undefined)?.at(-1);
-}
-
-async function playToEnd(db: FakeDb, roomId: string, players: Map<number, Game>) {
-  for (let steps = 0; steps < 2000; steps++) {
-    const room = db.tables.game_rooms.find((r) => r.id === roomId)!;
-    if (room.status !== "playing") return;
-    let moved = false;
-    for (const [seat, game] of players) {
-      const v = lastFrame(db, roomId, seat);
-      if (v && (v.myTurn || v.mustAnswer)) {
-        await game.act({ roomId, move: move(v) });
-        moved = true;
-        break;
-      }
-    }
-    assert(moved, "nobody could move");
-  }
-  throw new Error("game did not end");
-}
+import { asDb, assert, FakeDb, lastFrame, playToEnd, refused } from "./fake_db.ts";
 
 Deno.test("two people and two computers play a whole game", async () => {
   const db = new FakeDb();
@@ -338,4 +131,64 @@ Deno.test("turn time comes from the room's rules", () => {
   assert(turnMs({}) === 20_000);
   assert(turnMs({ tempo: 10 }) === 10_000);
   assert(turnMs({ tempo: 0 }) === null);
+  // Slow games: days per move.
+  assert(slowDays({}) === 0);
+  assert(slowDays({ lento: 2 }) === 2);
+  assert(turnMs({ lento: 1, tempo: 10 }) === 86_400_000);
+});
+
+Deno.test("slow games: 4 people, and the sweep moves for whoever ran out of days", async () => {
+  const db = new FakeDb();
+  const people = ["ana", "caio", "dani", "edu"].map((id) =>
+    new Game(asDb(db), id, false, id)
+  );
+  const [ana] = people;
+  const { roomId, code } = await ana.create({ rules: { lento: 2 } });
+  await refused(() => ana.start({ roomId }), "slow_needs_four");
+  for (const p of people.slice(1)) await p.join({ code });
+  await ana.start({ roomId });
+  const room = db.tables.game_rooms[0];
+  const deadline = Date.parse(room.turn_deadline as string);
+  assert(deadline - Date.now() > 2 * 86_400_000 - 60_000, "two days");
+  assert(typeof room.waiting_seat === "number", "waiting seat");
+  // Not yet late: the sweep leaves it alone.
+  const sweeper = new Game(asDb(db), "", false, "");
+  assert((await sweeper.sweep()).moved === 0);
+  room.turn_deadline = new Date(Date.now() - 1000).toISOString();
+  const version = db.tables.game_states[0].version as number;
+  assert((await sweeper.sweep()).moved === 1);
+  assert(db.tables.game_states[0].version === version + 1);
+  // The computer played for someone: no longer ranked.
+  assert(db.tables.game_states[0].replaced === true);
+});
+
+Deno.test("anyone with the code watches a normal room", async () => {
+  const db = new FakeDb();
+  const ana = new Game(asDb(db), "ana", false, "Ana");
+  const zeca = new Game(asDb(db), "zeca", false, "Zeca");
+  const { roomId, code } = await ana.create({ botLevel: "easy" });
+  await refused(() => zeca.watch({ roomId }), "not_tournament");
+  await ana.start({ roomId });
+  const seen = await zeca.watch({ code: code.toLowerCase() }) as Json;
+  assert(seen.roomId === roomId && seen.status === "playing");
+  const frame = seen.frame as Json;
+  assert((frame.hand as unknown[]).length === 0, "no cards in hand");
+});
+
+Deno.test("standing up and sitting on a free seat", async () => {
+  const db = new FakeDb();
+  const ana = new Game(asDb(db), "ana", false, "Ana");
+  const bia = new Game(asDb(db), "bia", false, "Bia");
+  const { roomId, code } = await ana.create({});
+  await bia.join({ code });
+  const seatOf = (id: string) => db.tables.game_seats.find((s) => s.user_id === id)?.seat;
+  // Nobody takes someone else's seat.
+  await refused(() => bia.sit({ roomId, seat: seatOf("ana") }), "seat_taken");
+  await ana.stand({ roomId });
+  assert(seatOf("ana") === undefined, "standing");
+  await refused(() => ana.start({ roomId }), "not_seated");
+  await bia.sit({ roomId, seat: 0 });
+  await ana.sit({ roomId, seat: 2 });
+  assert(seatOf("bia") === 0 && seatOf("ana") === 2, "partners now");
+  await ana.start({ roomId });
 });

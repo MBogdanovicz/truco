@@ -43,8 +43,8 @@ class _RulesScreenState extends State<RulesScreen> {
               'de quem deu as cartas.',
           'O "pé" é quem joga por último na rodada. Na primeira é quem deu '
               'as cartas; depois, é quem está à esquerda de quem ganhou a '
-              'rodada anterior (quem ganha começa a próxima). Na mesa, o pé '
-              'tem a marca PÉ.',
+              'rodada anterior (quem ganha começa a próxima). Se a rodada '
+              'embuchar, o pé continua o mesmo. Na mesa, o pé tem a marca PÉ.',
         ],
       ),
       (
@@ -66,13 +66,13 @@ class _RulesScreenState extends State<RulesScreen> {
         ],
       ),
       (
-        'Rodadas e empates',
+        'Rodadas embuchadas',
         [
           'Em cada rodada vence a carta mais forte. Se as cartas mais fortes '
-              'das duas duplas forem iguais, a rodada empata ("cangou").',
-          'Empatou a primeira: quem ganhar a segunda leva a mão. Ganhou a '
-              'primeira e empatou a segunda (ou a terceira): leva quem ganhou '
-              'a primeira. Empatou tudo: ninguém marca.',
+              'das duas duplas forem iguais, a rodada embucha.',
+          'Embuchou a primeira: quem ganhar a segunda leva a mão. Ganhou a '
+              'primeira e embuchou a segunda (ou a terceira): leva quem ganhou '
+              'a primeira. Embuchou tudo: ninguém marca.',
           'Opcional: da segunda rodada em diante você pode jogar uma carta coberta '
               '(virada para baixo). Ela não vale nada, mas esconde a carta.',
         ],
@@ -168,7 +168,10 @@ class TableRulesSection extends StatelessWidget {
         'Quem dá vê a 3ª carta do parceiro',
         yes(rules.dealerSeesPartnerThirdCard),
       ),
-      ('Tempo de jogada', turnSecondsLabel(rules.turnSeconds)),
+      if (rules.isSlow)
+        ('Partida lenta', '${slowDaysLabel(rules.slowDays)} por jogada')
+      else
+        ('Tempo de jogada', turnSecondsLabel(rules.turnSeconds)),
     ];
     return AppSection(
       header: 'Regras desta mesa',
@@ -191,3 +194,6 @@ class TableRulesSection extends StatelessWidget {
 /// "20 s", or "Sem limite" for 0.
 String turnSecondsLabel(int seconds) =>
     seconds <= 0 ? 'Sem limite' : '$seconds s';
+
+/// "1 dia", "2 dias".
+String slowDaysLabel(int days) => days == 1 ? '1 dia' : '$days dias';

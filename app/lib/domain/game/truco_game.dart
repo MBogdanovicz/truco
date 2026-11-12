@@ -115,15 +115,18 @@ class RaiseAccepted extends GameEvent {
 }
 
 class Folded extends GameEvent {
-  const Folded(this.seat);
+  const Folded(this.seat, {this.partnerDecides = false});
   final int seat;
+
+  /// The first of the team to answer wants to run: the partner decides.
+  final bool partnerDecides;
 }
 
 class RoundEnded extends GameEvent {
   const RoundEnded(this.round, {required this.winner, required this.topSeat});
   final int round;
 
-  /// Null when the round was tied ("empatou" / "cangou").
+  /// Null when the round was tied ("empatou" / "embuchou").
   final Team? winner;
   final int topSeat;
 }
@@ -139,6 +142,12 @@ class HandEnded extends GameEvent {
 class GameEnded extends GameEvent {
   const GameEnded(this.winner);
   final Team winner;
+}
+
+/// A team gave the game up (left a tournament game): W.O.
+class Forfeited extends GameEvent {
+  const Forfeited(this.team);
+  final Team team;
 }
 
 // ------------------------------------------------------------------ state --
@@ -159,11 +168,18 @@ class RoundResult {
 }
 
 class PendingRaise {
-  const PendingRaise({required this.seat, required this.toLevel});
+  const PendingRaise({
+    required this.seat,
+    required this.toLevel,
+    this.refusedBy,
+  });
 
   /// Who called it.
   final int seat;
   final int toLevel;
+
+  /// The answering seat that wanted to run; its partner now decides.
+  final int? refusedBy;
   Team get team => teamOfSeat(seat);
 }
 
@@ -201,6 +217,9 @@ class TrucoGame {
   final List<RoundResult> _rounds = [];
   final List<Play> _current = [];
   int _turn = 0;
+
+  /// Who leads the current round.
+  int _leader = 0;
   int _stakeLevel = 0;
   Team? _lastRaiser;
   PendingRaise? _pending;
@@ -226,6 +245,10 @@ class TrucoGame {
   /// nobody sees the partner's cards, with or without the mão de ferro.
   bool get bothAtDecision => _bothAtDecision;
   Team? get winner => _winner;
+
+  /// The team that gave the game up (W.O.), if any.
+  Team? get forfeited => _forfeited;
+  Team? _forfeited;
   List<RoundResult> get rounds => List.unmodifiable(_rounds);
   List<Play> get currentPlays => List.unmodifiable(_current);
   List<Card> handOf(int seat) => List.unmodifiable(_hands[seat]);
@@ -234,11 +257,9 @@ class TrucoGame {
   List<Card> dealtTo(int seat) => List.unmodifiable(_dealt[seat]);
 
   /// The "pé": last to play in the current round (the seat before whoever
-  /// leads it). In the first round that is the dealer.
-  int get foot {
-    final leader = _rounds.isEmpty ? nextSeat(_dealer) : _rounds.last.topSeat;
-    return (leader + 3) % 4;
-  }
+  /// leads it). In the first round that is the dealer; it stays the same
+  /// after a tied round.
+  int get foot => (_leader + 3) % 4;
 
   /// What the current hand is worth if nobody raises again.
   int get handValue {
@@ -251,7 +272,8 @@ class TrucoGame {
   int? get responder {
     switch (_phase) {
       case GamePhase.raisePending:
-        return nextSeat(_pending!.seat);
+        final refused = _pending!.refusedBy;
+        return refused != null ? partnerOf(refused) : nextSeat(_pending!.seat);
       case GamePhase.decision:
         final t = _decisionTeam!;
         final first = nextSeat(_dealer);
@@ -283,6 +305,7 @@ class TrucoGame {
     _lastRaiser = null;
     _pending = null;
     _turn = nextSeat(_dealer);
+    _leader = _turn;
 
     final atDecision = [
       for (final t in Team.values)
@@ -315,6 +338,8 @@ class TrucoGame {
         return [Accept(seat), Fold(seat)];
       case GamePhase.raisePending:
         if (team == _pending!.team) return const [];
+        // The one who wanted to run waits for the partner's answer.
+        if (_pending!.refusedBy == seat) return const [];
         return [
           Accept(seat),
           Fold(seat),
@@ -404,6 +429,17 @@ class TrucoGame {
       _endHand(teamOfSeat(seat).other, rules.baseValue);
       return;
     }
+    final p = _pending!;
+    if (p.refusedBy == null) {
+      // The first to answer wants to run: the partner has the last word.
+      _pending = PendingRaise(
+        seat: p.seat,
+        toLevel: p.toLevel,
+        refusedBy: seat,
+      );
+      events.add(Folded(seat, partnerDecides: true));
+      return;
+    }
     events.add(Folded(seat));
     // The caller takes what the hand was worth before the refused raise.
     _endHand(_pending!.team, rules.stakes[_stakeLevel]);
@@ -439,7 +475,10 @@ class TrucoGame {
     if (decided != null) {
       _endHand(decided.winner, handValue);
     } else {
-      _turn = result.topSeat;
+      // The winner leads the next round; after a tie, whoever led the tied
+      // round leads again (the pé doesn't change).
+      _turn = winner == null ? _leader : result.topSeat;
+      _leader = _turn;
     }
   }
 
@@ -456,6 +495,21 @@ class TrucoGame {
       }
     }
     _phase = GamePhase.handOver;
+  }
+
+  /// [loser] gives the game up: the other team wins it, with the target
+  /// score (the loser keeps theirs).
+  void forfeit(Team loser) {
+    if (_phase == GamePhase.gameOver) return;
+    final winner = loser.other;
+    _pending = null;
+    _forfeited = loser;
+    scores[winner] = rules.targetScore;
+    _winner = winner;
+    _phase = GamePhase.gameOver;
+    events
+      ..add(Forfeited(loser))
+      ..add(GameEnded(winner));
   }
 
   PlayerView viewFor(int seat) => PlayerView._(this, seat);

@@ -409,9 +409,56 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   sampling (400 deals, fixed seed), and shows a tip banner above the actions. `training.dart` holds the
   practice situations shown by `TrainingScreen` (`/jogo/treinar`); progress is a local pref.
 
-### 10.7 Next (see ROADMAP G5+)
+### 10.7 Slow games ("partida lenta")
 
-* Championships: new tables for tournaments, brackets and entries.
+* A room whose rules have `lento` (days per move, 1-3) is a slow game: it starts only with 4 people,
+  `turn_deadline` is days away, and `game_rooms.waiting_seat` says whose turn it is (home screen list
+  `slowGamesProvider`, "Sua vez").
+* The `game` function pushes (`_shared/push.ts`, FCM) the person whose turn it becomes, and everyone when
+  the game ends. Nobody needs the game open: the `game-sweep` function (hourly GitHub workflow
+  `game-sweep.yml`, header `x-cron-secret`) lets the computer move for whoever ran out of days, which
+  takes the game out of the ranking (`replaced`).
+* Leaving the screen keeps the seat ("Voltar depois"); "Abandonar a partida" gives the seat to the computer.
+
+### 10.8 Tournaments (G6)
+
+* Tables `tournaments`, `tournament_teams`, `tournament_matches` (migration `20261113000000_tournaments.sql`),
+  written only by the `game` function (`game/tournament.ts`, actions `tournament.*`); the app reads them
+  (`app/lib/data/tournaments.dart`). Public or group-only; creating needs Premium (checked on the server).
+* Sign-up: pairs (a pair waits for the partner, who joins with the pair's 4-letter code from
+  `tournament_team_codes`, readable only by whoever signed the pair up), people alone, or both. On start the people
+  without a partner are paired at random (an odd one is left out) and the order is drawn.
+* Knockout: byes fill the bracket to a power of 2; each round opens when both feeding matches are done.
+  Round robin: circle method, every match created at start, round N due after N × `round_days`.
+* Each match has its own game room (`game_rooms.tournament_match_id`, rules carry `serie` = games in the
+  match): only its 4 people enter, on fixed seats (team A in 0/2). Live: the game starts when the 4th person
+  enters, the next game of a series by anyone seated. Slow (`lento`): seats filled and started at once,
+  the series goes on by itself. No rematch.
+* `game-sweep` also decides live matches past their deadline (not being played): ahead in the series wins,
+  else the team that entered the room (`present`), else a draw (knockout) or a loss for both (round robin).
+* Round robin order: wins, tento balance, tentos made.
+* Repescagem (`double_elimination`, migration `20261113020000`): the whole bracket is created at start
+  (`doubleElimination()`), each match with `bracket` and `sources` (winner/loser of earlier matches);
+  `resolveDouble()` fills and opens matches as results come in, passes lone teams through, and plays the
+  grand final again (round 201, "Finalíssima"; round 200 is shown as "Final") only if the losers' bracket champion wins round 200.
+* Spectators: people in the tournament may watch other matches (`watch` action: the newest seat view
+  with hands, partner cards, covered cards and actions removed; the app polls every 3 s).
+  Normal rooms can be watched by anyone with the room code (`watch` with `code`; offered by
+  "Entrar com código" when the room is full).
+* Each finished tournament game is saved to the device history ("Torneio <name>").
+* No computer plays for a pair in a tournament: leaving a tournament game (`leave` while playing)
+  or missing `MISS_LIMIT` (3) moves in a row (time ran out; the engine marks those log entries
+  `to: true`) gives the game up (engine input `forfeit`, log entry `{t: "forfeit", s}`). A W.O.
+  game counts for the tournament series only, not for the ranking or achievements.
+* Round robin opens one round at a time (`advance` opens the next round's rooms once the current
+  round is over; claimed via `room_code = ''`). The champions get their own push (kind `champion`).
+* The app draws knockout and repescagem as a bracket (`bracket_view.dart`): rounds side by side, each
+  match centred between the two that feed it.
+* Normal rooms: in the lobby a seated person can stand up (`stand`) and then sit only on a free seat; the table shows the room code.
+
+### 10.9 Next (see ROADMAP G5+)
+
+* Groups + knockout tournaments; tournaments played on the scorekeeper.
 
 ## 11. Repository layout (planned)
 

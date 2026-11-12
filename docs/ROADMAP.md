@@ -31,10 +31,12 @@ out on purpose. Table variations are options on top of it.
 |---|-----------|-------|
 | G1 ✅ | Local game vs computer | Engine (`domain/game/`), bots easy/medium/hard, card table, rules screen, variations (fixed or flipped manilhas, covered card, mão de ferro). Friendly only. |
 | G2 ✅ | Online game | Rooms with a code/link (computer fills empty seats), server as judge (Edge Function `game` runs the Dart engine), ranked only with 4 people with accounts, ranking filter game / scorekeeper / both. Later: game "por perto", turn timer for idle players. |
-| G3 | Social | "Intimar" button (push to group members), game achievements. |
-| G4 | Learning & custom rules | Done (2026-11-11): online move time is the only new rule (Marcelo declined the others); "modo professor" (Premium): tips on the person's plays vs the computer, and training situations. |
+| G3 ✅ | Social | "Intimar" button (push to group members), game achievements. |
+| G4 ✅ | Learning & custom rules | Done (2026-11-11): online move time is the only new rule (Marcelo declined the others); "modo professor" (Premium): tips on the person's plays vs the computer, and training situations. |
 | G5 | Looks | Perks unlocked by achievements (decks, table themes) and Marcelo's other theme ideas (decided 2026-11-10: features first). |
-| Later | Nearby game, championships | Nearby (Bluetooth) game is low priority: people at the same table usually use a real deck. |
+| G6 | Tournaments | Marcelo, 2026-11-11: public or group-only tournaments, chosen table rules, format (round robin, knockout, ...). Premium to create (planned since 2026-11-09). Built on dev 2026-11-11: knockout and round robin, sign-up by pair / alone / both, live (deadline per round) or slow matches, single game or best of 3/5 (final may differ), walkovers. |
+| G7 | Slow ("assíncrono") game | Marcelo, 2026-11-11: 4 humans only; each player has X days per move; push to the player whose turn it is; the room stays listed in the account so a missed push doesn't lose it. |
+| Later | Nearby game | Nearby (Bluetooth) game is low priority: people at the same table usually use a real deck. |
 
 ## Open items
 

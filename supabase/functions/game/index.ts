@@ -9,12 +9,16 @@
 // which the app follows over Realtime.
 //
 // Actions: create, join, sit, options, start (also rematch), act ({roomId,
-// move: {t, c?, x?, i?}}), timeout, leave.
+// move: {t, c?, x?, i?}}), timeout, leave, watch (tournament spectators); tournaments (tournament.ts):
+// tournament.create, tournament.register, tournament.pairCode,
+// tournament.unregister,
+// tournament.start, tournament.cancel, tournament.call.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
 // by the platform.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { Game, type Json, Refused } from "./game.ts";
+import { Tournaments } from "./tournament.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -49,6 +53,7 @@ Deno.serve(async (req) => {
       .eq("id", user.id).maybeSingle();
     const name = String(profile?.display_name ?? body.name ?? "Jogador").slice(0, 24);
     const game = new Game(db, user.id, user.is_anonymous ?? false, name);
+    const tournaments = new Tournaments(db, user.id, user.is_anonymous ?? false, name);
 
     switch (body.action) {
       case "create":
@@ -57,6 +62,8 @@ Deno.serve(async (req) => {
         return reply(200, await game.join(body));
       case "sit":
         return reply(200, await game.sit(body));
+      case "stand":
+        return reply(200, await game.stand(body));
       case "options":
         return reply(200, await game.options(body));
       case "start":
@@ -67,6 +74,22 @@ Deno.serve(async (req) => {
         return reply(200, await game.timeout(body));
       case "leave":
         return reply(200, await game.leave(body));
+      case "watch":
+        return reply(200, await game.watch(body));
+      case "tournament.create":
+        return reply(200, await tournaments.create(body));
+      case "tournament.register":
+        return reply(200, await tournaments.register(body));
+      case "tournament.pairCode":
+        return reply(200, await tournaments.pairCode(body));
+      case "tournament.unregister":
+        return reply(200, await tournaments.unregister(body));
+      case "tournament.start":
+        return reply(200, await tournaments.start(body));
+      case "tournament.cancel":
+        return reply(200, await tournaments.cancel(body));
+      case "tournament.call":
+        return reply(200, await tournaments.call(body));
       default:
         return reply(400, { error: "unknown_action" });
     }

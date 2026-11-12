@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,7 +7,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/push.dart';
+import '../../data/slow_games.dart';
+import '../../data/tournaments.dart';
 import '../../router.dart';
+import '../game/online_game_controller.dart';
+import '../scorekeeper/online_room_controller.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 
 /// "Avisos de intimação": lets this device get the group's calls to play.
@@ -152,19 +158,97 @@ class SummonsListener extends ConsumerStatefulWidget {
 }
 
 class _SummonsListenerState extends ConsumerState<SummonsListener> {
+  StreamSubscription<Summons>? _sub;
+
+  /// A dialog is open; pushes that arrive meanwhile wait here, the latest
+  /// per room only (a newer "sua vez" or the end replaces an older one).
+  bool _showing = false;
+  final _pending = <String, Summons>{};
+
   @override
   void initState() {
     super.initState();
     if (!PushService.supported) return;
-    PushService.instance.summons.listen(_show);
+    _sub = PushService.instance.summons.listen(_onSummons);
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  void _onSummons(Summons s) {
+    if (s.tapped) {
+      ref.read(routerProvider).go(s.path);
+      return;
+    }
+    _pending.remove(s.path);
+    _pending[s.path] = s;
+    if (!_showing) _drain();
+  }
+
+  Future<void> _drain() async {
+    _showing = true;
+    try {
+      while (_pending.isNotEmpty && mounted) {
+        final s = _pending.remove(_pending.keys.first)!;
+        if (await _stillNews(s)) await _show(s);
+      }
+    } finally {
+      _showing = false;
+    }
+  }
+
+  /// Whether [s] is still worth a dialog now (it may have waited behind
+  /// another one, or the person may be at that table already).
+  Future<bool> _stillNews(Summons s) async {
+    final router = ref.read(routerProvider);
+    if (_alreadyThere(s, router.routerDelegate.currentConfiguration.uri.path)) {
+      return false;
+    }
+    final code = Uri.tryParse(s.path)?.queryParameters['codigo'];
+    if (s.kind == 'end') {
+      // Seen it end at the table (even if now on another screen of it).
+      return ref.read(onlineGameControllerProvider)?.code != code;
+    }
+    if (s.kind == 'match') {
+      // "Seu jogo está pronto": only while that match is still to play
+      // (the push may have waited while the app was in the background).
+      final id = Uri.tryParse(s.path)?.pathSegments.last;
+      if (id == null) return false;
+      try {
+        final me = ref.read(tournamentUserIdProvider);
+        final d = await ref.read(tournamentsRepositoryProvider)!.detail(id);
+        final next = d.nextMatchOf(me);
+        return next != null &&
+            next.teamB != null &&
+            next.roomCode != null &&
+            next.status == 'pending';
+      } on Object {
+        return true;
+      }
+    }
+    if (s.kind == 'turn') {
+      // Still this person's turn? (They may have played elsewhere, or the
+      // game may be over.)
+      ref.invalidate(slowGamesProvider);
+      // Keeps the (auto-dispose) list alive while it loads.
+      final keep = ref.listenManual(slowGamesProvider, (_, _) {});
+      try {
+        final games = await ref.read(slowGamesProvider.future);
+        return games.any((g) => g.code == code && g.myTurn);
+      } on Object {
+        return true;
+      } finally {
+        keep.close();
+      }
+    }
+    return true;
   }
 
   Future<void> _show(Summons s) async {
     final router = ref.read(routerProvider);
-    if (s.tapped) {
-      router.go(s.path);
-      return;
-    }
     final context = router.routerDelegate.navigatorKey.currentContext;
     if (context == null) return;
     final go = await showAppDialog<bool>(
@@ -177,6 +261,36 @@ class _SummonsListenerState extends ConsumerState<SummonsListener> {
       ],
     );
     if (go == true) router.go(s.path);
+  }
+
+  /// The person is already looking at the room the push is about (their
+  /// turn in a slow game, its end): the table shows it, no dialog needed.
+  bool _alreadyThere(Summons s, String location) {
+    final target = Uri.tryParse(s.path);
+    final tournament = target?.path.startsWith('/torneios/') == true
+        ? target!.pathSegments.last
+        : null;
+    if (tournament != null) {
+      // On the tournament screen, or still at the table of one of its
+      // matches ("Sair" leads to the tournament anyway). The champions'
+      // congratulations always show.
+      if (s.kind == 'champion') return false;
+      return location == target!.path ||
+          (location == '/jogo/sala' &&
+              ref.read(onlineGameControllerProvider)?.room?.tournamentId ==
+                  tournament);
+    }
+    final code = target?.queryParameters['codigo'];
+    if (code == null) return false;
+    if (target!.path == '/jogo/entrar') {
+      return location == '/jogo/sala' &&
+          ref.read(onlineGameControllerProvider)?.code == code;
+    }
+    if (target.path == '/marcador/entrar') {
+      return location == '/marcador/sala' &&
+          ref.read(onlineRoomControllerProvider)?.snapshot?.code == code;
+    }
+    return false;
   }
 
   @override

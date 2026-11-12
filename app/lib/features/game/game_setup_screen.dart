@@ -34,6 +34,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   static const _kOpponents = 'game.opponents';
   static const _kCoach = 'game.coach';
   static const _kTurn = 'game.turnSeconds';
+  static const _kSlow = 'game.slowDays';
 
   bool _fixed = false;
   bool _cover = true;
@@ -43,6 +44,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   bool _foot = true;
   bool _coach = false;
   int _turn = 20;
+  int _slow = 1;
 
   TrucoRules get _rules => TrucoRules.paulista.copyWith(
     manilhaMode: _fixed ? ManilhaMode.fixed : ManilhaMode.vira,
@@ -76,6 +78,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
         _coach = p.getBool(_kCoach) ?? _coach;
         final turn = p.getInt(_kTurn);
         if (TrucoRules.turnSecondsOptions.contains(turn)) _turn = turn!;
+        final slow = p.getInt(_kSlow);
+        if (TrucoRules.slowDaysOptions.contains(slow)) _slow = slow!;
         _partner =
             AiLevel.values.asNameMap()[p.getString(_kPartner)] ?? _partner;
         _opponents =
@@ -95,6 +99,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
       await p.setBool(_kFoot, _foot);
       await p.setBool(_kCoach, _coach);
       await p.setInt(_kTurn, _turn);
+      await p.setInt(_kSlow, _slow);
       await p.setString(_kPartner, _partner.name);
       await p.setString(_kOpponents, _opponents.name);
     } catch (_) {}
@@ -146,7 +151,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
     setState(() => _coach = on);
   }
 
-  Future<void> _createRoom() async {
+  Future<void> _createRoom({bool slow = false}) async {
     final user = ref.read(authRepositoryProvider).currentUser;
     if (user == null || user.isGuest) {
       showAppToast(context, 'Entre com seu e-mail para criar salas.');
@@ -163,7 +168,11 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
     try {
       await ref
           .read(onlineGameControllerProvider.notifier)
-          .create(rules: _rules, botLevel: _opponents, ranked: true);
+          .create(
+            rules: slow ? _rules.copyWith(slowDays: _slow) : _rules,
+            botLevel: _opponents,
+            ranked: true,
+          );
       if (mounted) context.go('/jogo/sala');
     } on GameRoomError catch (e) {
       if (mounted) showAppToast(context, e.message);
@@ -344,6 +353,37 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
               title: 'Entrar com código',
               leading: const AppTileIcon(AppIcon.key, color: Colors.indigo),
               onTap: () => context.push('/jogo/entrar'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        AppSection(
+          header: 'Partida lenta',
+          footer:
+              'Para 4 pessoas jogarem sem combinar horário: cada uma tem o '
+              'prazo acima para fazer a sua jogada e recebe um aviso quando '
+              'for a vez dela. A partida fica na tela inicial. Se o prazo '
+              'acabar, o computador joga pela pessoa e a partida deixa de '
+              'contar para o ranking.',
+          children: [
+            AppTile(title: 'Prazo por jogada'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: AppSegmented<int>(
+                segments: {
+                  for (final d in TrucoRules.slowDaysOptions)
+                    d: slowDaysLabel(d),
+                },
+                value: _slow,
+                onChanged: (v) => setState(() => _slow = v),
+              ),
+            ),
+            AppTile(
+              title: 'Criar partida lenta',
+              subtitle: 'Mande o código para os outros 3.',
+              leading: const AppTileIcon(AppIcon.online, color: Colors.teal),
+              trailing: _creating ? const AppProgress() : null,
+              onTap: _creating ? null : () => _createRoom(slow: true),
             ),
           ],
         ),

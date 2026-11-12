@@ -9,9 +9,11 @@ import '../../domain/game/ai.dart';
 import '../../domain/game/cards.dart';
 import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
+import '../../domain/game/truco_game.dart' show GamePhase;
 import '../../domain/scorekeeper/team.dart';
 import 'frame_player.dart';
 import 'game_table.dart';
+import 'tournament_history.dart';
 
 /// Names of the computer players, by seat.
 const onlineBotNames = ['Lia', 'Zeca', 'Bia', 'Tonho'];
@@ -137,6 +139,7 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   }
 
   void _close() {
+    _standing = false;
     _clock?.cancel();
     _clock = null;
     _player.reset();
@@ -151,19 +154,37 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   void _onSnapshot(GameRoomSnapshot room) {
     final s = state;
     if (s == null || room.id != s.roomId) return;
-    if (room.status == GameRoomStatus.closed) {
+    // A finished tournament match (or a closed room) is no place to go
+    // back to from the home screen.
+    if (room.status == GameRoomStatus.closed ||
+        (room.isTournament &&
+            room.status == GameRoomStatus.finished &&
+            room.seriesOver)) {
       ref.read(lastGameRoomRepositoryProvider).clear().then((_) {
         ref.invalidate(lastGameRoomCodeProvider);
       }, onError: (_) {});
     }
+    final seated = myId == null || room.seatOf(myId!) != null;
+    if (seated) _standing = false;
     if (room.status == GameRoomStatus.closed ||
-        (myId != null && room.seatOf(myId!) == null)) {
+        (!seated && !(_standing && room.status == GameRoomStatus.lobby))) {
       state = s.copyWith(room: room, closed: true);
       return;
     }
     state = s.copyWith(room: room);
     _applyView(room.viewVersion, room.frames);
+    // Tournament games go to this device's history.
+    final last = room.frames.lastOrNull;
+    if (room.isTournament &&
+        room.status == GameRoomStatus.finished &&
+        last != null &&
+        last.phase == GamePhase.gameOver) {
+      final key = '${room.id}-${room.wins.$1 + room.wins.$2}';
+      if (_saved.add(key)) saveTournamentGame(ref, room, last);
+    }
   }
+
+  final _saved = <String>{};
 
   /// New frames for this person: played in order when they follow the
   /// last ones, otherwise only the last is shown.
@@ -194,7 +215,8 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
       return;
     }
     final left = deadline.difference(DateTime.now()).inMilliseconds;
-    final seconds = (left / 1000).ceil().clamp(0, 99);
+    // Slow games count days.
+    final seconds = (left / 1000).ceil().clamp(0, 8 * 86400);
     if (seconds != s.secondsLeft) {
       state = s.copyWith(secondsLeft: () => seconds);
     }
@@ -244,6 +266,18 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
 
   Future<void> sit(int seat) => _send((b, id) => b.sit(id, seat));
 
+  /// Standing up in the lobby: the room stays open without a seat.
+  bool _standing = false;
+  Future<void> stand() async {
+    _standing = true;
+    try {
+      await _send((b, id) => b.stand(id));
+    } on Object {
+      _standing = false;
+      rethrow;
+    }
+  }
+
   Future<void> setBotLevel(AiLevel level) =>
       _send((b, id) => b.options(id, botLevel: level));
 
@@ -255,6 +289,9 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
 
   /// Starts the game, or a rematch (host only).
   Future<void> start() => _send((b, id) => b.start(id));
+
+  /// Tournament rooms: calls the match players who aren't here yet.
+  Future<void> callPlayers() => _send((b, id) => b.callPlayers(id));
 
   // ------------------------------------------------------------- game --
 
@@ -287,6 +324,13 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
     } finally {
       if (state?.roomId == s.roomId) state = state!.copyWith(sending: false);
     }
+  }
+
+  /// Stops following the room but keeps the seat (slow games: the person
+  /// comes back when it's their turn).
+  void close() {
+    _close();
+    state = null;
   }
 
   Future<void> leave() async {
