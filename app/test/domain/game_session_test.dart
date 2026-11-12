@@ -57,7 +57,7 @@ void main() {
     while (s.waitingFor != seat) {
       s.timeout();
     }
-    final action = s.game.legalActions(seat).whereType<PlayCard>().first;
+    final action = s.game.legalActions(seat).first;
     s.act(seat, action);
     expect(s.missedInARow(seat), 0);
   });
