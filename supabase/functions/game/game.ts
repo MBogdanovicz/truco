@@ -652,21 +652,34 @@ export class Game {
    * tournament who don't play this match. Returns the table as a spectator
    * sees it (no hands, covered cards hidden), from the newest view. */
   async watch(body: Json) {
-    const room = await this.room(body.roomId as string);
-    if (!room.tournament_match_id) throw new Refused("not_tournament");
-    const { data: m } = await this.db.from("tournament_matches")
-      .select("tournament_id").eq("id", room.tournament_match_id).maybeSingle();
-    if (!m) throw new Refused("not_tournament");
-    const [{ data: asA }, { data: asB }, { data: t }] = await Promise.all([
-      this.db.from("tournament_teams").select("id")
-        .eq("tournament_id", m.tournament_id).eq("player_a", this.userId),
-      this.db.from("tournament_teams").select("id")
-        .eq("tournament_id", m.tournament_id).eq("player_b", this.userId),
-      this.db.from("tournaments").select("owner_id")
-        .eq("id", m.tournament_id).maybeSingle(),
-    ]);
-    if (!asA?.length && !asB?.length && t?.owner_id !== this.userId) {
-      throw new Refused("not_in_tournament");
+    // A normal room is watched by its code (whoever has it can watch); a
+    // tournament match by its id, by the people of the tournament.
+    const code = body.code ? String(body.code).trim().toUpperCase() : null;
+    let roomId = body.roomId as string;
+    if (code) {
+      const { data } = await this.db.from("game_rooms").select("id")
+        .eq("code", code).neq("status", "closed").maybeSingle();
+      if (!data) throw new Refused("room_not_found");
+      roomId = data.id;
+    }
+    const room = await this.room(roomId);
+    if (!room.tournament_match_id) {
+      if (!code || code !== room.code) throw new Refused("not_tournament");
+    } else {
+      const { data: m } = await this.db.from("tournament_matches")
+        .select("tournament_id").eq("id", room.tournament_match_id).maybeSingle();
+      if (!m) throw new Refused("not_tournament");
+      const [{ data: asA }, { data: asB }, { data: t }] = await Promise.all([
+        this.db.from("tournament_teams").select("id")
+          .eq("tournament_id", m.tournament_id).eq("player_a", this.userId),
+        this.db.from("tournament_teams").select("id")
+          .eq("tournament_id", m.tournament_id).eq("player_b", this.userId),
+        this.db.from("tournaments").select("owner_id")
+          .eq("id", m.tournament_id).maybeSingle(),
+      ]);
+      if (!asA?.length && !asB?.length && t?.owner_id !== this.userId) {
+        throw new Refused("not_in_tournament");
+      }
     }
     const seats = await this.seats(room.id);
     const { data: views, error } = await this.db.from("game_views")
@@ -680,6 +693,8 @@ export class Game {
     const frames = (newest?.frames ?? []) as Json[];
     const frame = frames.length ? spectatorView(frames[frames.length - 1]) : null;
     return {
+      roomId: room.id,
+      code: room.code,
       status: room.status,
       version: newest?.version ?? 0,
       seats: seats.map((s) => ({ seat: s.seat, name: s.name })),

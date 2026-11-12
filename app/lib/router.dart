@@ -142,6 +142,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ),
               ),
               GoRoute(
+                path: 'assistir',
+                builder: (_, state) =>
+                    WatchMatchScreen(code: state.uri.queryParameters['codigo']),
+              ),
+              GoRoute(
                 path: 'treinar',
                 builder: (_, _) => const TrainingScreen(),
               ),
@@ -174,7 +179,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'assistir/:room',
                 builder: (_, state) =>
-                    WatchMatchScreen(roomId: state.pathParameters['room']!),
+                    WatchMatchScreen(roomId: state.pathParameters['room']),
               ),
               GoRoute(
                 path: ':id',

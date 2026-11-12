@@ -518,6 +518,9 @@ class _JoinGameState extends ConsumerState<JoinGameScreen> {
   bool _busy = false;
   String? _error;
 
+  /// The room is full: it can still be watched.
+  String? _full;
+
   @override
   void initState() {
     super.initState();
@@ -541,12 +544,16 @@ class _JoinGameState extends ConsumerState<JoinGameScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _full = null;
     });
     try {
       await ref.read(onlineGameControllerProvider.notifier).join(code);
       if (mounted) context.go('/jogo/sala');
     } on GameRoomError catch (e) {
-      setState(() => _error = e.message);
+      setState(() {
+        _error = e.message;
+        _full = e.code == 'room_full' ? code : null;
+      });
       if (const {
         'room_not_found',
         'room_full',
@@ -596,6 +603,14 @@ class _JoinGameState extends ConsumerState<JoinGameScreen> {
         _busy
             ? const Center(child: AppProgress())
             : AppButton(label: 'Entrar', onPressed: _join),
+        if (_full != null && !_busy) ...[
+          const SizedBox(height: 12),
+          AppButton(
+            label: 'Assistir',
+            tonal: true,
+            onPressed: () => context.push('/jogo/assistir?codigo=$_full'),
+          ),
+        ],
       ],
     );
   }

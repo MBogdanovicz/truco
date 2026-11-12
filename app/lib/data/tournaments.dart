@@ -443,8 +443,12 @@ class TournamentsRepository {
   }
 
   /// A tournament match as a spectator sees it (see game.ts `watch`).
-  Future<SpectatedMatch> spectate(String roomId) async {
-    final r = await _call2('watch', {'roomId': roomId});
+  /// A tournament match by its room id, or a normal room by its [code].
+  Future<SpectatedMatch> spectate({String? roomId, String? code}) async {
+    final r = await _call2('watch', {
+      'roomId': ?roomId,
+      'code': ?code,
+    });
     final frame = r['frame'];
     final names = List.filled(4, '…');
     for (final s in (r['seats'] as List?) ?? const []) {

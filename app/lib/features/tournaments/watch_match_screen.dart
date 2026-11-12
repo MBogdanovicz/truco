@@ -9,11 +9,12 @@ import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../game/game_table.dart';
 
-/// "Assistir": a tournament match seen from outside (no cards in hand),
-/// refreshed every few seconds.
+/// "Assistir": a tournament match (by its room id) or a normal room (by its
+/// code) seen from outside (no cards in hand), refreshed every few seconds.
 class WatchMatchScreen extends ConsumerStatefulWidget {
-  const WatchMatchScreen({super.key, required this.roomId});
-  final String roomId;
+  const WatchMatchScreen({super.key, this.roomId, this.code});
+  final String? roomId;
+  final String? code;
 
   @override
   ConsumerState<WatchMatchScreen> createState() => _WatchMatchState();
@@ -44,7 +45,7 @@ class _WatchMatchState extends ConsumerState<WatchMatchScreen> {
     try {
       final m = await ref
           .read(tournamentsRepositoryProvider)!
-          .spectate(widget.roomId);
+          .spectate(roomId: widget.roomId, code: widget.code);
       if (!mounted) return;
       // When the players leave the room at the end, keep their names.
       final before = _match?.names;
@@ -59,7 +60,8 @@ class _WatchMatchState extends ConsumerState<WatchMatchScreen> {
       });
       if (m.status == 'closed') _timer?.cancel();
     } on TournamentError catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      // After the end the room closes: keep showing how it ended.
+      if (mounted && _match == null) setState(() => _error = e.message);
       _timer?.cancel();
     } on Object {
       // Try again on the next tick.
@@ -68,7 +70,9 @@ class _WatchMatchState extends ConsumerState<WatchMatchScreen> {
     }
   }
 
-  void _close() => context.canPop() ? context.pop() : context.go('/torneios');
+  void _close() => context.canPop()
+      ? context.pop()
+      : context.go(widget.code != null ? '/jogo' : '/torneios');
 
   @override
   Widget build(BuildContext context) {

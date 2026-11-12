@@ -443,6 +443,8 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   grand final again (round 201, "Finalíssima"; round 200 is shown as "Final") only if the losers' bracket champion wins round 200.
 * Spectators: people in the tournament may watch other matches (`watch` action: the newest seat view
   with hands, partner cards, covered cards and actions removed; the app polls every 3 s).
+  Normal rooms can be watched by anyone with the room code (`watch` with `code`; offered by
+  "Entrar com código" when the room is full).
 * Each finished tournament game is saved to the device history ("Torneio <name>").
 
 ### 10.9 Next (see ROADMAP G5+)

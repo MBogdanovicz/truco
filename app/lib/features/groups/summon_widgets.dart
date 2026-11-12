@@ -8,6 +8,7 @@ import '../../data/auth_repository.dart';
 import '../../data/groups_repository.dart';
 import '../../data/push.dart';
 import '../../data/slow_games.dart';
+import '../../data/tournaments.dart';
 import '../../router.dart';
 import '../game/online_game_controller.dart';
 import '../scorekeeper/online_room_controller.dart';
@@ -210,6 +211,23 @@ class _SummonsListenerState extends ConsumerState<SummonsListener> {
     if (s.kind == 'end') {
       // Seen it end at the table (even if now on another screen of it).
       return ref.read(onlineGameControllerProvider)?.code != code;
+    }
+    if (s.kind == 'match') {
+      // "Seu jogo está pronto": only while that match is still to play
+      // (the push may have waited while the app was in the background).
+      final id = Uri.tryParse(s.path)?.pathSegments.last;
+      if (id == null) return false;
+      try {
+        final me = ref.read(tournamentUserIdProvider);
+        final d = await ref.read(tournamentsRepositoryProvider)!.detail(id);
+        final next = d.nextMatchOf(me);
+        return next != null &&
+            next.teamB != null &&
+            next.roomCode != null &&
+            next.status == 'pending';
+      } on Object {
+        return true;
+      }
     }
     if (s.kind == 'turn') {
       // Still this person's turn? (They may have played elsewhere, or the

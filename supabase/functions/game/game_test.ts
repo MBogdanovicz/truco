@@ -161,3 +161,16 @@ Deno.test("slow games: 4 people, and the sweep moves for whoever ran out of days
   // The computer played for someone: no longer ranked.
   assert(db.tables.game_states[0].replaced === true);
 });
+
+Deno.test("anyone with the code watches a normal room", async () => {
+  const db = new FakeDb();
+  const ana = new Game(asDb(db), "ana", false, "Ana");
+  const zeca = new Game(asDb(db), "zeca", false, "Zeca");
+  const { roomId, code } = await ana.create({ botLevel: "easy" });
+  await refused(() => zeca.watch({ roomId }), "not_tournament");
+  await ana.start({ roomId });
+  const seen = await zeca.watch({ code: code.toLowerCase() }) as Json;
+  assert(seen.roomId === roomId && seen.status === "playing");
+  const frame = seen.frame as Json;
+  assert((frame.hand as unknown[]).length === 0, "no cards in hand");
+});

@@ -641,6 +641,7 @@ export class Tournaments {
       await this.notify(who, t, {
         title: `Torneio ${t.name}`,
         body: `Seu jogo está pronto: ${vs}. Combinem um horário e joguem${until}.`,
+        kind: "match",
       });
     }
   }
@@ -938,7 +939,7 @@ export class Tournaments {
   private async notify(
     userIds: string[],
     t: Tourney,
-    push: { title: string; body: string; path?: string },
+    push: { title: string; body: string; path?: string; kind?: "match" },
   ) {
     await sendPush(this.db, userIds.filter(Boolean), {
       ...push,
