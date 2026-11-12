@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -85,8 +87,19 @@ final dealerDrawProvider = NotifierProvider<DealerDrawNotifier, DealerDraw?>(
   DealerDrawNotifier.new,
 );
 
+/// How the face-down cards are laid out.
+enum DrawSpread {
+  /// The deck spread in an overlapping line, as on a real table.
+  ribbon,
+
+  /// Separate cards in rows (the first version; kept to switch back).
+  grid,
+}
+
 /// The screen where the person draws a card to see who deals.
 class DealerDrawView extends StatelessWidget {
+  static const spreadStyle = DrawSpread.ribbon;
+
   const DealerDrawView({
     super.key,
     required this.draw,
@@ -106,6 +119,7 @@ class DealerDrawView extends StatelessWidget {
     final theme = Theme.of(context);
     const light = Color(0xFFF4EBD8);
     final mine = draw.picks[mySeat];
+    final canPick = mine == null && !draw.timedOut;
     final String status;
     if (draw.timedOut) {
       status = 'O tempo acabou: quem dá foi sorteado.';
@@ -181,31 +195,16 @@ class DealerDrawView extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (var i = 0; i < draw.spread.length; i++)
-                        AnimatedOpacity(
-                          duration: const Duration(milliseconds: 250),
-                          opacity: draw.picks.containsValue(i) ? 0.15 : 1,
-                          child: GestureDetector(
-                            key: ValueKey('draw-card-$i'),
-                            onTap:
-                                mine == null &&
-                                    !draw.timedOut &&
-                                    !draw.picks.containsValue(i)
-                                ? () => onPick(i)
-                                : null,
-                            child: const CardBack(width: 48),
-                          ),
-                        ),
-                    ],
+                child: switch (spreadStyle) {
+                  DrawSpread.ribbon => _RibbonSpread(
+                    draw: draw,
+                    onPick: canPick ? onPick : null,
                   ),
-                ),
+                  DrawSpread.grid => _GridSpread(
+                    draw: draw,
+                    onPick: canPick ? onPick : null,
+                  ),
+                },
               ),
             ],
           ),
@@ -281,4 +280,116 @@ class _SeatDraw extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The deck spread in a slightly curved, overlapping line. Each card shows
+/// a strip; a tap picks the card whose strip is under the finger.
+class _RibbonSpread extends StatelessWidget {
+  const _RibbonSpread({required this.draw, required this.onPick});
+
+  final DealerDraw draw;
+  final ValueChanged<int>? onPick;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final n = draw.spread.length;
+      final width = math.min(c.maxWidth - 32, 560.0);
+      final cardW = math.min(72.0, width / 4.5);
+      final cardH = cardW / 0.68;
+      final step = (width - cardW) / (n - 1);
+      final left = (c.maxWidth - width) / 2;
+      final top = math.max(24.0, (c.maxHeight - cardH) / 2 - 30);
+      Offset at(int i) {
+        // A gentle arc, higher in the middle.
+        final t = i / (n - 1) * 2 - 1;
+        return Offset(left + i * step, top + t * t * 18);
+      }
+
+      void tap(Offset p) {
+        if (onPick == null) return;
+        // The top card at this point: the last one whose left edge is to
+        // the left of the finger.
+        for (var i = n - 1; i >= 0; i--) {
+          final o = at(i);
+          final picked = draw.picks.containsValue(i);
+          if (!picked && p.dx >= o.dx && p.dx <= o.dx + cardW) {
+            onPick!(i);
+            return;
+          }
+        }
+      }
+
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (d) => tap(d.localPosition),
+        child: Stack(
+          children: [
+            for (var i = 0; i < n; i++)
+              AnimatedPositioned(
+                key: ValueKey('draw-card-$i'),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+                left: at(i).dx,
+                top: at(i).dy - (draw.picks.containsValue(i) ? 40 : 0),
+                width: cardW,
+                height: cardH,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: draw.picks.containsValue(i) ? 0 : 1,
+                  child: Transform.rotate(
+                    angle: (i / (n - 1) * 2 - 1) * 0.12,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(cardW * 0.08),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66000000),
+                            blurRadius: 4,
+                            offset: Offset(-2, 2),
+                          ),
+                        ],
+                      ),
+                      child: CardBack(width: cardW),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// Separate face-down cards in rows.
+class _GridSpread extends StatelessWidget {
+  const _GridSpread({required this.draw, required this.onPick});
+
+  final DealerDraw draw;
+  final ValueChanged<int>? onPick;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (var i = 0; i < draw.spread.length; i++)
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 250),
+            opacity: draw.picks.containsValue(i) ? 0.15 : 1,
+            child: GestureDetector(
+              key: ValueKey('draw-card-$i'),
+              onTap: onPick != null && !draw.picks.containsValue(i)
+                  ? () => onPick!(i)
+                  : null,
+              child: const CardBack(width: 48),
+            ),
+          ),
+      ],
+    ),
+  );
 }

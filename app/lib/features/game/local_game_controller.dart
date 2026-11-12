@@ -123,7 +123,7 @@ class LocalGameController extends Notifier<GameTableModel?> {
     _session = null;
     state = null;
     final deck = [...fullDeck]..shuffle(_random);
-    _draw = DealerDraw(names: _names, spread: deck.take(12).toList());
+    _draw = DealerDraw(names: _names, spread: deck.take(20).toList());
     // The computer players draw one by one.
     for (final seat in const [1, 2, 3]) {
       _drawTimers.add(

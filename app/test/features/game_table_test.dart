@@ -68,7 +68,8 @@ void main() {
           final first = find.byKey(ValueKey('draw-card-$free'));
           await tester.ensureVisible(first);
           await tester.pump();
-          await tester.tap(first);
+          // The cards overlap: tap the visible strip at the left edge.
+          await tester.tapAt(tester.getTopLeft(first) + const Offset(4, 30));
           await tester.pump();
           for (var i = 0; i < 15; i++) {
             await tester.pump(const Duration(milliseconds: 100));
