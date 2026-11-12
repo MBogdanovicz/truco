@@ -119,12 +119,45 @@ class GameSession {
     }
   }
 
-  /// The person took too long: the computer moves for them.
-  Frames timeout({AiLevel level = AiLevel.medium}) {
+  /// The person took too long: the computer moves for them. With
+  /// [missLimit] (tournament games), missing that many moves in a row
+  /// gives the game up (W.O.).
+  Frames timeout({AiLevel level = AiLevel.medium, int? missLimit}) {
     final seat = waitingFor;
     if (seat == null) throw GameRuleError('nobody to wait for');
     final action = TrucoBot(level, random: _random).decide(game.viewFor(seat));
-    return act(seat, action);
+    final frames = act(seat, action);
+    // Marks the move as the computer's (see [missedInARow]).
+    final i = log.lastIndexWhere((e) => e['s'] == seat);
+    log[i] = {...log[i], 'to': true};
+    if (missLimit != null &&
+        game.phase != GamePhase.gameOver &&
+        missedInARow(seat) >= missLimit) {
+      final more = forfeit(seat);
+      more.forEach((s, list) => (frames[s] ??= []).addAll(list));
+    }
+    return frames;
+  }
+
+  /// Moves of [seat] in a row (the latest ones) made by the computer
+  /// because time ran out.
+  int missedInARow(int seat) {
+    var n = 0;
+    for (final e in log.reversed) {
+      if (e['s'] != seat) continue;
+      if (e['to'] != true) break;
+      n++;
+    }
+    return n;
+  }
+
+  /// [seat]'s team gives the game up (left a tournament game).
+  Frames forfeit(int seat) {
+    game.forfeit(teamOfSeat(seat));
+    log.add({'t': 'forfeit', 's': seat});
+    final frames = <int, List<TableView>>{};
+    _snapshot(frames, 0);
+    return frames;
   }
 
   /// Applies a person's action sent as JSON (online games).
@@ -204,6 +237,8 @@ class GameSession {
   void _applyLogged(Map<String, Object?> entry) {
     if (entry['t'] == 'next') {
       game.startNextHand();
+    } else if (entry['t'] == 'forfeit') {
+      game.forfeit(teamOfSeat(entry['s']! as int));
     } else {
       game.apply(actionFromJson(entry));
     }

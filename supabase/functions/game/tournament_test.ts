@@ -309,3 +309,35 @@ Deno.test("round robin plays round by round; the champions are congratulated", a
   assert((t.status as string) === "finished", `status ${t.status}`);
   assert(opened().length === 6, "every match got its room");
 });
+
+Deno.test("leaving a tournament game gives it up (W.O.)", async () => {
+  const db = new FakeDb();
+  const ids = Array.from({ length: 8 }, (_, i) => `w${i}`);
+  const all = people(db, ids, ["w0"]);
+  const { id } = await all.get("w0")!.t.create({
+    name: "Sem fujão",
+    format: "knockout",
+    entry: "pairs",
+    maxTeams: 4,
+    rules: { tempo: 0 },
+  });
+  for (let i = 0; i < 8; i += 2) {
+    const { code } = await all.get(ids[i])!.t.register({ tournamentId: id, as: "pair" }) as Json;
+    await all.get(ids[i + 1])!.t.register({ tournamentId: id, as: "join", code });
+  }
+  await all.get("w0")!.t.start({ tournamentId: id });
+  const m = live(db)!;
+  const room = () => db.tables.game_rooms.find((r) => r.id === m.room_id)!;
+  const teams = db.tables.tournament_teams;
+  const a = teams.find((t) => t.id === m.team_a)!;
+  const b = teams.find((t) => t.id === m.team_b)!;
+  for (const p of [a.player_a, b.player_a, a.player_b, b.player_b]) {
+    await all.get(p as string)!.g.join({ code: room().code });
+  }
+  assert(room().status === "playing", `status ${room().status}`);
+  await all.get(a.player_a as string)!.g.leave({ roomId: room().id });
+  assert(m.status === "done", `match ${m.status}`);
+  assert(m.winner === b.id, "the other pair wins");
+  assert(room().status === "finished");
+  assert(room().wins_b === 1);
+});

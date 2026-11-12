@@ -63,6 +63,8 @@ const _aceOfSpades = Card(Rank.ace, Suit.espadas);
 /// What each seat did in this game that counts for an achievement.
 Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
   final feats = {for (var s = 0; s < 4; s++) s: <String>{}};
+  // A game won by W.O. earns nothing.
+  if (events.any((e) => e is Forfeited)) return feats;
   void team(Team t, String feat) {
     for (var s = 0; s < 4; s++) {
       if (teamOfSeat(s) == t) feats[s]!.add(feat);
@@ -128,6 +130,8 @@ Map<int, Set<String>> gameFeats(List<GameEvent> events, TrucoRules rules) {
             if (manilhas.containsAll(value)) feats[s]!.add(key);
           }
         }
+      case Forfeited():
+        break;
       case GameEnded():
         if (!raisedHand) team(e.winner, GameFeat.comadre);
         if (ran.contains(e.winner)) team(e.winner, GameFeat.ranAndWon);

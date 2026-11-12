@@ -144,6 +144,12 @@ class GameEnded extends GameEvent {
   final Team winner;
 }
 
+/// A team gave the game up (left a tournament game): W.O.
+class Forfeited extends GameEvent {
+  const Forfeited(this.team);
+  final Team team;
+}
+
 // ------------------------------------------------------------------ state --
 
 class Play {
@@ -239,6 +245,10 @@ class TrucoGame {
   /// nobody sees the partner's cards, with or without the mão de ferro.
   bool get bothAtDecision => _bothAtDecision;
   Team? get winner => _winner;
+
+  /// The team that gave the game up (W.O.), if any.
+  Team? get forfeited => _forfeited;
+  Team? _forfeited;
   List<RoundResult> get rounds => List.unmodifiable(_rounds);
   List<Play> get currentPlays => List.unmodifiable(_current);
   List<Card> handOf(int seat) => List.unmodifiable(_hands[seat]);
@@ -485,6 +495,21 @@ class TrucoGame {
       }
     }
     _phase = GamePhase.handOver;
+  }
+
+  /// [loser] gives the game up: the other team wins it, with the target
+  /// score (the loser keeps theirs).
+  void forfeit(Team loser) {
+    if (_phase == GamePhase.gameOver) return;
+    final winner = loser.other;
+    _pending = null;
+    _forfeited = loser;
+    scores[winner] = rules.targetScore;
+    _winner = winner;
+    _phase = GamePhase.gameOver;
+    events
+      ..add(Forfeited(loser))
+      ..add(GameEnded(winner));
   }
 
   PlayerView viewFor(int seat) => PlayerView._(this, seat);

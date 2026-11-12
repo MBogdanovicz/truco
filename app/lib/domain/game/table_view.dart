@@ -77,6 +77,7 @@ class TableView {
     required this.mustAnswer,
     required this.myTurn,
     required this.winner,
+    this.forfeited,
     this.speech = const {},
     this.toast,
     this.showLastRound = false,
@@ -114,6 +115,9 @@ class TableView {
   /// This seat must play a card (or may raise).
   final bool myTurn;
   final Team? winner;
+
+  /// The team that gave the game up (W.O.).
+  final Team? forfeited;
   final Map<int, String> speech;
   final String? toast;
   final bool showLastRound;
@@ -158,6 +162,7 @@ class TableView {
     mustAnswer: mustAnswer,
     myTurn: myTurn,
     winner: winner,
+    forfeited: forfeited,
     speech: speech,
     toast: toast,
     showLastRound: showLastRound,
@@ -222,6 +227,7 @@ class TableView {
       mustAnswer: mustAnswer,
       myTurn: g.phase == GamePhase.playing && g.turn == seat,
       winner: g.winner,
+      forfeited: g.forfeited,
       speech: Map.unmodifiable(talk.speech),
       toast: talk.toastFor(team),
       showLastRound: talk.showLastRound,
@@ -260,6 +266,7 @@ class TableView {
     if (mustAnswer) 'mustAnswer': true,
     if (myTurn) 'myTurn': true,
     if (winner != null) 'winner': winner!.name,
+    if (forfeited != null) 'wo': forfeited!.name,
     if (speech.isNotEmpty)
       'speech': {for (final e in speech.entries) '${e.key}': e.value},
     if (toast != null) 'toast': toast,
@@ -315,6 +322,7 @@ class TableView {
       winner: j['winner'] == null
           ? null
           : Team.fromName(j['winner']! as String),
+      forfeited: j['wo'] == null ? null : Team.fromName(j['wo']! as String),
       speech: {
         for (final e in ((j['speech'] as Map?) ?? const {}).entries)
           int.parse(e.key as String): e.value as String,
@@ -371,6 +379,9 @@ class TableTalk {
           handJustEnded = true;
         case GameEnded():
           wins[e.winner] = wins[e.winner]! + 1;
+        case Forfeited():
+          _handResult = null;
+          showLastRound = false;
       }
     }
   }

@@ -53,6 +53,7 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
   Future<void> _confirmLeave() async {
     final s = ref.read(onlineGameControllerProvider);
     final playing = s?.room?.status == GameRoomStatus.playing;
+    final tournament = playing && (s?.room?.isTournament ?? false);
     if (s?.room?.rules.isSlow ?? false) {
       // A slow game goes on without anyone watching: leaving the screen
       // keeps the seat, unless the person really wants out.
@@ -78,6 +79,10 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
         _ctrl.close();
         context.go('/');
       } else if (choice == 'leave') {
+        if (tournament &&
+            !await confirmLeaveGame(context, message: _walkover)) {
+          return;
+        }
         await _leave();
       }
       return;
@@ -85,12 +90,18 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
     if (playing &&
         !await confirmLeaveGame(
           context,
-          message: 'O computador joga no seu lugar até o fim da partida.',
+          message: tournament
+              ? _walkover
+              : 'O computador joga no seu lugar até o fim da partida.',
         )) {
       return;
     }
     await _leave();
   }
+
+  static const _walkover =
+      'É um jogo de torneio: se você sair, sua dupla perde este jogo por '
+      'W.O.';
 
   /// The room code during the game, like the scorekeeper's.
   Future<void> _showCode(String code) async {

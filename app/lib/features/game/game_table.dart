@@ -396,7 +396,11 @@ class _GameTableState extends State<GameTable> {
                 const SizedBox(height: 8),
                 Text(
                   '$ours × $theirs'
-                  '${shutout ? (won ? '\nDoze a zero! Pra baixo da mesa!' : '\nDoze a zero… pra baixo da mesa!') : ''}'
+                  '${v.forfeited != null
+                      ? '\n${v.forfeited == side ? 'A dupla saiu do jogo: W.O.' : 'Vitória por W.O.: a outra dupla saiu.'}'
+                      : shutout
+                      ? (won ? '\nDoze a zero! Pra baixo da mesa!' : '\nDoze a zero… pra baixo da mesa!')
+                      : ''}'
                   '\nPlacar da noite: ${m.wins[side]} × ${m.wins[side.other]}',
                   textAlign: TextAlign.center,
                 ),

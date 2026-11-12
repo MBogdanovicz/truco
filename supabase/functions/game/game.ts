@@ -20,6 +20,8 @@ interface EngineOut {
   waitingFor?: number;
   /** Achievement ids earned per seat, when the game is over. */
   feats?: Record<string, string[]>;
+  /** The team that gave the game up (W.O.). */
+  forfeit?: "a" | "b";
   error?: string;
 }
 
@@ -76,6 +78,10 @@ export function spectatorView(frame: Json): Json {
 
 const engine = (globalThis as unknown as { trucoEngine: (s: string) => string })
   .trucoEngine;
+
+/** Tournament games: moves missed in a row (time ran out) that give the
+ * game up. */
+export const MISS_LIMIT = 3;
 
 function runEngine(input: Json): EngineOut {
   return JSON.parse(engine(JSON.stringify(input)));
@@ -493,7 +499,12 @@ export class Game {
       if (room.status !== "playing" || !(Date.now() >= deadline - 2000)) {
         return null;
       }
-      const out = runEngine({ ...this.input(room, state), timeout: true });
+      const out = runEngine({
+        ...this.input(room, state),
+        timeout: true,
+        // Tournament games: 3 moves missed in a row give the game up.
+        ...(room.tournament_match_id ? { missLimit: MISS_LIMIT } : {}),
+      });
       if (out.error) return null;
       // In a slow game, the computer moving for someone takes it out of
       // the ranking (like leaving a normal game).
@@ -603,14 +614,17 @@ export class Game {
   }
 
   private async finish(room: Room, state: State, out: EngineOut) {
-    const { error } = await this.db.rpc("record_game_result", {
-      p_room: room.id,
-      p_scores: out.scores,
-      p_hands: out.hands,
-      p_started_at: state.started_at,
-      p_feats: out.feats ?? {},
-    });
-    if (error) console.error("record_game_result", error);
+    // A game given up (W.O.) counts for the tournament, not the ranking.
+    if (!out.forfeit) {
+      const { error } = await this.db.rpc("record_game_result", {
+        p_room: room.id,
+        p_scores: out.scores,
+        p_hands: out.hands,
+        p_started_at: state.started_at,
+        p_feats: out.feats ?? {},
+      });
+      if (error) console.error("record_game_result", error);
+    }
     await this.touch(room.id, {
       status: "finished",
       turn_deadline: null,
@@ -742,6 +756,16 @@ export class Game {
     await this.db.from("game_seats").delete().eq("room_id", room.id).eq("user_id", this.userId);
     await this.db.from("game_views").delete().eq("room_id", room.id).eq("user_id", this.userId);
     const rest = seats.filter((s) => s.user_id !== this.userId);
+    // Leaving a tournament game gives it up: the pair loses it by W.O.
+    if (room.tournament_match_id && room.status === "playing") {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const state = await this.state(room.id);
+        const out = runEngine({ ...this.input(room, state), forfeit: me.seat });
+        if (out.error) break;
+        if (await this.save(room, rest, state, out)) break;
+      }
+      return {};
+    }
     const patch: Json = {};
     // A tournament room waits for its people (until the match deadline).
     if (rest.length === 0 && !room.tournament_match_id) patch.status = "closed";

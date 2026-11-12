@@ -77,7 +77,11 @@ void main() {
       }),
       teams: [team('a'), team('b'), team('c')],
       // Listed from the last round, as they once came from the server.
-      matches: [m(3, 'c', 'b'), m(2, 'a', 'c'), m(1, 'b', 'a', code: 'R1')],
+      matches: [
+        m(3, 'c', 'b'),
+        m(2, 'a', 'c'),
+        m(1, 'b', 'a', code: 'R1'),
+      ],
     );
     expect(d.nextMatchOf('a1')!.round, 1);
   });

@@ -79,6 +79,8 @@ const releaseNotes = <ReleaseNote>[
         'dias para cada jogada e aviso na sua vez.',
     'Ao receber truco, se o primeiro correr, o parceiro decide.',
     'A carta coberta aparece para o parceiro.',
+    'Num jogo de torneio, quem sai da mesa (ou deixa o tempo acabar 3 '
+        'vezes seguidas) entrega o jogo por W.O.',
     'Se a rodada embuchar, o pé continua o mesmo.',
     'Dá para assistir um jogo pelo código da sala e sentar à mesa quando '
         'alguém sai. Na sala, dá para levantar e sentar num lugar vago, e ver o '

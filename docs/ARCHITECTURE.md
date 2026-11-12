@@ -446,6 +446,10 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   Normal rooms can be watched by anyone with the room code (`watch` with `code`; offered by
   "Entrar com código" when the room is full).
 * Each finished tournament game is saved to the device history ("Torneio <name>").
+* No computer plays for a pair in a tournament: leaving a tournament game (`leave` while playing)
+  or missing `MISS_LIMIT` (3) moves in a row (time ran out; the engine marks those log entries
+  `to: true`) gives the game up (engine input `forfeit`, log entry `{t: "forfeit", s}`). A W.O.
+  game counts for the tournament series only, not for the ranking or achievements.
 * Round robin opens one round at a time (`advance` opens the next round's rooms once the current
   round is over; claimed via `room_code = ''`). The champions get their own push (kind `champion`).
 * The app draws knockout and repescagem as a bracket (`bracket_view.dart`): rounds side by side, each
