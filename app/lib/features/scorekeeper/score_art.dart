@@ -460,8 +460,11 @@ class _ChalkPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(3 + seed);
-    final h = math.min(size.height * 0.7, 90.0);
-    final top = (size.height - h) / 2;
+    // Two rows, always laid out the same way so marks never move: two
+    // groups of five on top, the 11th and 12th below the first group.
+    final h = math.min(size.height / 2.25, 70.0);
+    final top = (size.height - h * 2.2) / 2;
+    final top2 = top + h * 1.2;
     final chalk = Paint()
       ..color = const Color(0xFFF2F2EC).withValues(alpha: 0.92)
       ..strokeWidth = math.max(3, h * 0.06)
@@ -471,9 +474,7 @@ class _ChalkPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.18)
       ..strokeWidth = chalk.strokeWidth * 2.2
       ..strokeCap = StrokeCap.round;
-    // Two groups of five (four upright, the fifth across them); the 11th
-    // and 12th cross each group the other way, making an X. The marks are
-    // sized so both groups fit beside the number.
+    // Groups of five: four upright, the fifth across them.
     final gap = math.min(h * 0.22, (size.width - 12) / 8.8);
     final width = 8.8 * gap;
     final left = (size.width - width) / 2 + 0.4 * gap;
@@ -490,24 +491,26 @@ class _ChalkPainter extends CustomPainter {
     }
 
     for (var i = 0; i < score.clamp(0, 12); i++) {
-      final group = i < 10 ? i ~/ 5 : i - 10;
-      final x0 = left + group * 5 * gap;
-      final inGroup = i < 10 ? i % 5 : 5;
+      if (i >= 10) {
+        final x = left + (i - 10) * gap;
+        line(
+          Offset(x + jitter(), top2 + jitter()),
+          Offset(x + jitter(), top2 + h + jitter()),
+        );
+        continue;
+      }
+      final x0 = left + (i ~/ 5) * 5 * gap;
+      final inGroup = i % 5;
       if (inGroup < 4) {
         final x = x0 + inGroup * gap;
         line(
           Offset(x + jitter(), top + jitter()),
           Offset(x + jitter(), top + h + jitter()),
         );
-      } else if (inGroup == 4) {
+      } else {
         line(
           Offset(x0 - gap * 0.4, top + h * 0.8 + jitter()),
           Offset(x0 + gap * 3.4, top + h * 0.2 + jitter()),
-        );
-      } else {
-        line(
-          Offset(x0 - gap * 0.4, top + h * 0.2 + jitter()),
-          Offset(x0 + gap * 3.4, top + h * 0.8 + jitter()),
         );
       }
     }
