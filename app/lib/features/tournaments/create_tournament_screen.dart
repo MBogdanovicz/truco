@@ -144,11 +144,30 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
           children: [
             _pad(
               AppSegmented<TournamentFormat>(
-                segments: {for (final f in TournamentFormat.values) f: f.label},
-                value: _format,
+                segments: {
+                  TournamentFormat.knockout: TournamentFormat.knockout.label,
+                  TournamentFormat.roundRobin:
+                      TournamentFormat.roundRobin.label,
+                },
+                value: _format == TournamentFormat.roundRobin
+                    ? TournamentFormat.roundRobin
+                    : TournamentFormat.knockout,
                 onChanged: (v) => setState(() => _format = v),
               ),
             ),
+            if (_format != TournamentFormat.roundRobin)
+              AppTile(
+                title: 'Repescagem',
+                subtitle: 'Quem perde uma vez ainda tem chance.',
+                trailing: AppSwitch(
+                  value: _format == TournamentFormat.doubleElimination,
+                  onChanged: (v) => setState(
+                    () => _format = v
+                        ? TournamentFormat.doubleElimination
+                        : TournamentFormat.knockout,
+                  ),
+                ),
+              ),
             AppTile(title: 'Máximo de duplas'),
             _pad(
               AppSegmented<int>(

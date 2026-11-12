@@ -46,6 +46,13 @@ class _WatchMatchState extends ConsumerState<WatchMatchScreen> {
           .read(tournamentsRepositoryProvider)!
           .spectate(widget.roomId);
       if (!mounted) return;
+      // When the players leave the room at the end, keep their names.
+      final before = _match?.names;
+      if (before != null) {
+        for (var i = 0; i < 4; i++) {
+          if (m.names[i] == '…') m.names[i] = before[i];
+        }
+      }
       setState(() {
         _match = m;
         _error = null;

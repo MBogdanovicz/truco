@@ -14,7 +14,7 @@ enum TournamentStatus { open, running, finished, cancelled }
 extension TournamentFormatLabel on TournamentFormat {
   String get label => switch (this) {
     TournamentFormat.knockout => 'Mata-mata',
-    TournamentFormat.doubleElimination => 'Repescagem',
+    TournamentFormat.doubleElimination => 'Mata-mata com repescagem',
     TournamentFormat.roundRobin => 'Todos contra todos',
   };
   String get json => switch (this) {

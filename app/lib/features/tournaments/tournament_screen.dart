@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,6 +20,28 @@ class TournamentScreen extends ConsumerStatefulWidget {
 
 class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   bool _busy = false;
+
+  /// Sign-ups and results change while the screen is open.
+  Timer? _refresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh = Timer.periodic(const Duration(seconds: 10), (_) {
+      final t = ref.read(tournamentProvider(widget.id)).value?.tournament;
+      if (_busy || t == null) return;
+      if (t.status == TournamentStatus.open ||
+          t.status == TournamentStatus.running) {
+        ref.invalidate(tournamentProvider(widget.id));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
 
   TournamentsRepository get _repo => ref.read(tournamentsRepositoryProvider)!;
   String? get _me => ref.read(tournamentUserIdProvider);
@@ -57,6 +81,8 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   Widget build(BuildContext context) {
     final detail = ref.watch(tournamentProvider(widget.id));
     return detail.when(
+      // A failed refresh keeps showing what was there.
+      skipError: true,
       loading: () => const AppScaffold(
         title: 'Torneio',
         body: Center(child: AppProgress()),
