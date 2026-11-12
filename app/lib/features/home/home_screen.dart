@@ -109,88 +109,111 @@ class HomeScreen extends ConsumerWidget {
           subtitle: AndroidDownloadCard.subtitle,
           onTap: AndroidDownloadCard.open,
         ),
-      _MenuItem(
-        icon: AppIcon.scoreboard,
-        color: AppColors.felt,
-        title: ongoing == null ? 'Novo marcador' : 'Continuar partida',
-        subtitle: 'Marque os tentos de uma partida com baralho de verdade.',
-        onTap: () => context.go(
-          ongoing == null ? '/marcador/novo' : '/marcador/partida',
-        ),
+    ];
+    final sections = <(String?, List<_MenuItem>)>[
+      if (menu.isNotEmpty) (null, menu),
+      (
+        'Jogar',
+        [
+          _MenuItem(
+            icon: AppIcon.cards,
+            color: AppColors.purple,
+            title: game == null ? 'Jogar truco' : 'Continuar jogo',
+            subtitle: 'Contra o computador ou online com os amigos.',
+            onTap: () => context.go(game == null ? '/jogo' : '/jogo/partida'),
+          ),
+          _MenuItem(
+            icon: AppIcon.trophy,
+            color: AppColors.red,
+            title: 'Torneios',
+            subtitle: hasAccount
+                ? 'Mata-mata ou todos contra todos, no app.'
+                : 'Entre com seu e-mail para usar.',
+            onTap: hasAccount ? () => context.go('/torneios') : null,
+          ),
+          _MenuItem(
+            icon: AppIcon.info,
+            color: Colors.teal,
+            title: 'Treinar',
+            subtitle: 'Situações de jogo com o professor (Premium).',
+            onTap: () async {
+              final ent = await ref.read(entitlementsProvider.future);
+              if (!context.mounted) return;
+              if (!ent.canUseCoach) {
+                await showPremiumRequired(context, 'Treinar com o professor');
+                return;
+              }
+              context.push('/jogo/treinar');
+            },
+          ),
+        ],
       ),
-      _MenuItem(
-        icon: AppIcon.history,
-        color: AppColors.orange,
-        title: 'Histórico',
-        subtitle: 'Partidas salvas neste aparelho.',
-        onTap: () => context.go('/historico'),
+      (
+        'Marcador',
+        [
+          _MenuItem(
+            icon: AppIcon.scoreboard,
+            color: AppColors.felt,
+            title: ongoing == null ? 'Novo marcador' : 'Continuar partida',
+            subtitle: 'Marque os tentos de uma partida com baralho de verdade.',
+            onTap: () => context.go(
+              ongoing == null ? '/marcador/novo' : '/marcador/partida',
+            ),
+          ),
+        ],
       ),
-      _MenuItem(
-        icon: AppIcon.groups,
-        color: AppColors.blue,
-        title: 'Grupos',
-        subtitle: hasAccount
-            ? 'Ranking só entre os seus amigos.'
-            : 'Entre com seu e-mail para usar.',
-        onTap: hasAccount ? () => context.go('/grupos') : null,
+      (
+        'Comunidade',
+        [
+          _MenuItem(
+            icon: AppIcon.leaderboard,
+            color: AppColors.gold,
+            title: 'Ranking geral',
+            subtitle: user == null
+                ? 'Entre com sua conta para usar.'
+                : 'Os melhores jogadores e duplas.',
+            onTap: user == null ? null : () => context.go('/ranking'),
+          ),
+          _MenuItem(
+            icon: AppIcon.groups,
+            color: AppColors.blue,
+            title: 'Grupos',
+            subtitle: hasAccount
+                ? 'Ranking só entre os seus amigos.'
+                : 'Entre com seu e-mail para usar.',
+            onTap: hasAccount ? () => context.go('/grupos') : null,
+          ),
+          if (hasAccount)
+            _MenuItem(
+              icon: AppIcon.medal,
+              color: AppColors.gold,
+              title: 'Conquistas',
+              subtitle: 'Desafios das partidas rankeadas.',
+              onTap: () => context.go('/conquistas'),
+            ),
+        ],
       ),
-      _MenuItem(
-        icon: AppIcon.trophy,
-        color: AppColors.red,
-        title: 'Torneios',
-        subtitle: hasAccount
-            ? 'Mata-mata ou todos contra todos, no app.'
-            : 'Entre com seu e-mail para usar.',
-        onTap: hasAccount ? () => context.go('/torneios') : null,
-      ),
-      _MenuItem(
-        icon: AppIcon.leaderboard,
-        color: AppColors.gold,
-        title: 'Ranking geral',
-        subtitle: user == null
-            ? 'Entre com sua conta para usar.'
-            : 'Os melhores jogadores e duplas.',
-        onTap: user == null ? null : () => context.go('/ranking'),
-      ),
-      if (hasAccount)
-        _MenuItem(
-          icon: AppIcon.medal,
-          color: AppColors.gold,
-          title: 'Conquistas',
-          subtitle: 'Desafios das partidas rankeadas.',
-          onTap: () => context.go('/conquistas'),
-        ),
-      if (hasAccount)
-        _MenuItem(
-          icon: AppIcon.trophy,
-          color: AppColors.gold,
-          title: premium ? 'Premium ativo' : 'Truco Premium',
-          subtitle: premium
-              ? 'Obrigado! Convide seus amigos com desconto.'
-              : 'Sem anúncios, grupos sem limite e visuais do placar.',
-          onTap: () => context.go('/premium'),
-        ),
-      _MenuItem(
-        icon: AppIcon.cards,
-        color: AppColors.purple,
-        title: game == null ? 'Jogar truco' : 'Continuar jogo',
-        subtitle: 'Contra o computador ou online com os amigos.',
-        onTap: () => context.go(game == null ? '/jogo' : '/jogo/partida'),
-      ),
-      _MenuItem(
-        icon: AppIcon.info,
-        color: Colors.teal,
-        title: 'Treinar',
-        subtitle: 'Situações de jogo com o professor (Premium).',
-        onTap: () async {
-          final ent = await ref.read(entitlementsProvider.future);
-          if (!context.mounted) return;
-          if (!ent.canUseCoach) {
-            await showPremiumRequired(context, 'Treinar com o professor');
-            return;
-          }
-          context.push('/jogo/treinar');
-        },
+      (
+        'Mais',
+        [
+          _MenuItem(
+            icon: AppIcon.history,
+            color: AppColors.orange,
+            title: 'Histórico',
+            subtitle: 'Partidas salvas neste aparelho.',
+            onTap: () => context.go('/historico'),
+          ),
+          if (hasAccount)
+            _MenuItem(
+              icon: AppIcon.trophy,
+              color: AppColors.gold,
+              title: premium ? 'Premium ativo' : 'Truco Premium',
+              subtitle: premium
+                  ? 'Obrigado! Convide seus amigos com desconto.'
+                  : 'Sem anúncios, grupos sem limite e visuais do placar.',
+              onTap: () => context.go('/premium'),
+            ),
+        ],
       ),
     ];
     final muted = theme.textTheme.bodySmall?.copyWith(
@@ -253,27 +276,60 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
         LayoutBuilder(
-          builder: (context, constraints) =>
-              constraints.maxWidth >= AppBreakpoints.medium
-              ? Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _MenuGrid(items: menu, width: constraints.maxWidth),
-                )
-              : AppSection(
-                  children: [
-                    for (final m in menu)
-                      AppTile(
-                        leading: AppTileIcon(
-                          m.icon,
-                          color: m.onTap == null ? Colors.grey : m.color,
-                        ),
-                        title: m.title,
-                        subtitle: m.subtitle,
-                        enabled: m.onTap != null,
-                        onTap: m.onTap,
-                      ),
-                  ],
-                ),
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= AppBreakpoints.medium;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (header, items) in sections)
+                  if (items.isNotEmpty)
+                    wide
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (header != null)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      4,
+                                      8,
+                                      4,
+                                      12,
+                                    ),
+                                    child: Text(
+                                      header,
+                                      style: theme.textTheme.titleMedium,
+                                    ),
+                                  ),
+                                _MenuGrid(
+                                  items: items,
+                                  width: constraints.maxWidth,
+                                ),
+                              ],
+                            ),
+                          )
+                        : AppSection(
+                            header: header,
+                            children: [
+                              for (final m in items)
+                                AppTile(
+                                  leading: AppTileIcon(
+                                    m.icon,
+                                    color: m.onTap == null
+                                        ? Colors.grey
+                                        : m.color,
+                                  ),
+                                  title: m.title,
+                                  subtitle: m.subtitle,
+                                  enabled: m.onTap != null,
+                                  onTap: m.onTap,
+                                ),
+                            ],
+                          ),
+              ],
+            );
+          },
         ),
         if (!auth.isAvailable)
           Padding(
