@@ -95,6 +95,7 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
             opponentLevel: _opponents,
             myName: name == null || name.isEmpty ? 'Você' : name,
             coach: _coach && ent.canUseCoach,
+            drawDealer: true,
           ),
         );
     context.go('/jogo/partida');

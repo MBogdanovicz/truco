@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/ads.dart';
 import '../../domain/game/truco_game.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import 'dealer_draw.dart';
 import 'game_table.dart';
 import 'local_game_controller.dart';
 
@@ -16,6 +17,26 @@ class GameTableScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final model = ref.watch(localGameControllerProvider);
     final ctrl = ref.read(localGameControllerProvider.notifier);
+    final draw = ref.watch(dealerDrawProvider);
+    if (draw != null) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          ctrl.quit();
+          context.go('/');
+        },
+        child: DealerDrawView(
+          draw: draw,
+          mySeat: humanSeat,
+          onPick: ctrl.pickDealerCard,
+          onLeave: () {
+            ctrl.quit();
+            context.go('/');
+          },
+        ),
+      );
+    }
     if (model == null) {
       return AppScaffold(
         title: 'Jogar truco',

@@ -100,6 +100,8 @@ const releaseNotes = <ReleaseNote>[
     'Truco! Sofá de zona! Um grito na mesa quando alguém pede truco.',
     'Mostrar cartas: depois de uma mão com truco ou mão de onze, dá para '
         'mostrar as cartas que sobraram na mão para a mesa.',
+    'Contra o computador, quem dá as cartas na primeira partida é decidido '
+        'tirando uma carta: a maior dá.',
     'Premium: escolha a cor do feltro, o verso e a frente das cartas '
         '(Configurações > Mesa e baralho).',
     'Premium: novos visuais do marcador: Carta 10, Feijões, Lousa de giz e Palitos de fósforo (agora saindo da caixinha).',

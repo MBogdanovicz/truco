@@ -11,6 +11,7 @@ import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
 import '../../domain/game/truco_game.dart';
 import '../../domain/scorekeeper/team.dart';
+import 'dealer_draw.dart';
 import 'frame_player.dart';
 import 'game_table.dart';
 
@@ -22,6 +23,7 @@ class LocalGameSetup {
     required this.opponentLevel,
     required this.myName,
     this.coach = false,
+    this.drawDealer = false,
   });
 
   final TrucoRules rules;
@@ -31,6 +33,9 @@ class LocalGameSetup {
 
   /// "Modo professor": comments on the person's moves.
   final bool coach;
+
+  /// Before the first game, everyone draws a card: the highest deals.
+  final bool drawDealer;
 }
 
 /// The human always sits at seat 0 (bottom); 1 is on the right, 2 (partner)
@@ -68,33 +73,141 @@ class LocalGameController extends Notifier<GameTableModel?> {
   /// Ends the moment to show cards after a hand worth 3+.
   Timer? _revealTimer;
 
+  /// Timers of the dealer draw (bots' picks, countdown, reveal).
+  final List<Timer> _drawTimers = [];
+  double _speed = 1;
+
   @override
   GameTableModel? build() {
     ref.onDispose(_player.dispose);
     ref.onDispose(() => _revealTimer?.cancel());
+    ref.onDispose(_cancelDraw);
     return null;
   }
 
   /// Delays between frames are multiplied by this; tests may speed up.
-  set speed(double value) => _player.speed = value;
+  set speed(double value) {
+    _speed = value;
+    _player.speed = value;
+  }
 
   void start(LocalGameSetup setup) {
     _setup = setup;
     _wins = const {Team.a: 0, Team.b: 0};
     _names = [setup.myName, botNames[1], botNames[2], botNames[3]];
-    _newGame();
+    if (setup.drawDealer) {
+      _startDraw();
+    } else {
+      _newGame();
+    }
+  }
+
+  // ------------------------------------------------------ dealer draw --
+
+  DealerDraw? get _draw => ref.read(dealerDrawProvider);
+  set _draw(DealerDraw? d) => ref.read(dealerDrawProvider.notifier).set(d);
+
+  Duration _ms(int ms) => Duration(milliseconds: (ms * _speed).round());
+
+  void _cancelDraw() {
+    for (final t in _drawTimers) {
+      t.cancel();
+    }
+    _drawTimers.clear();
+  }
+
+  void _startDraw() {
+    _cancelDraw();
+    _revealTimer?.cancel();
+    _player.reset();
+    _session = null;
+    state = null;
+    final deck = [...fullDeck]..shuffle(_random);
+    _draw = DealerDraw(names: _names, spread: deck.take(12).toList());
+    // The computer players draw one by one.
+    for (final seat in const [1, 2, 3]) {
+      _drawTimers.add(
+        Timer(_ms(600 * seat), () {
+          final d = _draw;
+          if (d == null || d.timedOut || d.picks.containsKey(seat)) return;
+          _draw = d.copyWith(picks: {...d.picks, seat: _freeIndex(d)});
+          _maybeReveal();
+        }),
+      );
+    }
+    _drawTimers.add(
+      Timer.periodic(_ms(1000), (t) {
+        final d = _draw;
+        if (d == null || d.revealed || d.picks.containsKey(humanSeat)) {
+          t.cancel();
+          return;
+        }
+        final left = d.secondsLeft - 1;
+        if (left > 0) {
+          _draw = d.copyWith(secondsLeft: left);
+          return;
+        }
+        // Nobody drew in time: the dealer is drawn by lot, as before.
+        t.cancel();
+        final dealer = _random.nextInt(4);
+        _draw = d.copyWith(secondsLeft: 0, timedOut: true, dealer: dealer);
+        _drawTimers.add(Timer(_ms(1800), () => _endDraw(dealer)));
+      }),
+    );
+  }
+
+  int _freeIndex(DealerDraw d) {
+    final free = [
+      for (var i = 0; i < d.spread.length; i++)
+        if (!d.picks.containsValue(i)) i,
+    ];
+    return free[_random.nextInt(free.length)];
+  }
+
+  /// The person draws the card at [index] of the spread.
+  void pickDealerCard(int index) {
+    final d = _draw;
+    if (d == null ||
+        d.timedOut ||
+        d.picks.containsKey(humanSeat) ||
+        d.picks.containsValue(index)) {
+      return;
+    }
+    _draw = d.copyWith(picks: {...d.picks, humanSeat: index});
+    _maybeReveal();
+  }
+
+  void _maybeReveal() {
+    final d = _draw;
+    if (d == null || d.revealed || d.picks.length < 4) return;
+    _drawTimers.add(
+      Timer(_ms(500), () {
+        final d = _draw;
+        if (d == null || d.revealed) return;
+        final dealer = d.highest();
+        _draw = d.copyWith(dealer: dealer);
+        _drawTimers.add(Timer(_ms(2800), () => _endDraw(dealer)));
+      }),
+    );
+  }
+
+  void _endDraw(int dealer) {
+    _cancelDraw();
+    if (_draw == null) return;
+    _newGame(dealer: dealer);
+    _draw = null;
   }
 
   void rematch() {
     if (_setup != null) _newGame();
   }
 
-  void _newGame() {
+  void _newGame({int? dealer}) {
     final setup = _setup!;
     final session = _session = GameSession(
       rules: setup.rules,
       seed: _random.nextInt(1 << 31),
-      firstDealer: _random.nextInt(4),
+      firstDealer: dealer ?? _random.nextInt(4),
       bots: [
         null,
         setup.opponentLevel,
@@ -115,6 +228,8 @@ class LocalGameController extends Notifier<GameTableModel?> {
   }
 
   void quit() {
+    _cancelDraw();
+    _draw = null;
     _revealTimer?.cancel();
     _player.reset();
     _session = null;

@@ -13,6 +13,7 @@ import 'package:truco/domain/game/rules.dart';
 import 'package:truco/domain/game/table_view.dart';
 import 'package:truco/domain/game/truco_game.dart';
 import 'package:truco/domain/scorekeeper/team.dart';
+import 'package:truco/features/game/dealer_draw.dart';
 import 'package:truco/features/game/game_table.dart';
 import 'package:truco/features/game/local_game_controller.dart';
 import 'package:truco/router.dart';
@@ -53,7 +54,36 @@ void main() {
           await tester.ensureVisible(find.text('Começar'));
           await tester.pumpAndSettle();
           await tester.tap(find.text('Começar'));
-          await tester.pumpAndSettle();
+          // Not pumpAndSettle: the draw has a countdown running.
+          for (var i = 0; i < 10; i++) {
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+
+          // First everyone draws a card to see who deals.
+          expect(find.text('Quem dá as cartas?'), findsOneWidget);
+          await tester.pump(const Duration(seconds: 2));
+          final taken = container.read(dealerDrawProvider)!.picks.values;
+          final free = [for (var i = 0; i < 12; i++) i]
+              .firstWhere((i) => !taken.contains(i));
+          final first = find.byKey(ValueKey('draw-card-$free'));
+          await tester.ensureVisible(first);
+          await tester.pump();
+          await tester.tap(first);
+          await tester.pump();
+          for (var i = 0; i < 15; i++) {
+            await tester.pump(const Duration(milliseconds: 100));
+          }
+          final dealer = container.read(dealerDrawProvider)?.dealer;
+          expect(dealer, isNotNull);
+          await tester.pump(const Duration(seconds: 3));
+          expect(container.read(dealerDrawProvider), isNull);
+          expect(
+            container
+                .read(localGameControllerProvider.notifier)
+                .session!
+                .firstDealer,
+            dealer,
+          );
 
           final ctrl = container.read(localGameControllerProvider.notifier);
           // The human plays like a medium bot, through the controller.
