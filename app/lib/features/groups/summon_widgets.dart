@@ -12,6 +12,7 @@ import '../../data/tournaments.dart';
 import '../../router.dart';
 import '../game/online_game_controller.dart';
 import '../scorekeeper/online_room_controller.dart';
+import '../../ui/browser/is_brave.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 
 /// Lets this device get push notifications: group calls to play, your turn
@@ -30,9 +31,13 @@ class PushToggleTile extends ConsumerWidget {
           ? 'As notificações do Truco estão bloqueadas. Libere nas '
                 'configurações do ${Theme.of(context).platform == TargetPlatform.android ? 'celular' : 'navegador'}.'
           : state == PushState.failed
-          ? 'Este navegador não conseguiu ativar os avisos. No Brave, ligue '
-                '"Usar os serviços do Google para mensagens push" em '
-                'Configurações > Privacidade e segurança, ou use o Chrome.'
+          ? (isBrave
+                ? 'O Brave recusou os avisos. Para receber, ligue "Usar os '
+                      'serviços do Google para mensagens push" em '
+                      'Configurações > Privacidade e segurança, ou use o '
+                      'Chrome.'
+                : 'Este navegador recusou os avisos. Tente outro navegador, '
+                      'como o Chrome.')
           : 'Avisos neste aparelho quando alguém do grupo intimar para uma '
                 'partida, quando for a sua vez numa partida lenta e quando um '
                 'jogo do seu torneio estiver pronto.',
@@ -59,8 +64,8 @@ class PushToggleTile extends ConsumerWidget {
                         showAppToast(
                           context,
                           '$e'.contains('push service')
-                              ? 'O navegador recusou os avisos. Veja a dica '
-                                    'abaixo.'
+                              ? 'O navegador recusou os avisos. Veja a '
+                                    'explicação logo abaixo do botão.'
                               : 'Não foi possível ativar os avisos.',
                           long: true,
                         );
