@@ -1,3 +1,5 @@
+import '../../data/game_prefs.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -199,7 +201,7 @@ class _GameTableState extends State<GameTable> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  tip.text,
+                  said(context, tip.text),
                   style: TextStyle(
                     color: tip.good
                         ? Colors.white
@@ -325,7 +327,7 @@ class _GameTableState extends State<GameTable> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    m.status ?? v.toast!,
+                    said(context, m.status ?? v.toast!),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -414,7 +416,7 @@ class _GameTableState extends State<GameTable> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '🎓 Professor\n${m.coachSummary}',
+                      said(context, '🎓 Professor\n${m.coachSummary}'),
                       style: const TextStyle(
                         color: Color(0xFF4A3B00),
                         height: 1.3,

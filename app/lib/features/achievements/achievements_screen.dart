@@ -1,3 +1,5 @@
+import '../../data/game_prefs.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -74,11 +76,11 @@ class AchievementsScreen extends ConsumerWidget {
     title: a.hidden && !unlocked.containsKey(a) ? 'Conquista secreta' : a.title,
     subtitle: switch (unlocked[a]) {
       final at? =>
-        '${a.description}\nConquistada em '
+        '${said(context, a.description)}\nConquistada em '
             '${at.day.toString().padLeft(2, '0')}/'
             '${at.month.toString().padLeft(2, '0')}/${at.year}',
       null when a.hidden => 'Jogue para descobrir.',
-      null => a.description,
+      null => said(context, a.description),
     },
     enabled: unlocked.containsKey(a),
   );

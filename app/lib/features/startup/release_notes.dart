@@ -86,4 +86,13 @@ const releaseNotes = <ReleaseNote>[
         'alguém sai. Na sala, dá para levantar e sentar num lugar vago, e ver o '
         'código durante o jogo.',
   ]),
+  ReleaseNote(10, [
+    'Nova tela de Configurações (engrenagem na tela inicial): suas regras '
+        'preferidas, o visual do placar e as notificações.',
+    'Escolha como você chama as manilhas e a rodada empatada (embuchar, '
+        'cangar...). Só você vê.',
+    'Ao criar um jogo ou torneio, as regras aparecem resumidas, com um '
+        'botão para mudar só naquela partida.',
+    'Os torneios encerrados agora ficam no Histórico.',
+  ]),
 ];

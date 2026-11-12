@@ -1,7 +1,11 @@
+import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/game/rules.dart';
+import '../domain/game/terms.dart';
 
 /// The table rules the player likes ("Configurações"), used as the starting
 /// point when creating a game, a room or a tournament. Kept on this device,
@@ -63,3 +67,49 @@ final preferredRulesProvider =
     NotifierProvider<PreferredRulesNotifier, TrucoRules>(
       PreferredRulesNotifier.new,
     );
+
+/// The player's words for the manilhas and the tied round, on this device.
+class TermsNotifier extends Notifier<Terms> {
+  static const _key = 'terms.v1';
+
+  @override
+  Terms build() {
+    _load();
+    return Terms.standard;
+  }
+
+  Future<void> _load() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_key);
+      if (raw == null) return;
+      state = Terms.fromJson((jsonDecode(raw) as Map).cast<String, Object?>());
+    } on Object {
+      // Keep the defaults.
+    }
+  }
+
+  Future<void> set(Terms terms) async {
+    state = terms;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(_key, jsonEncode(terms.toJson()));
+    } on Object {
+      // Not remembered; still used for now.
+    }
+  }
+}
+
+final termsProvider = NotifierProvider<TermsNotifier, Terms>(TermsNotifier.new);
+
+/// [text] in the player's words (see [Terms]), for screens without a ref.
+String said(BuildContext context, String text) {
+  try {
+    return ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(termsProvider).apply(text);
+  } on Object {
+    return text; // No ProviderScope (some tests).
+  }
+}
