@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/game/rules.dart';
+import '../domain/game/table_view.dart';
 import 'auth_repository.dart';
 
 enum TournamentFormat { knockout, roundRobin }
@@ -160,6 +161,7 @@ class TournamentMatch {
     required this.status,
     required this.bestOf,
     this.roomCode,
+    this.roomId,
     this.deadline,
     this.winner,
     this.gamesA = 0,
@@ -179,6 +181,7 @@ class TournamentMatch {
   final String status;
   final int bestOf;
   final String? roomCode;
+  final String? roomId;
   final DateTime? deadline;
   final String? winner;
   final int gamesA;
@@ -199,6 +202,7 @@ class TournamentMatch {
     status: (r['status'] as String?) ?? 'pending',
     bestOf: (r['best_of'] as int?) ?? 1,
     roomCode: r['room_code'] as String?,
+    roomId: r['room_id'] as String?,
     deadline: DateTime.tryParse((r['deadline'] as String?) ?? '')?.toLocal(),
     winner: r['winner'] as String?,
     gamesA: (r['games_a'] as int?) ?? 0,
@@ -282,6 +286,24 @@ class TournamentDetail {
   }
 }
 
+/// What a spectator sees of a match.
+class SpectatedMatch {
+  const SpectatedMatch({
+    required this.status,
+    required this.version,
+    required this.names,
+    required this.wins,
+    this.view,
+  });
+  final String status;
+  final int version;
+  final List<String> names;
+  final (int, int) wins;
+
+  /// Null before the first game starts.
+  final TableView? view;
+}
+
 /// Why the server refused (see supabase/functions/game/tournament.ts).
 class TournamentError implements Exception {
   const TournamentError(this.code);
@@ -304,6 +326,8 @@ class TournamentError implements Exception {
       'São precisas pelo menos 3 duplas completas para começar.',
     'already_started' => 'O torneio já começou.',
     'tournament_not_found' => 'Torneio não encontrado.',
+    'not_in_tournament' => 'Só quem está no torneio pode assistir aos jogos.',
+    'room_not_found' => 'Esse jogo já acabou.',
     _ => 'O servidor recusou ($code). Tente de novo.',
   };
 
@@ -398,6 +422,53 @@ class TournamentsRepository {
           TournamentMatch.fromRow(Map<String, dynamic>.from(m as Map)),
       ],
     );
+  }
+
+  /// A tournament match as a spectator sees it (see game.ts `watch`).
+  Future<SpectatedMatch> spectate(String roomId) async {
+    final r = await _call2('watch', {'roomId': roomId});
+    final frame = r['frame'];
+    final names = List.filled(4, '…');
+    for (final s in (r['seats'] as List?) ?? const []) {
+      names[s['seat'] as int] = (s['name'] as String?) ?? '…';
+    }
+    final bots = (r['bots'] as List?) ?? const [];
+    for (var i = 0; i < 4 && i < bots.length; i++) {
+      if (bots[i] != null) {
+        names[i] = '${names[i] == '…' ? 'Computador' : names[i]} (IA)';
+      }
+    }
+    final wins = ((r['wins'] as List?) ?? const [0, 0]).cast<int>();
+    return SpectatedMatch(
+      status: (r['status'] as String?) ?? 'lobby',
+      version: (r['version'] as int?) ?? 0,
+      names: names,
+      wins: (wins[0], wins[1]),
+      view: frame is Map
+          ? TableView.fromJson(Map<String, Object?>.from(frame))
+          : null,
+    );
+  }
+
+  /// A plain "game" action (not tournament.*).
+  Future<Map<String, dynamic>> _call2(
+    String action,
+    Map<String, Object?> body,
+  ) async {
+    try {
+      final res = await _client.functions.invoke(
+        'game',
+        body: {'action': action, ...body},
+      );
+      final data = res.data;
+      return data is Map ? Map<String, dynamic>.from(data) : const {};
+    } on FunctionException catch (e) {
+      final details = e.details;
+      if (details is Map && details['error'] is String) {
+        throw TournamentError(details['error'] as String);
+      }
+      rethrow;
+    }
   }
 
   /// The name of the tournament a match belongs to.

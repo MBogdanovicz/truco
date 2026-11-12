@@ -2,6 +2,7 @@
 // Whole tournaments against the in-memory database.
 import { Game, type Json } from "./game.ts";
 import { knockoutFirstRound, roundRobin, Tournaments } from "./tournament.ts";
+import { spectatorView } from "./game.ts";
 import { asDb, assert, FakeDb, playToEnd, refused } from "./fake_db.ts";
 
 function people(db: FakeDb, ids: string[], premium: string[] = []) {
@@ -46,6 +47,20 @@ const live = (db: FakeDb) =>
   db.tables.tournament_matches.find((m) =>
     m.status !== "done" && m.team_b && m.room_id
   );
+
+Deno.test("spectators never see covered cards", () => {
+  const v = spectatorView({
+    hand: ["4p"],
+    partner: ["7c"],
+    myTurn: true,
+    plays: [{ s: 0, c: "Ae", x: true }, { s: 1, c: "3o" }],
+    rounds: [{ p: [{ s: 2, c: "Kc", x: true }], t: 2 }],
+  });
+  assert((v.hand as unknown[]).length === 0 && !("partner" in v) && !("myTurn" in v));
+  const plays = v.plays as Json[];
+  assert(!("c" in plays[0]) && plays[1].c === "3o");
+  assert(!("c" in ((v.rounds as Json[])[0].p as Json[])[0]));
+});
 
 Deno.test("draws: byes and round robin rounds", () => {
   const ko = knockoutFirstRound(["a", "b", "c", "d", "e"]);
@@ -97,6 +112,24 @@ Deno.test("knockout with pairs, a best-of-3 final", async () => {
   const code = db.tables.game_rooms.find((r) => r.id === m.room_id)!.code;
   const outsider = people(db, ["zz"]).get("zz")!.g;
   await refused(() => outsider.join({ code }), "not_in_match");
+  await refused(() => outsider.watch({ roomId: m.room_id }), "not_in_tournament");
+
+  // Someone of another pair watches the match: no cards in hand.
+  {
+    const teams = db.tables.tournament_teams;
+    const playing = [m.team_a, m.team_b];
+    const watcher = teams.find((x) => !playing.includes(x.id))!.player_a as string;
+    const a = teams.find((x) => x.id === m.team_a)!;
+    const b = teams.find((x) => x.id === m.team_b)!;
+    for (const p of [a.player_a, b.player_a, a.player_b, b.player_b]) {
+      await all.get(p as string)!.g.join({ code });
+    }
+    const seen = await all.get(watcher)!.g.watch({ roomId: m.room_id }) as Json;
+    assert(seen.status === "playing", `status ${seen.status}`);
+    const frame = seen.frame as Json;
+    assert(Array.isArray(frame.hand) && (frame.hand as unknown[]).length === 0, "no hand");
+    assert(!("mustAnswer" in frame) && !("partner" in frame));
+  }
 
   let final = 0;
   for (let i = 0; i < 10 && t.status === "running"; i++) {

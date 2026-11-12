@@ -197,4 +197,36 @@ void main() {
     expect(find.text('Entrar na dupla de um amigo'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a match of other pairs can be watched', (tester) async {
+    const matches = [
+      TournamentMatch(
+        id: '1',
+        round: 1,
+        slot: 0,
+        teamA: 'b',
+        teamB: 'c',
+        status: 'playing',
+        bestOf: 1,
+        roomCode: 'ROOM23',
+        roomId: 'room-1',
+      ),
+    ];
+    await _pump(
+      tester,
+      const TournamentScreen(id: 'knockout'),
+      TournamentDetail(
+        tournament: _t(TournamentStatus.running, TournamentFormat.knockout),
+        teams: _teams,
+        matches: matches,
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Assistir'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Assistir'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

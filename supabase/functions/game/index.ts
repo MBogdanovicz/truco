@@ -9,7 +9,7 @@
 // which the app follows over Realtime.
 //
 // Actions: create, join, sit, options, start (also rematch), act ({roomId,
-// move: {t, c?, x?, i?}}), timeout, leave; tournaments (tournament.ts):
+// move: {t, c?, x?, i?}}), timeout, leave, watch (tournament spectators); tournaments (tournament.ts):
 // tournament.create, tournament.register, tournament.unregister,
 // tournament.start, tournament.cancel.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
@@ -71,6 +71,8 @@ Deno.serve(async (req) => {
         return reply(200, await game.timeout(body));
       case "leave":
         return reply(200, await game.leave(body));
+      case "watch":
+        return reply(200, await game.watch(body));
       case "tournament.create":
         return reply(200, await tournaments.create(body));
       case "tournament.register":

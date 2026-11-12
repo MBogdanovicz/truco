@@ -26,6 +26,7 @@ import 'features/achievements/achievements_screen.dart';
 import 'features/tournaments/create_tournament_screen.dart';
 import 'features/tournaments/tournament_screen.dart';
 import 'features/tournaments/tournaments_screen.dart';
+import 'features/tournaments/watch_match_screen.dart';
 import 'features/scorekeeper/online_room_screen.dart';
 import 'features/scorekeeper/scoreboard_screen.dart';
 import 'features/scorekeeper/setup_screen.dart';
@@ -169,6 +170,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'novo',
                 builder: (_, _) => const CreateTournamentScreen(),
+              ),
+              GoRoute(
+                path: 'assistir/:room',
+                builder: (_, state) =>
+                    WatchMatchScreen(roomId: state.pathParameters['room']!),
               ),
               GoRoute(
                 path: ':id',

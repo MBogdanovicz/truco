@@ -42,6 +42,38 @@ export function turnMs(rules: Json): number | null {
   return t > 0 ? Math.min(t, 120) * 1000 : null;
 }
 
+/** A seat's table view (TableView JSON) with everything private taken
+ * out: no hand, no partner's cards, covered cards face down, no actions. */
+export function spectatorView(frame: Json): Json {
+  const hide = (plays: unknown) =>
+    ((plays as Json[] | undefined) ?? []).map((p) => {
+      if (!p.x) return p;
+      const { c: _c, ...rest } = p;
+      return rest;
+    });
+  const out: Json = { ...frame, hand: [] };
+  for (
+    const k of [
+      "partner",
+      "partnerRaise",
+      "canCover",
+      "canRaise",
+      "mustAnswer",
+      "myTurn",
+      "toast",
+      "delay",
+    ]
+  ) {
+    delete out[k];
+  }
+  out.plays = hide(frame.plays);
+  out.rounds = ((frame.rounds as Json[] | undefined) ?? []).map((r) => ({
+    ...r,
+    p: hide(r.p),
+  }));
+  return out;
+}
+
 const engine = (globalThis as unknown as { trucoEngine: (s: string) => string })
   .trucoEngine;
 
@@ -612,6 +644,47 @@ export class Game {
       if (await this.save({ ...room, bots }, now, fresh, out, { replaced: true })) return;
     }
     throw new Refused("busy");
+  }
+
+  /** Watching a tournament match ("assistir"): for people in the same
+   * tournament who don't play this match. Returns the table as a spectator
+   * sees it (no hands, covered cards hidden), from the newest view. */
+  async watch(body: Json) {
+    const room = await this.room(body.roomId as string);
+    if (!room.tournament_match_id) throw new Refused("not_tournament");
+    const { data: m } = await this.db.from("tournament_matches")
+      .select("tournament_id").eq("id", room.tournament_match_id).maybeSingle();
+    if (!m) throw new Refused("not_tournament");
+    const [{ data: asA }, { data: asB }, { data: t }] = await Promise.all([
+      this.db.from("tournament_teams").select("id")
+        .eq("tournament_id", m.tournament_id).eq("player_a", this.userId),
+      this.db.from("tournament_teams").select("id")
+        .eq("tournament_id", m.tournament_id).eq("player_b", this.userId),
+      this.db.from("tournaments").select("owner_id")
+        .eq("id", m.tournament_id).maybeSingle(),
+    ]);
+    if (!asA?.length && !asB?.length && t?.owner_id !== this.userId) {
+      throw new Refused("not_in_tournament");
+    }
+    const seats = await this.seats(room.id);
+    const { data: views, error } = await this.db.from("game_views")
+      .select("seat, version, frames").eq("room_id", room.id);
+    if (error) throw error;
+    const newest = (views ?? []).reduce(
+      (best: Json | null, v: Json) =>
+        !best || (v.version as number) > (best.version as number) ? v : best,
+      null,
+    );
+    const frames = (newest?.frames ?? []) as Json[];
+    const frame = frames.length ? spectatorView(frames[frames.length - 1]) : null;
+    return {
+      status: room.status,
+      version: newest?.version ?? 0,
+      seats: seats.map((s) => ({ seat: s.seat, name: s.name })),
+      bots: room.bots,
+      wins: [room.wins_a, room.wins_b],
+      frame,
+    };
   }
 
   /** Leaves the room; during a game the computer takes the seat. */

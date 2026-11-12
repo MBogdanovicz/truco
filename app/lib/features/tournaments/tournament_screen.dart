@@ -434,6 +434,14 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
       highlighted: mine,
       onTap: mine && !m.done && m.roomCode != null
           ? () => context.go('/jogo/entrar?codigo=${m.roomCode}')
+          : !mine &&
+                m.status == 'playing' &&
+                m.roomId != null &&
+                d.teamOf(_me) != null
+          ? () => context.push('/torneios/assistir/${m.roomId}')
+          : null,
+      trailing: !mine && m.status == 'playing' && d.teamOf(_me) != null
+          ? const Text('Assistir')
           : null,
     );
   }
