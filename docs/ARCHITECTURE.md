@@ -425,7 +425,8 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
 * Tables `tournaments`, `tournament_teams`, `tournament_matches` (migration `20261113000000_tournaments.sql`),
   written only by the `game` function (`game/tournament.ts`, actions `tournament.*`); the app reads them
   (`app/lib/data/tournaments.dart`). Public or group-only; creating needs Premium (checked on the server).
-* Sign-up: pairs (a pair waits for the partner, who joins it), people alone, or both. On start the people
+* Sign-up: pairs (a pair waits for the partner, who joins with the pair's 4-letter code from
+  `tournament_team_codes`, readable only by whoever signed the pair up), people alone, or both. On start the people
   without a partner are paired at random (an odd one is left out) and the order is drawn.
 * Knockout: byes fill the bracket to a power of 2; each round opens when both feeding matches are done.
   Round robin: circle method, every match created at start, round N due after N × `round_days`.

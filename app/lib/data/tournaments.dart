@@ -296,6 +296,7 @@ class TournamentError implements Exception {
     'already_registered' => 'Você já está inscrito.',
     'tournament_full' => 'O torneio já está cheio.',
     'team_full' => 'Essa dupla já está completa.',
+    'bad_team_code' => 'Nenhuma dupla deste torneio com esse código.',
     'pairs_only' => 'Neste torneio a inscrição é por dupla.',
     'solo_only' => 'Neste torneio a inscrição é individual.',
     'not_owner' => 'Só quem criou o torneio pode fazer isso.',
@@ -434,9 +435,25 @@ class TournamentsRepository {
     return r['id'] as String;
   }
 
-  /// [as]: "solo", "pair" or "join" (with [teamId]).
-  Future<void> register(String id, String as, {String? teamId}) =>
-      _call('register', {'tournamentId': id, 'as': as, 'teamId': teamId});
+  /// [as]: "solo", "pair" (returns the pair's code for the partner) or
+  /// "join" (with that [code]).
+  Future<String?> register(String id, String as, {String? code}) async =>
+      (await _call('register', {
+            'tournamentId': id,
+            'as': as,
+            'code': code,
+          }))['code']
+          as String?;
+
+  /// The code of the pair [teamId] signed up (only its creator reads it).
+  Future<String?> pairCode(String teamId) async {
+    final row = await _client
+        .from('tournament_team_codes')
+        .select('code')
+        .eq('team_id', teamId)
+        .maybeSingle();
+    return row?['code'] as String?;
+  }
 
   Future<void> unregister(String id) =>
       _call('unregister', {'tournamentId': id});
@@ -454,6 +471,12 @@ final tournamentsRepositoryProvider = Provider<TournamentsRepository?>((ref) {
 /// The signed-in person's id, for "mine" marks on tournament screens.
 final tournamentUserIdProvider = Provider<String?>(
   (ref) => ref.watch(tournamentsRepositoryProvider)?.userId,
+);
+
+/// The code of a pair waiting for the partner (for whoever signed it up).
+final pairCodeProvider = FutureProvider.autoDispose.family<String?, String>(
+  (ref, teamId) async =>
+      ref.watch(tournamentsRepositoryProvider)?.pairCode(teamId),
 );
 
 final tournamentsProvider =

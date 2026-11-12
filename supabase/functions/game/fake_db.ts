@@ -14,6 +14,7 @@ const KEYS: Record<string, string[]> = {
   tournament_matches: ["id"],
   profiles: ["id"],
   group_members: ["group_id", "user_id"],
+  tournament_team_codes: ["team_id"],
 };
 
 export class FakeDb {
@@ -28,6 +29,7 @@ export class FakeDb {
     tournament_matches: [],
     profiles: [],
     group_members: [],
+    tournament_team_codes: [],
   };
   rpcs: { fn: string; args: Json }[] = [];
 

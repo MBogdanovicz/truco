@@ -55,6 +55,7 @@ Future<void> _pump(
         tournamentUserIdProvider.overrideWithValue('me'),
         tournamentProvider(d.tournament.id).overrideWith((ref) async => d),
         myGroupsProvider.overrideWith((ref) async => const <Group>[]),
+        pairCodeProvider('w').overrideWith((ref) async => 'K7QX'),
       ],
       child: MaterialApp(home: screen),
     ),
@@ -178,6 +179,22 @@ void main() {
     );
     expect(find.text('Classificação'), findsOneWidget);
     expect(find.text('1. Eu e Par'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a pair waiting for the partner shows its code', (tester) async {
+    await _pump(
+      tester,
+      const TournamentScreen(id: 'knockout'),
+      TournamentDetail(
+        tournament: _t(TournamentStatus.open, TournamentFormat.knockout),
+        teams: const [TournamentTeam(id: 'w', playerA: 'me', nameA: 'Eu')],
+        matches: const [],
+      ),
+    );
+    expect(find.text('Sua dupla está esperando o parceiro'), findsOneWidget);
+    expect(find.text('Código da sua dupla: K7QX'), findsOneWidget);
+    expect(find.text('Entrar na dupla de um amigo'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

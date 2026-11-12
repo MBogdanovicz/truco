@@ -73,8 +73,14 @@ Deno.test("knockout with pairs, a best-of-3 final", async () => {
     rules: { tempo: 0 },
   });
   for (let i = 0; i < 10; i += 2) {
-    const { teamId } = await all.get(ids[i])!.t.register({ tournamentId: id, as: "pair" });
-    await all.get(ids[i + 1])!.t.register({ tournamentId: id, as: "join", teamId });
+    const { code } = await all.get(ids[i])!.t.register({ tournamentId: id, as: "pair" }) as Json;
+    if (i === 0) {
+      await refused(
+        () => all.get(ids[1])!.t.register({ tournamentId: id, as: "join", code: "ZZZZ" }),
+        "bad_team_code",
+      );
+    }
+    await all.get(ids[i + 1])!.t.register({ tournamentId: id, as: "join", code });
   }
   await refused(
     () => all.get("p3")!.t.register({ tournamentId: id, as: "pair" }),
@@ -154,8 +160,8 @@ Deno.test("slow knockout: games start by themselves", async () => {
     rules: { lento: 2 },
   });
   for (const p of ids.slice(0, 4)) await all.get(p)!.t.register({ tournamentId: id, as: "solo" });
-  const { teamId } = await all.get("l4")!.t.register({ tournamentId: id, as: "pair" });
-  await all.get("l5")!.t.register({ tournamentId: id, as: "join", teamId });
+  const { code } = await all.get("l4")!.t.register({ tournamentId: id, as: "pair" }) as Json;
+  await all.get("l5")!.t.register({ tournamentId: id, as: "join", code });
   await all.get("l6")!.t.register({ tournamentId: id, as: "pair" });
   await all.get("l0")!.t.start({ tournamentId: id });
   // l0..l3 alone + l6 waiting: two pairs drawn, one left out.

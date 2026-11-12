@@ -228,7 +228,8 @@ export class Tournaments {
   }
 
   /** Signs up: "solo" (alone, the draw finds the partner), "pair" (a new
-   * pair, waiting for the partner) or "join" (as the partner of [teamId]). */
+   * pair, waiting for the partner; returns the pair's code for the partner)
+   * or "join" (as the partner of the pair with that [code]). */
   async register(body: Json) {
     if (this.isGuest) throw new Refused("account_required");
     const t = await this.get(body.tournamentId as string);
@@ -242,8 +243,12 @@ export class Tournaments {
     if (people >= t.max_teams * 2) throw new Refused("tournament_full");
     const as = body.as;
     if (as === "join") {
-      const team = teams.find((x) => x.id === body.teamId);
-      if (!team || team.solo || team.player_b) throw new Refused("team_full");
+      const code = String(body.code ?? "").trim().toUpperCase();
+      const { data: codes } = await this.db.from("tournament_team_codes")
+        .select("team_id").eq("code", code);
+      const team = teams.find((x) => codes?.some((c) => c.team_id === x.id));
+      if (!team) throw new Refused("bad_team_code");
+      if (team.solo || team.player_b) throw new Refused("team_full");
       const { data, error } = await this.db.from("tournament_teams")
         .update({ player_b: this.userId, name_b: this.name })
         .eq("id", team.id).is("player_b", null).select("id");
@@ -269,7 +274,16 @@ export class Tournaments {
       solo,
     }).select("id").single();
     if (error) throw error;
-    return { teamId: data.id };
+    if (solo) return { teamId: data.id };
+    // Only the partner who gets this code can join the pair.
+    const code = Array.from(
+      crypto.getRandomValues(new Uint8Array(4)),
+      (b) => ALPHABET[b % ALPHABET.length],
+    ).join("");
+    const { error: codeError } = await this.db.from("tournament_team_codes")
+      .insert({ team_id: data.id, code });
+    if (codeError) throw codeError;
+    return { teamId: data.id, code };
   }
 
   async unregister(body: Json) {

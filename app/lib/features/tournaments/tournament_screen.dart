@@ -190,7 +190,6 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
 
   List<Widget> _signUp(TournamentDetail d, TournamentTeam? mine, bool owner) {
     final t = d.tournament;
-    final waiting = d.teams.where((x) => !x.solo && !x.complete).toList();
     final full = d.people >= t.maxTeams * 2;
     return [
       AppSection(
@@ -210,12 +209,11 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                   : 'Sua dupla está esperando o parceiro',
               subtitle: mine.solo
                   ? 'Sua dupla será sorteada quando o torneio começar.'
-                  : mine.complete
-                  ? null
-                  : 'Peça para o seu parceiro abrir o torneio e entrar na '
-                        'sua dupla.',
+                  : null,
               leading: const AppTileIcon(AppIcon.check, color: Colors.teal),
             ),
+            if (!mine.solo && !mine.complete && mine.playerA == _me)
+              _PairCodeTile(teamId: mine.id),
             AppTile(
               title: 'Sair do torneio',
               leading: const AppTileIcon(
@@ -232,10 +230,23 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                 subtitle: 'Depois o seu parceiro entra nela.',
                 leading: const AppTileIcon(AppIcon.people, color: Colors.teal),
                 enabled: !_busy,
-                onTap: () => _run(
-                  () => _repo.register(t.id, 'pair'),
-                  done: 'Dupla inscrita. Agora o seu parceiro entra nela.',
-                ),
+                onTap: () => _run(() async {
+                  final code = await _repo.register(t.id, 'pair');
+                  if (code != null && mounted) {
+                    await showAppDialog<void>(
+                      context,
+                      title: 'Dupla inscrita',
+                      message:
+                          'Mande este código para o seu parceiro: $code\n\n'
+                          'Ele abre o torneio e toca em "Entrar na dupla de '
+                          'um amigo". Só quem tiver o código entra na sua '
+                          'dupla.',
+                      actions: const [
+                        AppDialogAction(label: 'OK', value: null),
+                      ],
+                    );
+                  }
+                }),
               ),
             if (t.entry != TournamentEntry.pairs)
               AppTile(
@@ -248,18 +259,16 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
                   done: 'Inscrição feita.',
                 ),
               ),
-            for (final w in waiting)
+            if (t.entry != TournamentEntry.solo)
               AppTile(
-                title: 'Entrar na dupla de ${w.nameA}',
+                title: 'Entrar na dupla de um amigo',
+                subtitle: 'Com o código que ele recebeu ao inscrever a dupla.',
                 leading: const AppTileIcon(
                   AppIcon.personAdd,
                   color: Colors.indigo,
                 ),
                 enabled: !_busy,
-                onTap: () => _run(
-                  () => _repo.register(t.id, 'join', teamId: w.id),
-                  done: 'Você entrou na dupla de ${w.nameA}.',
-                ),
+                onTap: () => _joinPair(t.id),
               ),
           ],
           if (owner)
@@ -305,6 +314,35 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
               ],
       ),
     ];
+  }
+
+  Future<void> _joinPair(String id) async {
+    final code = TextEditingController();
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Entrar na dupla de um amigo',
+      content: Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: AppTextField(
+          controller: code,
+          label: 'Código da dupla',
+          autofocus: true,
+          maxLength: 4,
+          textCapitalization: TextCapitalization.characters,
+        ),
+      ),
+      actions: const [
+        AppDialogAction(label: 'Cancelar', value: false),
+        AppDialogAction(label: 'Entrar', value: true, isPrimary: true),
+      ],
+    );
+    final text = code.text.trim().toUpperCase();
+    code.dispose();
+    if (ok != true || !mounted) return;
+    await _run(
+      () => _repo.register(id, 'join', code: text),
+      done: 'Você entrou na dupla.',
+    );
   }
 
   List<Widget> _results(TournamentDetail d) {
@@ -403,5 +441,31 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   static String _when(DateTime d) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(d.day)}/${two(d.month)} às ${two(d.hour)}h${two(d.minute)}';
+  }
+}
+
+/// "Código da sua dupla", for the person who signed the pair up.
+class _PairCodeTile extends ConsumerWidget {
+  const _PairCodeTile({required this.teamId});
+  final String teamId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final code = ref.watch(pairCodeProvider(teamId)).value;
+    return AppTile(
+      title: code == null
+          ? 'Código da sua dupla'
+          : 'Código da sua dupla: $code',
+      subtitle:
+          'Mande para o seu parceiro: ele toca em "Entrar na dupla de um '
+          'amigo" e digita o código. Só ele entra na sua dupla.',
+      leading: const AppTileIcon(AppIcon.key, color: Colors.indigo),
+      onTap: code == null
+          ? null
+          : () {
+              Clipboard.setData(ClipboardData(text: code));
+              showAppToast(context, 'Código copiado.');
+            },
+    );
   }
 }
