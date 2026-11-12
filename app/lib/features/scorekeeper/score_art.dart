@@ -55,7 +55,7 @@ class ScoreArt extends StatelessWidget {
     final back = TableLookScope.of(context).back;
     final art = switch (kind) {
       ScoreArtKind.card10 => AspectRatio(
-        aspectRatio: 0.75,
+        aspectRatio: _Card10Painter.boundsAspect,
         child: TweenAnimationBuilder<double>(
           tween: Tween(end: score.toDouble()),
           duration: const Duration(milliseconds: 450),
@@ -154,13 +154,14 @@ class _Card10Painter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // The 10 sits on the left; the cover card slides down over it.
-    // Small enough that the cover card has room to slide below it.
-    final h = math.min(size.height * 0.62, size.width / _aspect * 0.8);
+    // The 10 and the cover card, at any count, fit inside the area: the
+    // drawing is scaled to the bounds of every position of the cover.
+    final b = _bounds;
+    final h = math.min(size.width / b.width, size.height / b.height) * 0.94;
     final w = h * _aspect;
     final card = Rect.fromLTWH(
-      (size.width - w) / 2 - w * 0.12,
-      size.height * 0.04,
+      (size.width - b.width * h) / 2 - b.left * h,
+      (size.height - b.height * h) / 2 - b.top * h,
       w,
       h,
     );
@@ -210,7 +211,6 @@ class _Card10Painter extends CustomPainter {
     if (n >= 11.98) return;
     final (angle, offset) = _cut(n);
     canvas.save();
-    canvas.clipRect(Offset.zero & size);
     final normal = Offset(math.sin(angle), math.cos(angle));
     final dir = Offset(math.cos(angle), -math.sin(angle));
     final linePoint = card.topLeft + normal * (offset * h);
@@ -218,7 +218,7 @@ class _Card10Painter extends CustomPainter {
     final along = c.dx * dir.dx + c.dy * dir.dy;
     canvas.translate(linePoint.dx, linePoint.dy);
     canvas.rotate(-angle);
-    final cw = w * 1.08;
+    final cw = w * _coverWidth;
     final cover = RRect.fromRectAndRadius(
       Rect.fromLTWH(along - cw / 2, 0, cw, h),
       Radius.circular(w * 0.08),
@@ -273,6 +273,43 @@ class _Card10Painter extends CustomPainter {
   }
 
   static final _cache = <int, (double, double)>{};
+
+  static const _coverWidth = 1.08;
+
+  /// Where the cover card lies for [n] pips shown, in card units (the 10
+  /// at the origin, 1 tall).
+  static List<Offset> _coverCorners(double n) {
+    final (angle, offset) = _cut(n);
+    final normal = Offset(math.sin(angle), math.cos(angle));
+    final dir = Offset(math.cos(angle), -math.sin(angle));
+    final linePoint = normal * offset;
+    const center = Offset(_aspect / 2, 0.5);
+    final c = center - linePoint;
+    final along = c.dx * dir.dx + c.dy * dir.dy;
+    const cw = _aspect * _coverWidth;
+    return [
+      for (final (x, y) in [
+        (along - cw / 2, 0.0),
+        (along + cw / 2, 0.0),
+        (along - cw / 2, 1.0),
+        (along + cw / 2, 1.0),
+      ])
+        linePoint + dir * x + normal * y,
+    ];
+  }
+
+  static double get boundsAspect => _bounds.width / _bounds.height;
+
+  /// The 10 and every position of the cover card, in card units.
+  static final Rect _bounds = () {
+    var r = const Rect.fromLTWH(0, 0, _aspect, 1);
+    for (var n = 0; n < 12; n++) {
+      for (final p in _coverCorners(n.toDouble())) {
+        r = r.expandToInclude(Rect.fromLTWH(p.dx, p.dy, 0, 0));
+      }
+    }
+    return r.inflate(0.03);
+  }();
 
   static (double, double) _cutAt(int n) => _cache.putIfAbsent(n, () {
     Offset p(Offset o) => Offset(o.dx * _aspect, o.dy);
