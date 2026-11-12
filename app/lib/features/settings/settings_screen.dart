@@ -7,6 +7,7 @@ import '../../domain/game/rules.dart';
 import '../../domain/game/terms.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../game/rule_options.dart';
+import '../game/table_look.dart';
 import '../game/rules_screen.dart' show turnSecondsLabel;
 import '../groups/summon_widgets.dart';
 import '../scorekeeper/scoreboard_skin.dart';
@@ -100,6 +101,7 @@ class SettingsScreen extends ConsumerWidget {
     final notifier = ref.read(preferredRulesProvider.notifier);
     final skin = ref.watch(scoreboardSkinProvider);
     final terms = ref.watch(termsProvider);
+    final look = ref.watch(tableLookProvider);
     return AppScaffold(
       title: 'Configurações',
       children: [
@@ -159,6 +161,16 @@ class SettingsScreen extends ConsumerWidget {
         AppSection(
           header: 'Visual',
           children: [
+            AppTile(
+              title: 'Mesa e baralho',
+              subtitle: [
+                'Feltro ${look.felt.label.toLowerCase()}',
+                'verso ${look.back.label.toLowerCase()}',
+                'frente ${look.face.label.toLowerCase()}',
+              ].join(' · '),
+              leading: const AppTileIcon(AppIcon.cards, color: Colors.green),
+              onTap: () => context.push('/configuracoes/mesa'),
+            ),
             AppTile(
               title: 'Visual do placar',
               subtitle: skin.label,

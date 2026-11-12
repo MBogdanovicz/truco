@@ -6,8 +6,8 @@ import '../../domain/game/cards.dart' as deck;
 import '../../domain/game/rules.dart';
 import '../../domain/game/training.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
-import '../../ui/theme/app_theme.dart';
 import 'playing_card.dart';
+import 'table_look.dart';
 
 /// "Modo professor": situations to practise, one after the other.
 class TrainingScreen extends StatefulWidget {
@@ -137,7 +137,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.felt,
+              color: TableLookScope.of(context).felt.light,
               borderRadius: BorderRadius.circular(16),
             ),
             child: DefaultTextStyle.merge(

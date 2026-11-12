@@ -14,6 +14,7 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
 import 'playing_card.dart';
+import 'table_look.dart';
 import 'table_shout.dart';
 
 /// What a [GameTable] shows: the viewer's [TableView] plus who sits where.
@@ -180,14 +181,15 @@ class _GameTableState extends State<GameTable> {
 
   @override
   Widget build(BuildContext context) {
+    final felt = TableLookScope.of(context).felt;
     return KeepScreenOn(
       child: Scaffold(
-        backgroundColor: AppColors.feltDark,
+        backgroundColor: felt.dark,
         body: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: RadialGradient(
               radius: 1.1,
-              colors: [AppColors.felt, AppColors.feltDark],
+              colors: [felt.light, felt.dark],
             ),
           ),
           child: SafeArea(
