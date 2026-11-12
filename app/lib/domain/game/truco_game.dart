@@ -145,7 +145,7 @@ class GameEnded extends GameEvent {
 }
 
 /// After a hand with a truco call, [seat] showed the cards they still held
-/// (and any played face down), as people do at a real table.
+/// (not the ones played), as people do at a real table.
 class CardsShown extends GameEvent {
   const CardsShown(this.seat, this.cards);
   final int seat;
@@ -540,20 +540,9 @@ class TrucoGame {
   /// Cards shown after this hand, by seat.
   Map<int, List<Card>> get shown => Map.unmodifiable(_shown);
 
-  /// What [seat] would show: the cards not played face up this hand.
-  List<Card> unshownOf(int seat) {
-    final open = {
-      for (final r in _rounds)
-        for (final p in r.plays)
-          if (p.seat == seat && !p.covered) p.card,
-      for (final p in _current)
-        if (p.seat == seat && !p.covered) p.card,
-    };
-    return [
-      for (final c in _dealt[seat])
-        if (!open.contains(c)) c,
-    ];
-  }
+  /// What [seat] would show: the cards still in their hand (never the
+  /// ones played, not even face down).
+  List<Card> unshownOf(int seat) => List.unmodifiable(_hands[seat]);
 
   bool canShow(int seat) =>
       revealOpen && !_shown.containsKey(seat) && unshownOf(seat).isNotEmpty;
