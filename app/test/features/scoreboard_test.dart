@@ -69,8 +69,10 @@ void main() {
       await tap('add-a-1');
       await tap('add-a-1');
       expect(find.text('Mão de onze'), findsOneWidget);
-      // The team on 11 only gets "Vitória"; the other team gets +1 and +3.
-      expect(find.byKey(const ValueKey('add-a-3')), findsNothing);
+      // The team on 11 only gets "Vitória" (the other buttons stay, but do
+      // nothing); the other team gets +1 and +3.
+      await tap('add-a-3');
+      expect(score('a'), '11');
       expect(find.text('Vitória'), findsOneWidget);
       expect(find.byKey(const ValueKey('add-b-3')), findsOneWidget);
       expect(find.byKey(const ValueKey('add-b-6')), findsNothing);

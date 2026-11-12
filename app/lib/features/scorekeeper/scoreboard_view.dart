@@ -239,11 +239,9 @@ class _TeamPanel extends StatelessWidget {
     final onEleven =
         (state.isHandOfEleven || state.isIronHand) && score == eleven;
     final facingEleven = state.isHandOfEleven && score != eleven;
-    final extraDeltas = onEleven
-        ? const <int>[]
-        : facingEleven
-        ? const [3]
-        : const [3, 6, 9, 12];
+    // On 11 the team only needs "Vitória", but the other buttons stay
+    // (disabled) so the layout doesn't jump.
+    final extraDeltas = facingEleven ? const [3] : const [3, 6, 9, 12];
 
     final panel = Container(
       decoration: skin.isWood ? null : skin.panel(team),
@@ -380,7 +378,9 @@ class _TeamPanel extends StatelessWidget {
                                 : facingEleven
                                 ? 'Ganhou a mão'
                                 : _labels[d],
-                            onPressed: scoringEnabled ? () => add(d) : null,
+                            onPressed: scoringEnabled && !onEleven
+                                ? () => add(d)
+                                : null,
                           ),
                         ),
                         if (d != extraDeltas.last) const SizedBox(width: 8),
