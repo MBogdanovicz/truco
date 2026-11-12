@@ -95,5 +95,8 @@ const releaseNotes = <ReleaseNote>[
         'botão para mudar só naquela partida.',
     'Os torneios encerrados agora ficam no Histórico.',
     'O Treinar agora fica na tela inicial.',
+    'Mesa nova: a vira fica no meio, com o baralho por cima, e logo abaixo '
+        'quanto a mão vale.',
+    'Truco! Sofá de zona! Um grito no começo de cada partida.',
   ]),
 ];

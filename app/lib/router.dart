@@ -3,34 +3,34 @@ import 'package:go_router/go_router.dart';
 
 import 'data/auth_repository.dart';
 import 'data/crash_reporting.dart';
-import 'features/settings/settings_screen.dart';
+import 'domain/game/rules.dart';
+import 'features/achievements/achievements_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
-import 'features/groups/group_detail_screen.dart';
-import 'features/groups/groups_screen.dart';
-import 'features/groups/join_group_screen.dart';
 import 'features/game/game_setup_screen.dart';
 import 'features/game/game_table_screen.dart';
 import 'features/game/online_game_screen.dart';
-import 'domain/game/rules.dart';
 import 'features/game/rules_screen.dart';
 import 'features/game/training_screen.dart';
+import 'features/groups/group_detail_screen.dart';
+import 'features/groups/groups_screen.dart';
+import 'features/groups/join_group_screen.dart';
 import 'features/history/history_screen.dart';
+import 'features/home/home_screen.dart';
 import 'features/premium/premium_screen.dart';
 import 'features/ranking/ranking_screen.dart';
-import 'features/home/home_screen.dart';
-import 'features/startup/startup_checks.dart';
 import 'features/scorekeeper/join_room_screen.dart';
 import 'features/scorekeeper/mode_screen.dart';
 import 'features/scorekeeper/nearby_screen.dart';
-import 'features/achievements/achievements_screen.dart';
+import 'features/scorekeeper/online_room_screen.dart';
+import 'features/scorekeeper/scoreboard_screen.dart';
+import 'features/scorekeeper/setup_screen.dart';
+import 'features/settings/settings_screen.dart';
+import 'features/startup/startup_checks.dart';
 import 'features/tournaments/create_tournament_screen.dart';
 import 'features/tournaments/tournament_screen.dart';
 import 'features/tournaments/tournaments_screen.dart';
 import 'features/tournaments/watch_match_screen.dart';
-import 'features/scorekeeper/online_room_screen.dart';
-import 'features/scorekeeper/scoreboard_screen.dart';
-import 'features/scorekeeper/setup_screen.dart';
 
 /// Pure redirect rule, kept separate for testing.
 ///

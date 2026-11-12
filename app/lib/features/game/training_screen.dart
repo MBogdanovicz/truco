@@ -1,8 +1,7 @@
-import '../../data/game_prefs.dart';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/game_prefs.dart';
 import '../../domain/game/cards.dart' as deck;
 import '../../domain/game/rules.dart';
 import '../../domain/game/training.dart';

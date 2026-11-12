@@ -1,9 +1,8 @@
-import '../../data/game_prefs.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/achievements_repository.dart';
+import '../../data/game_prefs.dart';
 import '../../domain/achievements.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';

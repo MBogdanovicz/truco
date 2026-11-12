@@ -1,9 +1,8 @@
-import 'data/game_prefs.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/game_prefs.dart';
 import 'data/premium_repository.dart';
 import 'features/groups/summon_widgets.dart';
 import 'router.dart';

@@ -1,13 +1,11 @@
-import '../../data/game_prefs.dart';
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/game_prefs.dart';
 import '../../domain/game/cards.dart' as deck;
 import '../../domain/game/coach.dart';
-import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
 import '../../domain/game/truco_game.dart';
 import '../../domain/scorekeeper/team.dart';
@@ -15,6 +13,7 @@ import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/keep_screen_on.dart';
 import '../../ui/theme/app_theme.dart';
 import 'playing_card.dart';
+import 'table_shout.dart';
 
 /// What a [GameTable] shows: the viewer's [TableView] plus who sits where.
 class GameTableModel {
@@ -124,6 +123,45 @@ class GameTable extends StatefulWidget {
 
 class _GameTableState extends State<GameTable> {
   bool _cover = false;
+
+  /// The comic balloon being shown, if any.
+  String? _shout;
+  int _shoutId = 0;
+
+  /// The start balloon was shown for the current game.
+  bool _startShouted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkShout();
+  }
+
+  @override
+  void didUpdateWidget(GameTable old) {
+    super.didUpdateWidget(old);
+    _checkShout();
+  }
+
+  void _checkShout() {
+    final fresh =
+        v.handNumber <= 1 &&
+        v.scoreOf(Team.a) == 0 &&
+        v.scoreOf(Team.b) == 0 &&
+        v.rounds.isEmpty &&
+        v.tablePlays.isEmpty &&
+        v.phase != GamePhase.gameOver;
+    if (!fresh) {
+      if (v.handNumber > 1 || v.phase == GamePhase.gameOver) {
+        _startShouted = false;
+      }
+      return;
+    }
+    if (_startShouted) return;
+    _startShouted = true;
+    _shout = pickShout(ShoutEvent.gameStart);
+    _shoutId++;
+  }
 
   GameTableModel get m => widget.model;
   TableView get v => widget.model.view;
@@ -238,10 +276,10 @@ class _GameTableState extends State<GameTable> {
         final small = (cw * 0.42).clamp(20.0, 34.0).toDouble();
         final active = _activeSeat();
         Alignment playSpot(int seat) => switch (pos(seat)) {
-          0 => const Alignment(0, 0.75),
-          1 => const Alignment(0.8, 0),
-          2 => const Alignment(0, -0.75),
-          _ => const Alignment(-0.8, 0),
+          0 => const Alignment(0, 0.62),
+          1 => const Alignment(0.78, -0.04),
+          2 => const Alignment(0, -0.72),
+          _ => const Alignment(-0.78, -0.04),
         };
         Widget badge(int position, Alignment at) {
           final seat = seatAt(position);
@@ -261,13 +299,16 @@ class _GameTableState extends State<GameTable> {
         return Stack(
           children: [
             badge(2, const Alignment(0, -1)),
-            badge(1, const Alignment(1, -0.5)),
-            badge(3, const Alignment(-1, -0.5)),
+            badge(1, const Alignment(1, -0.42)),
+            badge(3, const Alignment(-1, -0.42)),
             badge(0, const Alignment(0, 1)),
-            Positioned(
-              left: 8,
-              top: 8,
-              child: _ViraBox(rules: v.rules, vira: v.vira, width: cw * 0.7),
+            Align(
+              alignment: const Alignment(0, -0.06),
+              child: _DeckPile(
+                vira: v.vira,
+                width: cw * 0.85,
+                handValue: v.handValue,
+              ),
             ),
             Positioned(
               right: 10,
@@ -315,6 +356,16 @@ class _GameTableState extends State<GameTable> {
                 ],
               ),
             ),
+            if (_shout != null)
+              Center(
+                child: TableShout(
+                  key: ValueKey(_shoutId),
+                  text: said(context, _shout!),
+                  onDone: () {
+                    if (mounted) setState(() => _shout = null);
+                  },
+                ),
+              ),
             if (v.toast != null || m.status != null)
               Center(
                 child: Container(
@@ -684,7 +735,6 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const white = TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
       child: Row(
@@ -709,14 +759,6 @@ class _TopBar extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black26,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text('Vale ${view.handValue}', style: white),
           ),
           if (onShowCode != null)
             IconButton(
@@ -895,28 +937,62 @@ class _SeatBadge extends StatelessWidget {
   }
 }
 
-class _ViraBox extends StatelessWidget {
-  const _ViraBox({
-    required this.rules,
+/// The middle of the table, as in a real game: the vira face up with the
+/// rest of the deck across it, and what the hand is worth right below.
+class _DeckPile extends StatelessWidget {
+  const _DeckPile({
     required this.vira,
     required this.width,
+    required this.handValue,
   });
 
-  final TrucoRules rules;
   final deck.Card? vira;
   final double width;
+  final int handValue;
 
   @override
   Widget build(BuildContext context) {
-    const label = TextStyle(color: Colors.white70, fontSize: 11);
-    if (vira == null) {
-      return const Text('Manilhas fixas', style: label);
-    }
+    final height = width / cardAspect;
+    final raised = handValue > 1;
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('Vira', style: label),
-        const SizedBox(height: 2),
-        PlayingCardView(card: vira!, width: width),
+        SizedBox(
+          width: height,
+          height: height,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (vira != null) PlayingCardView(card: vira!, width: width),
+              // The deck, a few cards thick, lying across the vira.
+              for (var i = 2; i >= 0; i--)
+                Transform.translate(
+                  // Lower than the vira's middle, so its corner shows.
+                  offset: Offset(-i * 1.2, height * 0.2 - i * 1.2),
+                  child: RotatedBox(
+                    quarterTurns: 1,
+                    child: CardBack(width: width),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: raised ? AppColors.gold : Colors.black26,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            handValue == 1 ? 'Vale 1 tento' : 'Vale $handValue tentos',
+            style: TextStyle(
+              color: raised ? Colors.black87 : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: raised ? 15 : 13,
+            ),
+          ),
+        ),
       ],
     );
   }

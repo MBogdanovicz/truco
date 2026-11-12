@@ -1,7 +1,6 @@
-import '../../data/game_prefs.dart';
-
 import 'package:flutter/material.dart';
 
+import '../../data/game_prefs.dart';
 import '../../domain/game/rules.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 
