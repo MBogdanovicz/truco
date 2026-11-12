@@ -400,6 +400,16 @@ class TournamentsRepository {
     );
   }
 
+  /// The name of the tournament a match belongs to.
+  Future<String?> nameOfMatch(String matchId) async {
+    final row = await _client
+        .from('tournament_matches')
+        .select('tournaments(name)')
+        .eq('id', matchId)
+        .maybeSingle();
+    return (row?['tournaments'] as Map?)?['name'] as String?;
+  }
+
   /// The id of the tournament with [code], if this person can see it.
   Future<String?> idByCode(String code) async {
     final row = await _client

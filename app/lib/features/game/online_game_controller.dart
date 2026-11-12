@@ -9,9 +9,11 @@ import '../../domain/game/ai.dart';
 import '../../domain/game/cards.dart';
 import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
+import '../../domain/game/truco_game.dart' show GamePhase;
 import '../../domain/scorekeeper/team.dart';
 import 'frame_player.dart';
 import 'game_table.dart';
+import 'tournament_history.dart';
 
 /// Names of the computer players, by seat.
 const onlineBotNames = ['Lia', 'Zeca', 'Bia', 'Tonho'];
@@ -163,7 +165,18 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
     }
     state = s.copyWith(room: room);
     _applyView(room.viewVersion, room.frames);
+    // Tournament games go to this device's history.
+    final last = room.frames.lastOrNull;
+    if (room.isTournament &&
+        room.status == GameRoomStatus.finished &&
+        last != null &&
+        last.phase == GamePhase.gameOver) {
+      final key = '${room.id}-${room.wins.$1 + room.wins.$2}';
+      if (_saved.add(key)) saveTournamentGame(ref, room, last);
+    }
   }
+
+  final _saved = <String>{};
 
   /// New frames for this person: played in order when they follow the
   /// last ones, otherwise only the last is shown.
