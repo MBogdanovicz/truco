@@ -298,12 +298,19 @@ class TournamentDetail {
   TournamentMatch? nextMatchOf(String? userId) {
     final mine = teamOf(userId);
     if (mine == null) return null;
-    return matches
+    // The earliest open round first (a round robin lists them all).
+    final open = matches
         .where(
           (m) =>
               !m.done && !m.bye && (m.teamA == mine.id || m.teamB == mine.id),
         )
-        .firstOrNull;
+        .toList();
+    if (open.isEmpty) return null;
+    return open.reduce((x, y) {
+      final xr = x.roomCode != null, yr = y.roomCode != null;
+      if (xr != yr) return xr ? x : y;
+      return y.round < x.round ? y : x;
+    });
   }
 }
 
@@ -422,13 +429,13 @@ class TournamentsRepository {
           .from('tournament_teams')
           .select()
           .eq('tournament_id', id)
-          .order('created_at'),
+          .order('created_at', ascending: true),
       _client
           .from('tournament_matches')
           .select()
           .eq('tournament_id', id)
-          .order('round')
-          .order('slot'),
+          .order('round', ascending: true)
+          .order('slot', ascending: true),
     ]);
     final row = results[0] as Map<String, dynamic>?;
     if (row == null) throw const TournamentError('tournament_not_found');

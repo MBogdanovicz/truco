@@ -463,12 +463,12 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
       return out;
     }
     // Todos contra todos: the games round by round.
-    for (final entry in rounds.entries) {
+    for (final round in rounds.keys.toList()..sort()) {
       out.add(
         AppSection(
-          header: _roundName(t, entry.key, entry.value.length),
+          header: _roundName(t, round, rounds[round]!.length),
           children: [
-            for (final m in entry.value)
+            for (final m in rounds[round]!)
               if (!m.bye) _matchTile(d, m),
           ],
         ),

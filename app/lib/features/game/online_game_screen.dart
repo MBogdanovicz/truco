@@ -194,7 +194,8 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
                   await _run(_ctrl.start);
                 }
               : null,
-          onShowCode: () => _showCode(room.code),
+          // A tournament room is only for its 4 players.
+          onShowCode: room.isTournament ? null : () => _showCode(room.code),
           rematchLabel: room.isTournament
               ? 'Próxima partida (${room.wins.$1} × ${room.wins.$2})'
               : 'Revanche',

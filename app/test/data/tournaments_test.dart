@@ -51,4 +51,34 @@ void main() {
       'partida lenta',
     );
   });
+
+  test('the next match is the open one of the earliest round', () {
+    TournamentMatch m(int round, String a, String b, {String? code}) =>
+        TournamentMatch(
+          id: '$round',
+          round: round,
+          slot: 0,
+          teamA: a,
+          teamB: b,
+          status: 'pending',
+          bestOf: 1,
+          roomCode: code,
+        );
+    final d = TournamentDetail(
+      tournament: Tournament.fromRow({
+        'id': 'x',
+        'code': 'ABC234',
+        'name': 'Rodízio',
+        'owner_id': 'o',
+        'format': 'round_robin',
+        'entry': 'pairs',
+        'rules': <String, Object?>{},
+        'status': 'running',
+      }),
+      teams: [team('a'), team('b'), team('c')],
+      // Listed from the last round, as they once came from the server.
+      matches: [m(3, 'c', 'b'), m(2, 'a', 'c'), m(1, 'b', 'a', code: 'R1')],
+    );
+    expect(d.nextMatchOf('a1')!.round, 1);
+  });
 }
