@@ -218,7 +218,10 @@ class TournamentMatch {
     teamB: r['team_b'] as String?,
     status: (r['status'] as String?) ?? 'pending',
     bestOf: (r['best_of'] as int?) ?? 1,
-    roomCode: r['room_code'] as String?,
+    // '' while the room is being opened.
+    roomCode: (r['room_code'] as String?)?.isEmpty ?? true
+        ? null
+        : r['room_code'] as String,
     roomId: r['room_id'] as String?,
     bracket: r['bracket'] as String?,
     deadline: DateTime.tryParse((r['deadline'] as String?) ?? '')?.toLocal(),
@@ -445,10 +448,7 @@ class TournamentsRepository {
   /// A tournament match as a spectator sees it (see game.ts `watch`).
   /// A tournament match by its room id, or a normal room by its [code].
   Future<SpectatedMatch> spectate({String? roomId, String? code}) async {
-    final r = await _call2('watch', {
-      'roomId': ?roomId,
-      'code': ?code,
-    });
+    final r = await _call2('watch', {'roomId': ?roomId, 'code': ?code});
     final frame = r['frame'];
     final names = List.filled(4, '…');
     for (final s in (r['seats'] as List?) ?? const []) {

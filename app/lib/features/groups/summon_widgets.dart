@@ -272,7 +272,9 @@ class _SummonsListenerState extends ConsumerState<SummonsListener> {
         : null;
     if (tournament != null) {
       // On the tournament screen, or still at the table of one of its
-      // matches ("Sair" leads to the tournament anyway).
+      // matches ("Sair" leads to the tournament anyway). The champions'
+      // congratulations always show.
+      if (s.kind == 'champion') return false;
       return location == target!.path ||
           (location == '/jogo/sala' &&
               ref.read(onlineGameControllerProvider)?.room?.tournamentId ==

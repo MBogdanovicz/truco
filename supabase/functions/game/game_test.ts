@@ -174,3 +174,16 @@ Deno.test("anyone with the code watches a normal room", async () => {
   const frame = seen.frame as Json;
   assert((frame.hand as unknown[]).length === 0, "no cards in hand");
 });
+
+Deno.test("sitting on a taken seat swaps the two", async () => {
+  const db = new FakeDb();
+  const ana = new Game(asDb(db), "ana", false, "Ana");
+  const bia = new Game(asDb(db), "bia", false, "Bia");
+  const { roomId, code } = await ana.create({});
+  await bia.join({ code });
+  const seatOf = (id: string) => db.tables.game_seats.find((s) => s.user_id === id)!.seat;
+  const before = seatOf("bia");
+  await bia.sit({ roomId, seat: seatOf("ana") });
+  assert(seatOf("bia") === 0 && seatOf("ana") === before, "swapped");
+  assert(db.tables.game_seats.find((s) => s.user_id === "ana")!.name === "Ana");
+});

@@ -586,8 +586,11 @@ export class Tournaments {
         body: "O torneio começou, mas você ficou sem dupla desta vez.",
       });
     }
+    // A round robin plays round by round (see advance).
     for (const m of (created ?? []) as Match[]) {
-      if (m.team_b) await this.open(t, m, teams);
+      if (m.team_b && (t.format !== "round_robin" || m.round === 1)) {
+        await this.open(t, m, teams);
+      }
     }
     await this.advance(t);
     return {};
@@ -749,6 +752,20 @@ export class Tournaments {
       if (matches.every((m) => m.status === "done")) {
         const top = standings(teams.map((x) => x.id), matches)[0];
         await this.finish(t, top?.team ?? null, teams);
+        return;
+      }
+      // The next round opens when the current one is over.
+      const round = Math.min(
+        ...matches.filter((m) => m.status !== "done").map((m) => m.round),
+      );
+      if (matches.some((m) => m.round < round && m.status !== "done")) return;
+      for (const m of matches) {
+        if (m.round !== round || m.room_id || m.status === "done" || !m.team_b) continue;
+        // Claim it, so two results arriving together don't open it twice.
+        const { data: claimed } = await this.db.from("tournament_matches")
+          .update({ room_code: "" }).eq("id", m.id).is("room_code", null)
+          .select("id");
+        if (claimed?.length) await this.open(t, m, teams);
       }
       return;
     }
@@ -855,12 +872,20 @@ export class Tournaments {
     }).eq("id", t.id).eq("status", "running").select("id");
     if (!data?.length) return;
     const team = teams.find((x) => x.id === champion);
-    await this.notify(players(teams), t, {
+    const winners = team ? [team.player_a, team.player_b!] : [];
+    await this.notify(players(teams).filter((id) => !winners.includes(id)), t, {
       title: `Torneio ${t.name}`,
       body: team
         ? `Fim do torneio! Campeões: ${team.name_a} e ${team.name_b}.`
         : "Fim do torneio!",
     });
+    if (team) {
+      await this.notify(winners, t, {
+        title: `Parabéns, campeões! 🏆`,
+        body: `${team.name_a} e ${team.name_b} venceram o torneio ${t.name}!`,
+        kind: "champion",
+      });
+    }
   }
 
   // -------------------------------------------------------- walkovers --
@@ -939,7 +964,7 @@ export class Tournaments {
   private async notify(
     userIds: string[],
     t: Tourney,
-    push: { title: string; body: string; path?: string; kind?: "match" },
+    push: { title: string; body: string; path?: string; kind?: "match" | "champion" },
   ) {
     await sendPush(this.db, userIds.filter(Boolean), {
       ...push,

@@ -84,6 +84,7 @@ class GameTableActions {
     this.rematchLabel = 'Revanche',
     this.gameOverExtra,
     this.onDismissTip,
+    this.onShowCode,
   });
 
   final void Function(deck.Card card, {bool covered}) playCard;
@@ -102,6 +103,9 @@ class GameTableActions {
 
   /// Closes the professor's comment.
   final VoidCallback? onDismissTip;
+
+  /// Online rooms: shows the room code (to call someone in).
+  final VoidCallback? onShowCode;
 }
 
 /// The card table: the viewer at the bottom, partner on top, opponents at
@@ -145,7 +149,11 @@ class _GameTableState extends State<GameTable> {
                 constraints: const BoxConstraints(maxWidth: 820),
                 child: Column(
                   children: [
-                    _TopBar(view: v, onBack: a.onLeave),
+                    _TopBar(
+                      view: v,
+                      onBack: a.onLeave,
+                      onShowCode: a.onShowCode,
+                    ),
                     Expanded(child: _table()),
                     if (m.tip != null) _tip(m.tip!),
                     if (m.hint != null) _tip(m.hint!),
@@ -662,10 +670,11 @@ class _ActionButton extends StatelessWidget {
 // ------------------------------------------------------------- top bar --
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.view, required this.onBack});
+  const _TopBar({required this.view, required this.onBack, this.onShowCode});
 
   final TableView view;
   final VoidCallback onBack;
+  final VoidCallback? onShowCode;
 
   @override
   Widget build(BuildContext context) {
@@ -703,6 +712,12 @@ class _TopBar extends StatelessWidget {
             ),
             child: Text('Vale ${view.handValue}', style: white),
           ),
+          if (onShowCode != null)
+            IconButton(
+              onPressed: onShowCode,
+              icon: const Icon(Icons.tag, color: Colors.white),
+              tooltip: 'Código da sala',
+            ),
           IconButton(
             onPressed: () => context.push('/jogo/regras', extra: view.rules),
             icon: const Icon(Icons.help_outline, color: Colors.white),

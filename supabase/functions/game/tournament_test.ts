@@ -274,3 +274,38 @@ Deno.test("repescagem: nobody is out with one loss", async () => {
   const reset = db.tables.tournament_matches.find((m) => m.round === FINAL_ROUND + 1)!;
   assert(reset.status === "done");
 });
+
+Deno.test("round robin plays round by round; the champions are congratulated", async () => {
+  const db = new FakeDb();
+  const ids = Array.from({ length: 8 }, (_, i) => `r${i}`);
+  const all = people(db, ids, ["r0"]);
+  const { id } = await all.get("r0")!.t.create({
+    name: "Pontos corridos",
+    format: "round_robin",
+    entry: "pairs",
+    maxTeams: 4,
+    rules: { tempo: 0 },
+  });
+  for (let i = 0; i < 8; i += 2) {
+    const { code } = await all.get(ids[i])!.t.register({ tournamentId: id, as: "pair" }) as Json;
+    await all.get(ids[i + 1])!.t.register({ tournamentId: id, as: "join", code });
+  }
+  await all.get("r0")!.t.start({ tournamentId: id });
+  const matches = db.tables.tournament_matches;
+  const opened = () => matches.filter((m) => m.room_id).map((m) => m.round as number);
+  assert(matches.length === 6, `${matches.length} matches`);
+  assert(opened().length === 2 && opened().every((r) => r === 1), `opened ${opened()}`);
+  const t = db.tables.tournaments[0];
+  for (let i = 0; i < 10 && t.status === "running"; i++) {
+    const next = live(db);
+    assert(next, "a match to play");
+    const round = next.round as number;
+    assert(
+      matches.filter((m) => (m.round as number) < round).every((m) => m.status === "done"),
+      "earlier rounds over",
+    );
+    await playMatch(db, next, all);
+  }
+  assert((t.status as string) === "finished", `status ${t.status}`);
+  assert(opened().length === 6, "every match got its room");
+});

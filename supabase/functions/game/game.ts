@@ -316,8 +316,27 @@ export class Game {
     const seat = Number(body.seat);
     if (!(seat >= 0 && seat <= 3)) throw new Refused("bad_seat");
     const seats = await this.seats(room.id);
-    this.mySeat(seats);
-    if (seats.some((s) => s.seat === seat)) throw new Refused("seat_taken");
+    const mine = this.mySeat(seats);
+    const other = seats.find((s) => s.seat === seat);
+    if (other && other.user_id === this.userId) return {};
+    if (other) {
+      // Taken: the two swap places (so a full table can still fix the pairs).
+      await this.db.from("game_seats").delete().eq("room_id", room.id)
+        .eq("user_id", other.user_id);
+      const { error } = await this.db.from("game_seats").update({ seat })
+        .eq("room_id", room.id).eq("user_id", this.userId);
+      if (error) throw error;
+      const { error: back } = await this.db.from("game_seats").insert({
+        room_id: room.id,
+        seat: mine.seat,
+        user_id: other.user_id,
+        name: other.name,
+        is_guest: other.is_guest,
+      });
+      if (back) throw back;
+      await this.touch(room.id);
+      return {};
+    }
     const { error } = await this.db.from("game_seats").update({ seat })
       .eq("room_id", room.id).eq("user_id", this.userId);
     if (error?.code === "23505") throw new Refused("seat_taken");

@@ -92,6 +92,30 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
     await _leave();
   }
 
+  /// The room code during the game, like the scorekeeper's.
+  Future<void> _showCode(String code) async {
+    final copy = await showAppDialog<bool>(
+      context,
+      title: 'Sala $code',
+      message:
+          'Quem quiser entrar toca em "Jogar truco" > "Entrar com código" '
+          'e digita $code.',
+      actions: const [
+        AppDialogAction(label: 'Fechar', value: false),
+        AppDialogAction(label: 'Copiar convite', value: true, isPrimary: true),
+      ],
+    );
+    if (copy != true) return;
+    await Clipboard.setData(
+      ClipboardData(
+        text:
+            'Vem jogar truco comigo: ${gameRoomInviteLink(code)}\n'
+            'Código: $code',
+      ),
+    );
+    if (mounted) showAppToast(context, 'Convite copiado');
+  }
+
   Future<void> _leave() async {
     if (_leaving) return;
     _leaving = true;
@@ -170,6 +194,7 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
                   await _run(_ctrl.start);
                 }
               : null,
+          onShowCode: () => _showCode(room.code),
           rematchLabel: room.isTournament
               ? 'Próxima partida (${room.wins.$1} × ${room.wins.$2})'
               : 'Revanche',
@@ -287,10 +312,13 @@ class _Lobby extends ConsumerWidget {
             ? (room.isTournament
                   ? 'Lugar de quem joga este jogo do torneio.'
                   : 'Lugar vazio. Toque para sentar aqui.')
-            : (who.userId == room.hostId && !room.isTournament
-                  ? 'Criou a sala'
-                  : null),
-        onTap: who == null && !sending && !room.isTournament
+            : room.isTournament || me
+            ? null
+            : [
+                if (who.userId == room.hostId) 'Criou a sala',
+                'Toque para trocar de lugar.',
+              ].join('. '),
+        onTap: !me && !sending && !room.isTournament
             ? () => run(() => ctrl.sit(seat))
             : null,
       );

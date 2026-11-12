@@ -77,7 +77,7 @@ export interface Push {
   tag: string;
   /** What the app does with it when open: "turn" (slow game, your move),
    * "end" (slow game over); none for "intimar". */
-  kind?: "turn" | "end" | "match";
+  kind?: "turn" | "end" | "match" | "champion";
 }
 
 /** Sends [push] to every device of [userIds]; drops dead tokens. Returns

@@ -451,6 +451,12 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
     final b = d.team(m.teamB);
     final winner = d.team(m.winner);
     final mine = a?.has(_me) == true || b?.has(_me) == true;
+    // People of the tournament (and its owner) watch the others' matches.
+    final watchable =
+        !mine &&
+        !m.done &&
+        m.roomId != null &&
+        (d.teamOf(_me) != null || d.tournament.ownerId == _me);
     final String subtitle;
     if (m.bye) {
       subtitle = 'Passou direto para a próxima rodada.';
@@ -480,15 +486,10 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
       highlighted: mine,
       onTap: mine && !m.done && m.roomCode != null
           ? () => context.go('/jogo/entrar?codigo=${m.roomCode}')
-          : !mine &&
-                m.status == 'playing' &&
-                m.roomId != null &&
-                d.teamOf(_me) != null
+          : watchable
           ? () => context.push('/torneios/assistir/${m.roomId}')
           : null,
-      trailing: !mine && m.status == 'playing' && d.teamOf(_me) != null
-          ? const Text('Assistir')
-          : null,
+      trailing: watchable ? const Text('Assistir') : null,
     );
   }
 
