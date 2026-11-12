@@ -2,13 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../data/entitlements.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
-import '../premium/premium_screen.dart';
 import 'score_art.dart';
 
 /// How the 12 tentos of a team are drawn.
@@ -359,38 +358,7 @@ class Tally extends StatelessWidget {
   );
 }
 
-/// Lets the player choose the scoreboard look.
-Future<void> pickScoreboardSkin(BuildContext context, WidgetRef ref) async {
-  final current = ref.read(scoreboardSkinProvider);
-  final picked = await showAppDialog<ScoreboardSkin>(
-    context,
-    title: 'Visual do placar',
-    message: 'Escolha como o marcador aparece na mesa.',
-    actions: [
-      for (final s in ScoreboardSkin.values)
-        AppDialogAction(
-          label: s == current ? '✓ ${s.label}' : s.label,
-          value: s,
-          isPrimary: s == current,
-        ),
-    ],
-  );
-  if (picked != null && picked != ScoreboardSkin.felt) {
-    final allowed = (await ref.read(entitlementsProvider.future))
-        .canChooseScoreboardLook;
-    if (!allowed) {
-      if (context.mounted) {
-        await showPremiumRequired(context, 'Escolher o visual do placar');
-      }
-      return;
-    }
-  }
-  if (picked != null) {
-    await ref.read(scoreboardSkinProvider.notifier).choose(picked);
-  }
-}
-
-/// App bar button that opens [pickScoreboardSkin].
+/// App bar button that opens the "Visual do placar" screen.
 class ScoreboardSkinButton extends ConsumerWidget {
   const ScoreboardSkinButton({super.key});
 
@@ -399,6 +367,6 @@ class ScoreboardSkinButton extends ConsumerWidget {
     tooltip: 'Visual do placar',
     color: Colors.white,
     icon: Icon(context.icon(AppIcon.palette)),
-    onPressed: () => pickScoreboardSkin(context, ref),
+    onPressed: () => context.push('/configuracoes/placar'),
   );
 }

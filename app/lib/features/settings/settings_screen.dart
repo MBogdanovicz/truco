@@ -175,7 +175,7 @@ class SettingsScreen extends ConsumerWidget {
               title: 'Visual do placar',
               subtitle: skin.label,
               leading: const AppTileIcon(AppIcon.palette, color: Colors.purple),
-              onTap: () => pickScoreboardSkin(context, ref),
+              onTap: () => context.push('/configuracoes/placar'),
             ),
           ],
         ),

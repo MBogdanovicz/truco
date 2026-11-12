@@ -26,6 +26,7 @@ import 'features/scorekeeper/online_room_screen.dart';
 import 'features/scorekeeper/scoreboard_screen.dart';
 import 'features/scorekeeper/setup_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/settings/scoreboard_look_screen.dart';
 import 'features/settings/table_look_screen.dart';
 import 'features/startup/startup_checks.dart';
 import 'features/tournaments/create_tournament_screen.dart';
@@ -169,6 +170,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, _) => const SettingsScreen(),
             routes: [
               GoRoute(path: 'mesa', builder: (_, _) => const TableLookScreen()),
+              GoRoute(
+                path: 'placar',
+                builder: (_, _) => const ScoreboardLookScreen(),
+              ),
             ],
           ),
           GoRoute(path: 'ranking', builder: (_, _) => const RankingScreen()),
