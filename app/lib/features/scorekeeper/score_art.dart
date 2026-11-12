@@ -76,6 +76,14 @@ class ScoreArt extends StatelessWidget {
         painter: _BeansPainter(score: score, target: target, seed: team.index),
         child: const SizedBox.expand(),
       ),
+      ScoreArtKind.matches => CustomPaint(
+        painter: _MatchesPainter(
+          score: score,
+          target: target,
+          seed: team.index,
+        ),
+        child: const SizedBox.expand(),
+      ),
       ScoreArtKind.chalk => CustomPaint(
         painter: _ChalkPainter(score: score, seed: team.index),
         child: const SizedBox.expand(),
@@ -100,7 +108,7 @@ class ScoreArt extends StatelessWidget {
   }
 }
 
-enum ScoreArtKind { card10, beans, chalk }
+enum ScoreArtKind { card10, beans, chalk, matches }
 
 // ------------------------------------------------------------- carta 10 --
 
@@ -459,4 +467,150 @@ class _ChalkPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ChalkPainter old) => old.score != score;
+}
+
+// -------------------------------------------------------------- fósforos --
+
+/// Matchsticks: each tento is a match taken from the box and laid on the
+/// table, in groups of three.
+class _MatchesPainter extends CustomPainter {
+  _MatchesPainter({
+    required this.score,
+    required this.target,
+    required this.seed,
+  });
+
+  final int score;
+  final int target;
+  final int seed;
+
+  void _match(Canvas canvas, Offset from, Offset to, double width) {
+    final stick = Paint()
+      ..color = const Color(0xFFE6C89B)
+      ..strokeWidth = width
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      from + const Offset(1.5, 2),
+      to + const Offset(1.5, 2),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.35)
+        ..strokeWidth = width
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(from, to, stick);
+    final dir = (to - from) / (to - from).distance;
+    final head = Rect.fromCenter(
+      center: to - dir * width * 0.2,
+      width: width * 2.4,
+      height: width * 1.7,
+    );
+    canvas.save();
+    canvas.translate(head.center.dx, head.center.dy);
+    canvas.rotate(math.atan2(dir.dy, dir.dx));
+    final local = Rect.fromCenter(
+      center: Offset.zero,
+      width: head.width,
+      height: head.height,
+    );
+    canvas.drawOval(
+      local,
+      Paint()
+        ..shader = const RadialGradient(
+          center: Alignment(-0.3, -0.4),
+          colors: [Color(0xFFE0533F), Color(0xFF8E1E14)],
+        ).createShader(local),
+    );
+    canvas.restore();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = math.Random(11 + seed);
+    // The box, on the right, its drawer pulled out a little.
+    final bw = math.min(size.width * 0.3, size.height * 0.55);
+    final bh = bw * 1.45;
+    final box = Rect.fromCenter(
+      center: Offset(size.width - bw * 0.62, size.height / 2),
+      width: bw,
+      height: bh,
+    );
+    final sleeve = RRect.fromRectAndRadius(box, const Radius.circular(3));
+    canvas.drawShadow(Path()..addRRect(sleeve), Colors.black, 4, false);
+    // The drawer, sticking out at the top, holds the matches still to win.
+    final drawer = Rect.fromLTWH(
+      box.left + bw * 0.06,
+      box.top - bh * 0.28,
+      bw * 0.88,
+      bh * 0.6,
+    );
+    canvas.drawRect(drawer, Paint()..color = const Color(0xFFD9C29A));
+    final left = target - score;
+    final stickW = math.max(2.5, bw * 0.07);
+    for (var i = 0; i < left; i++) {
+      final x =
+          drawer.left +
+          drawer.width *
+              (0.12 + 0.76 * (i + 0.5 + (target - left) / 2) / target);
+      _match(
+        canvas,
+        Offset(x, drawer.bottom),
+        Offset(x + (i.isEven ? 1 : -1), drawer.top + stickW * 1.2),
+        stickW,
+      );
+    }
+    // The sleeve, with its label and striker.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(box.left, drawer.top + bh * 0.3, box.right, box.bottom),
+        const Radius.circular(3),
+      ),
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF2F6FB0), Color(0xFF1C4677)],
+        ).createShader(box),
+    );
+    final label = Rect.fromCenter(
+      center: Offset(box.center.dx, box.top + bh * 0.62),
+      width: bw * 0.62,
+      height: bw * 0.62,
+    );
+    canvas.drawOval(label, Paint()..color = const Color(0xFFF2D25C));
+    canvas.drawOval(
+      label.deflate(bw * 0.12),
+      Paint()..color = const Color(0xFFC0392B),
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(
+        box.right - bw * 0.1,
+        box.top + bh * 0.1,
+        bw * 0.1,
+        bh * 0.8,
+      ),
+      Paint()..color = const Color(0xFF5A3A2A),
+    );
+
+    // The scored matches: groups of three, two groups per row.
+    final area = Rect.fromLTRB(0, 0, box.left - bw * 0.15, size.height);
+    final rows = (target / 6).ceil();
+    final len = math.min(area.height / rows * 0.85, area.width * 0.55);
+    final w = math.max(2.5, len * 0.07);
+    final groupW = area.width / 2;
+    for (var i = 0; i < score; i++) {
+      final group = i ~/ 3;
+      final row = group ~/ 2;
+      final col = group % 2;
+      final inGroup = i % 3;
+      final cx = area.left + groupW * (col + 0.5) + (inGroup - 1) * len * 0.26;
+      final cy = area.top + area.height * (row + 0.5) / rows;
+      final tilt = (random.nextDouble() - 0.5) * 0.25;
+      final d = Offset(math.sin(tilt), -math.cos(tilt)) * (len / 2);
+      _match(canvas, Offset(cx, cy) - d, Offset(cx, cy) + d, w);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MatchesPainter old) =>
+      old.score != score || old.target != target;
 }

@@ -12,7 +12,7 @@ import '../premium/premium_screen.dart';
 import 'score_art.dart';
 
 /// How the 12 tentos of a team are drawn.
-enum TallyStyle { pips, holes, matches, art }
+enum TallyStyle { pips, holes, art }
 
 /// Look of the scoreboard. Inspired by what's used at a real truco table:
 /// the felt of the table, the wooden marker with 12 holes per side, and
@@ -39,11 +39,11 @@ enum ScoreboardSkin {
   ),
   matches(
     label: 'Palitos de fósforo',
-    description: 'Cada tento é um palito na mesa.',
+    description: 'Cada tento é um palito que sai da caixinha para a mesa.',
     bar: Color(0xFF151816),
     strip: Color(0xFF0B0D0C),
     text: Color(0xFFF1E6D2),
-    tally: TallyStyle.matches,
+    tally: TallyStyle.art,
   ),
   colors(
     label: 'Cores',
@@ -107,6 +107,7 @@ enum ScoreboardSkin {
     card10 => ScoreArtKind.card10,
     beans => ScoreArtKind.beans,
     chalk => ScoreArtKind.chalk,
+    matches => ScoreArtKind.matches,
     _ => null,
   };
 
@@ -270,7 +271,6 @@ class Tally extends StatelessWidget {
   Widget build(BuildContext context) => switch (skin.tally) {
     TallyStyle.pips => _pips(),
     TallyStyle.holes => _holes(),
-    TallyStyle.matches => _matches(),
     TallyStyle.art => const SizedBox.shrink(),
   };
 
@@ -356,55 +356,6 @@ class Tally extends StatelessWidget {
         ],
       );
     },
-  );
-
-  /// Matchsticks in groups of three; missing ones are faint outlines.
-  Widget _matches() => SizedBox(
-    height: 34,
-    child: Row(
-      children: [
-        for (var i = 0; i < target; i++) ...[
-          Expanded(
-            child: Center(child: _Match(lit: i < score)),
-          ),
-          if (i % 3 == 2 && i != target - 1) const SizedBox(width: 10),
-        ],
-      ],
-    ),
-  );
-}
-
-class _Match extends StatelessWidget {
-  const _Match({required this.lit});
-
-  final bool lit;
-
-  @override
-  Widget build(BuildContext context) => Opacity(
-    opacity: lit ? 1 : 0.14,
-    child: Column(
-      children: [
-        Container(
-          width: 7,
-          height: 9,
-          decoration: BoxDecoration(
-            color: lit ? const Color(0xFFC0392B) : Colors.white,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        Expanded(
-          child: Container(
-            width: 3.5,
-            decoration: BoxDecoration(
-              color: lit ? const Color(0xFFE6C89B) : Colors.white,
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(1),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
   );
 }
 
