@@ -610,7 +610,7 @@ export class Tournaments {
     const host = new Game(this.db, a.player_a, false, a.name_a);
     const { roomId, code } = await host.createForTournament({
       // "serie": games in the match, so the app knows when it's over.
-      rules: { ...t.rules, serie: m.best_of || 1 },
+      rules: { ...t.rules, serie: m.best_of || 1, torneio: t.id },
       groupId: t.group_id,
       matchId: m.id,
       seats: slow
@@ -702,6 +702,41 @@ export class Tournaments {
     if (present.includes(userId)) return;
     await this.db.from("tournament_matches")
       .update({ present: [...present, userId] }).eq("id", matchId);
+  }
+
+  /**
+   * "Chamar os jogadores": pushes the players of a match who aren't in its
+   * room yet. Only someone of the match can call.
+   */
+  async call(body: Json) {
+    const { data: room } = await this.db.from("game_rooms")
+      .select("id, code, status, tournament_match_id").eq("id", body.roomId as string)
+      .maybeSingle();
+    if (!room?.tournament_match_id) throw new Refused("room_not_found");
+    const { data: m } = await this.db.from("tournament_matches").select()
+      .eq("id", room.tournament_match_id).maybeSingle();
+    if (!m) throw new Refused("room_not_found");
+    const match = m as Match;
+    if (match.status === "done") throw new Refused("match_over");
+    const t = await this.get(match.tournament_id);
+    const teams = (await this.teams(t.id))
+      .filter((x) => x.id === match.team_a || x.id === match.team_b);
+    const everyone = players(teams);
+    if (!everyone.includes(this.userId)) throw new Refused("not_in_match");
+    const { data: seats } = await this.db.from("game_seats").select("user_id")
+      .eq("room_id", room.id);
+    const seated = new Set((seats ?? []).map((x) => x.user_id as string));
+    const missing = everyone.filter((id) => id !== this.userId && !seated.has(id));
+    if (missing.length) {
+      await sendPush(this.db, missing, {
+        title: `Torneio ${t.name}`,
+        body: `${this.name} está na sala do seu jogo (${room.code}). Bora jogar!`,
+        path: `/jogo/entrar?codigo=${room.code}`,
+        link: `${WEB_APP_URL}/sala/?codigo=${room.code}&jogo=1`,
+        tag: `tournament-call-${match.id}`,
+      });
+    }
+    return { called: missing.length };
   }
 
   /** Opens the next knockout round, or ends the tournament. */

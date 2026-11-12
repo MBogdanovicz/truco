@@ -43,8 +43,8 @@ class _RulesScreenState extends State<RulesScreen> {
               'de quem deu as cartas.',
           'O "pé" é quem joga por último na rodada. Na primeira é quem deu '
               'as cartas; depois, é quem está à esquerda de quem ganhou a '
-              'rodada anterior (quem ganha começa a próxima). Na mesa, o pé '
-              'tem a marca PÉ.',
+              'rodada anterior (quem ganha começa a próxima). Se a rodada '
+              'embuchar, o pé continua o mesmo. Na mesa, o pé tem a marca PÉ.',
         ],
       ),
       (
@@ -69,7 +69,7 @@ class _RulesScreenState extends State<RulesScreen> {
         'Rodadas e empates',
         [
           'Em cada rodada vence a carta mais forte. Se as cartas mais fortes '
-              'das duas duplas forem iguais, a rodada empata ("cangou").',
+              'das duas duplas forem iguais, a rodada empata ("embuchou").',
           'Empatou a primeira: quem ganhar a segunda leva a mão. Ganhou a '
               'primeira e empatou a segunda (ou a terceira): leva quem ganhou '
               'a primeira. Empatou tudo: ninguém marca.',

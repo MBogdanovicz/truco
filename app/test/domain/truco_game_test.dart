@@ -312,6 +312,24 @@ void main() {
       }
     });
 
+    test('after a tied round the same seat leads and the pé stays', () {
+      var found = false;
+      for (var seed = 1; seed < 400 && !found; seed++) {
+        final g = fresh(TrucoRules.paulista, seed);
+        final leader = g.turn, foot = g.foot;
+        for (var i = 0; i < 4; i++) {
+          g.apply(PlayCard(g.turn, g.handOf(g.turn).first));
+        }
+        if (g.phase != GamePhase.playing || g.rounds.last.winner != null) {
+          continue;
+        }
+        found = true;
+        expect(g.turn, leader);
+        expect(g.foot, foot);
+      }
+      expect(found, isTrue, reason: 'no tied first round found');
+    });
+
     test('the dealer sees the third card dealt to the partner', () {
       final g = fresh(TrucoRules.paulista, 9);
       final dealer = g.dealer;

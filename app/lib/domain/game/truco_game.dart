@@ -126,7 +126,7 @@ class RoundEnded extends GameEvent {
   const RoundEnded(this.round, {required this.winner, required this.topSeat});
   final int round;
 
-  /// Null when the round was tied ("empatou" / "cangou").
+  /// Null when the round was tied ("empatou" / "embuchou").
   final Team? winner;
   final int topSeat;
 }
@@ -211,6 +211,9 @@ class TrucoGame {
   final List<RoundResult> _rounds = [];
   final List<Play> _current = [];
   int _turn = 0;
+
+  /// Who leads the current round.
+  int _leader = 0;
   int _stakeLevel = 0;
   Team? _lastRaiser;
   PendingRaise? _pending;
@@ -244,11 +247,9 @@ class TrucoGame {
   List<Card> dealtTo(int seat) => List.unmodifiable(_dealt[seat]);
 
   /// The "pé": last to play in the current round (the seat before whoever
-  /// leads it). In the first round that is the dealer.
-  int get foot {
-    final leader = _rounds.isEmpty ? nextSeat(_dealer) : _rounds.last.topSeat;
-    return (leader + 3) % 4;
-  }
+  /// leads it). In the first round that is the dealer; it stays the same
+  /// after a tied round.
+  int get foot => (_leader + 3) % 4;
 
   /// What the current hand is worth if nobody raises again.
   int get handValue {
@@ -294,6 +295,7 @@ class TrucoGame {
     _lastRaiser = null;
     _pending = null;
     _turn = nextSeat(_dealer);
+    _leader = _turn;
 
     final atDecision = [
       for (final t in Team.values)
@@ -463,7 +465,10 @@ class TrucoGame {
     if (decided != null) {
       _endHand(decided.winner, handValue);
     } else {
-      _turn = result.topSeat;
+      // The winner leads the next round; after a tie, whoever led the tied
+      // round leads again (the pé doesn't change).
+      _turn = winner == null ? _leader : result.topSeat;
+      _leader = _turn;
     }
   }
 

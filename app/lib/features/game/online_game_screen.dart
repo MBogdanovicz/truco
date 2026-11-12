@@ -95,8 +95,15 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
   Future<void> _leave() async {
     if (_leaving) return;
     _leaving = true;
+    // Players of a tournament match go back to the tournament.
+    final room = ref.read(onlineGameControllerProvider)?.room;
+    final back = room == null || !room.isTournament
+        ? '/'
+        : room.tournamentId == null
+        ? '/torneios'
+        : '/torneios/${room.tournamentId}';
     await _ctrl.leave();
-    if (mounted) context.go('/');
+    if (mounted) context.go(back);
   }
 
   @override
@@ -342,13 +349,28 @@ class _Lobby extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              AppButton(
-                label: 'Intimar o grupo',
-                icon: context.icon(AppIcon.groups),
-                tonal: true,
-                onPressed: () =>
-                    summonToRoom(context, ref, code: room.code, game: true),
-              ),
+              if (room.isTournament)
+                AppButton(
+                  label: 'Chamar os jogadores',
+                  icon: context.icon(AppIcon.groups),
+                  tonal: true,
+                  onPressed: sending || room.seats.length >= 4
+                      ? null
+                      : () => run(() async {
+                          await ctrl.callPlayers();
+                          if (context.mounted) {
+                            showAppToast(context, 'Chamamos quem falta.');
+                          }
+                        }),
+                )
+              else
+                AppButton(
+                  label: 'Intimar o grupo',
+                  icon: context.icon(AppIcon.groups),
+                  tonal: true,
+                  onPressed: () =>
+                      summonToRoom(context, ref, code: room.code, game: true),
+                ),
               const SizedBox(height: 8),
               Text(
                 'Em "Jogar truco", toque em "Entrar com código". Ou copie o '
@@ -436,7 +458,13 @@ class _Lobby extends ConsumerWidget {
             constraints: const BoxConstraints(maxWidth: 420),
             child: SizedBox(
               width: double.infinity,
-              child: room.isTournament
+              child: room.isTournament && room.seats.length >= 4
+                  ? AppButton(
+                      label: 'Começar a partida',
+                      icon: context.icon(AppIcon.play),
+                      onPressed: sending ? null : () => run(ctrl.start),
+                    )
+                  : room.isTournament
                   ? Text(
                       'Jogo do torneio: começa sozinho quando as 4 pessoas '
                       'entrarem (${room.seats.length} de 4 na sala).',
@@ -517,7 +545,12 @@ class _JoinGameState extends ConsumerState<JoinGameScreen> {
       if (mounted) context.go('/jogo/sala');
     } on GameRoomError catch (e) {
       setState(() => _error = e.message);
-      if (e.code == 'room_not_found' || e.code == 'room_full') {
+      if (const {
+        'room_not_found',
+        'room_full',
+        'match_over',
+        'not_in_match',
+      }.contains(e.code)) {
         final last = ref.read(lastGameRoomRepositoryProvider);
         if (await last.load() == code) {
           await last.clear();

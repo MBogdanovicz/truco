@@ -26,9 +26,13 @@ class GameTableModel {
     this.tip,
     this.hint,
     this.coachSummary,
+    this.spectator = false,
   });
 
   final TableView view;
+
+  /// Someone watching (a tournament match): the end names the winners.
+  final bool spectator;
 
   /// Names by absolute seat.
   final List<String> names;
@@ -343,9 +347,18 @@ class _GameTableState extends State<GameTable> {
   };
 
   Widget _gameOver() {
-    final won = v.winner == v.team;
-    final ours = v.scoreOf(v.team), theirs = v.scoreOf(v.team.other);
+    final watching = m.spectator && v.winner != null;
+    // Watching: the winners' side of the score comes first.
+    final side = watching ? v.winner! : v.team;
+    final won = watching || v.winner == v.team;
+    final ours = v.scoreOf(side), theirs = v.scoreOf(side.other);
     final shutout = ours == 0 || theirs == 0;
+    final winners = watching
+        ? [
+            for (var s = 0; s < 4; s++)
+              if (teamOfSeat(s) == side) m.names[s],
+          ].join(' e ')
+        : null;
     return Container(
       color: Colors.black.withValues(alpha: 0.45),
       alignment: Alignment.center,
@@ -364,7 +377,11 @@ class _GameTableState extends State<GameTable> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  won ? 'Vocês venceram!' : 'Eles venceram',
+                  winners != null
+                      ? '$winners venceram!'
+                      : won
+                      ? 'Vocês venceram!'
+                      : 'Eles venceram',
                   style: Theme.of(context).textTheme.headlineSmall
                       ?.copyWith(color: Colors.black),
                 ),
@@ -372,7 +389,7 @@ class _GameTableState extends State<GameTable> {
                 Text(
                   '$ours × $theirs'
                   '${shutout ? (won ? '\nDoze a zero! Pra baixo da mesa!' : '\nDoze a zero… pra baixo da mesa!') : ''}'
-                  '\nPlacar da noite: ${m.wins[v.team]} × ${m.wins[v.team.other]}',
+                  '\nPlacar da noite: ${m.wins[side]} × ${m.wins[side.other]}',
                   textAlign: TextAlign.center,
                 ),
                 if (m.coachSummary != null) ...[

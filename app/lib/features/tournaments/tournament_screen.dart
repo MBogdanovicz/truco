@@ -404,8 +404,8 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
   String _roundName(Tournament t, int round, int matches) {
     if (t.format == TournamentFormat.roundRobin) return 'Rodada $round';
     if (t.format == TournamentFormat.doubleElimination) {
-      if (round >= 201) return 'Final: jogo de desempate';
-      if (round >= 200) return 'Grande final';
+      if (round >= 201) return 'Finalíssima';
+      if (round >= 200) return 'Final';
       if (round > 100) return 'Repescagem: rodada ${round - 100}';
       return matches == 1
           ? 'Final da chave principal'

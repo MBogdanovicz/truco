@@ -283,7 +283,7 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Grande final'), findsNothing);
+    expect(find.text('Final'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

@@ -153,7 +153,12 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   void _onSnapshot(GameRoomSnapshot room) {
     final s = state;
     if (s == null || room.id != s.roomId) return;
-    if (room.status == GameRoomStatus.closed) {
+    // A finished tournament match (or a closed room) is no place to go
+    // back to from the home screen.
+    if (room.status == GameRoomStatus.closed ||
+        (room.isTournament &&
+            room.status == GameRoomStatus.finished &&
+            room.seriesOver)) {
       ref.read(lastGameRoomRepositoryProvider).clear().then((_) {
         ref.invalidate(lastGameRoomCodeProvider);
       }, onError: (_) {});
@@ -269,6 +274,9 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
 
   /// Starts the game, or a rematch (host only).
   Future<void> start() => _send((b, id) => b.start(id));
+
+  /// Tournament rooms: calls the match players who aren't here yet.
+  Future<void> callPlayers() => _send((b, id) => b.callPlayers(id));
 
   // ------------------------------------------------------------- game --
 

@@ -116,9 +116,17 @@ Deno.test("knockout with pairs, a best-of-3 final", async () => {
   // Nobody else gets into a match room.
   const m = live(db)!;
   const code = db.tables.game_rooms.find((r) => r.id === m.room_id)!.code;
-  const outsider = people(db, ["zz"]).get("zz")!.g;
+  const zz = people(db, ["zz"]).get("zz")!;
+  const outsider = zz.g;
   await refused(() => outsider.join({ code }), "not_in_match");
   await refused(() => outsider.watch({ roomId: m.room_id }), "not_in_tournament");
+  // "Chamar os jogadores": only someone of the match; the others are called.
+  await refused(() => zz.t.call({ roomId: m.room_id }), "not_in_match");
+  {
+    const a = db.tables.tournament_teams.find((x) => x.id === m.team_a)!;
+    const called = await all.get(a.player_a as string)!.t.call({ roomId: m.room_id }) as Json;
+    assert(called.called === 3, `called ${called.called}`);
+  }
 
   // Someone of another pair watches the match: no cards in hand.
   {

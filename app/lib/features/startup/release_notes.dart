@@ -79,5 +79,6 @@ const releaseNotes = <ReleaseNote>[
         'dias para cada jogada e aviso na sua vez.',
     'Ao receber truco, se o primeiro correr, o parceiro decide.',
     'A carta coberta aparece para o parceiro.',
+    'Se a rodada embuchar, o pé continua o mesmo.',
   ]),
 ];

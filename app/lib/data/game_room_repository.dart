@@ -44,6 +44,7 @@ class GameRoomSnapshot {
     this.frames = const [],
     this.turnDeadline,
     this.tournamentMatchId,
+    this.tournamentId,
     this.bestOf = 1,
   });
 
@@ -71,6 +72,9 @@ class GameRoomSnapshot {
   /// A tournament match room: seats are fixed, no rematch, and the next
   /// game of a series ([bestOf] games) is started by anyone seated.
   final String? tournamentMatchId;
+
+  /// The tournament of a match room (older rooms don't say).
+  final String? tournamentId;
   final int bestOf;
 
   bool get isTournament => tournamentMatchId != null;
@@ -119,6 +123,7 @@ class GameRoomSnapshot {
       ]..sort((a, b) => a.seat.compareTo(b.seat)),
       turnDeadline: DateTime.tryParse((room['turn_deadline'] as String?) ?? ''),
       tournamentMatchId: room['tournament_match_id'] as String?,
+      tournamentId: (room['rules'] as Map?)?['torneio'] as String?,
       bestOf: ((room['rules'] as Map?)?['serie'] as num?)?.toInt() ?? 1,
       viewVersion: (view?['version'] as int?) ?? 0,
       frames: [
@@ -202,6 +207,9 @@ abstract class GameRoomBackend {
   /// checks the deadline); null when it isn't time yet.
   Future<ViewUpdate?> timeout(String roomId);
   Future<void> leave(String roomId);
+
+  /// Tournament rooms: pushes the match players who aren't seated yet.
+  Future<void> callPlayers(String roomId);
   GameRoomWatch watch(String roomId);
 }
 
@@ -283,6 +291,10 @@ class SupabaseGameRooms implements GameRoomBackend {
 
   @override
   Future<void> leave(String roomId) => _call('leave', {'roomId': roomId});
+
+  @override
+  Future<void> callPlayers(String roomId) =>
+      _call('tournament.call', {'roomId': roomId});
 
   @override
   GameRoomWatch watch(String roomId) => _SupabaseRoomWatch(_client, roomId);

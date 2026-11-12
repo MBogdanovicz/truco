@@ -440,7 +440,7 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
 * Repescagem (`double_elimination`, migration `20261113020000`): the whole bracket is created at start
   (`doubleElimination()`), each match with `bracket` and `sources` (winner/loser of earlier matches);
   `resolveDouble()` fills and opens matches as results come in, passes lone teams through, and plays the
-  grand final again (round 201) only if the losers' bracket champion wins round 200.
+  grand final again (round 201, "Finalíssima"; round 200 is shown as "Final") only if the losers' bracket champion wins round 200.
 * Spectators: people in the tournament may watch other matches (`watch` action: the newest seat view
   with hands, partner cards, covered cards and actions removed; the app polls every 3 s).
 * Each finished tournament game is saved to the device history ("Torneio <name>").

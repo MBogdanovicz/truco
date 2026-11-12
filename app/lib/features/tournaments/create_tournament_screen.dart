@@ -137,7 +137,7 @@ class _CreateTournamentState extends ConsumerState<CreateTournamentScreen> {
               ? 'Eliminação dupla: quem perde vai para a repescagem e só sai '
                     'com a segunda derrota. Na final, o campeão da chave '
                     'principal enfrenta o da repescagem; se o da repescagem '
-                    'ganhar, tem um jogo de desempate.'
+                    'ganhar, tem a finalíssima.'
               : 'Todas as duplas se enfrentam uma vez. Vale o número de '
                     'vitórias, depois o saldo de tentos e depois os tentos '
                     'feitos.',

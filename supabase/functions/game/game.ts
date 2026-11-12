@@ -295,8 +295,10 @@ export class Game {
     }
     await this.seat(room.id, seat);
     await this.touch(room.id);
-    // Everyone is here: the (live) match starts.
-    if (room.status === "lobby" && seats.length === 3) {
+    // Everyone is here: the (live) match starts. Counted again after
+    // sitting, since the 4 often arrive at the same moment.
+    const now = await this.seats(room.id);
+    if (room.status === "lobby" && now.length === 4) {
       try {
         await this.start({ roomId: room.id }, true);
       } catch (e) {

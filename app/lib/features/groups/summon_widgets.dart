@@ -249,6 +249,17 @@ class _SummonsListenerState extends ConsumerState<SummonsListener> {
   /// turn in a slow game, its end): the table shows it, no dialog needed.
   bool _alreadyThere(Summons s, String location) {
     final target = Uri.tryParse(s.path);
+    final tournament = target?.path.startsWith('/torneios/') == true
+        ? target!.pathSegments.last
+        : null;
+    if (tournament != null) {
+      // On the tournament screen, or still at the table of one of its
+      // matches ("Sair" leads to the tournament anyway).
+      return location == target!.path ||
+          (location == '/jogo/sala' &&
+              ref.read(onlineGameControllerProvider)?.room?.tournamentId ==
+                  tournament);
+    }
     final code = target?.queryParameters['codigo'];
     if (code == null) return false;
     if (target!.path == '/jogo/entrar') {

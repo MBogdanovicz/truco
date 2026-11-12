@@ -12,7 +12,7 @@
 // move: {t, c?, x?, i?}}), timeout, leave, watch (tournament spectators); tournaments (tournament.ts):
 // tournament.create, tournament.register, tournament.pairCode,
 // tournament.unregister,
-// tournament.start, tournament.cancel.
+// tournament.start, tournament.cancel, tournament.call.
 // SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are provided
 // by the platform.
 
@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
         return reply(200, await tournaments.start(body));
       case "tournament.cancel":
         return reply(200, await tournaments.cancel(body));
+      case "tournament.call":
+        return reply(200, await tournaments.call(body));
       default:
         return reply(400, { error: "unknown_action" });
     }

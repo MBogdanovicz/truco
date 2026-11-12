@@ -88,6 +88,7 @@ class _WatchMatchState extends ConsumerState<WatchMatchScreen> {
         names: m!.names,
         wins: {Team.a: m.wins.$1, Team.b: m.wins.$2},
         status: m.status == 'finished' ? null : 'Assistindo',
+        spectator: true,
       ),
       actions: GameTableActions(
         playCard: (_, {covered = false}) {},

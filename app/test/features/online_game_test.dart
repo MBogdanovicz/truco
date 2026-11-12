@@ -119,6 +119,9 @@ class FakeRooms implements GameRoomBackend {
       rooms[roomId]!.publish(rooms[roomId]!.session!.act(seat, action));
 
   @override
+  Future<void> callPlayers(String roomId) async {}
+
+  @override
   Future<void> leave(String roomId) async {
     rooms[roomId]!.seats.removeWhere((_, s) => s.userId == userId);
   }

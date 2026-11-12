@@ -209,7 +209,7 @@ final trainingScenarios = <TrainingScenario>[
     id: 'tied_first',
     title: 'Primeira empatada',
     situation:
-        'A primeira rodada empatou ("cangou"). Agora quem ganhar a segunda '
+        'A primeira rodada empatou ("embuchou"). Agora quem ganhar a segunda '
         'leva a mão. Você é o primeiro. Vira 3♣: as manilhas são os 4.',
     vira: _c('3p'),
     hand: _h('2c Qe'),
