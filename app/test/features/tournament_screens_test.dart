@@ -222,11 +222,11 @@ void main() {
       ),
     );
     await tester.scrollUntilVisible(
-      find.text('Assistir'),
+      find.textContaining('Assistir'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Assistir'), findsOneWidget);
+    expect(find.text('Jogando agora · Assistir'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -283,7 +283,8 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Final'), findsNothing);
+    // The final is there, its teams still to be decided.
+    expect(find.text('A definir'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 }

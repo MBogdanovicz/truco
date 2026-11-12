@@ -446,6 +446,11 @@ delays. `LocalGameController` runs a `GameSession` on the device (always friendl
   Normal rooms can be watched by anyone with the room code (`watch` with `code`; offered by
   "Entrar com código" when the room is full).
 * Each finished tournament game is saved to the device history ("Torneio <name>").
+* Round robin opens one round at a time (`advance` opens the next round's rooms once the current
+  round is over; claimed via `room_code = ''`). The champions get their own push (kind `champion`).
+* The app draws knockout and repescagem as a bracket (`bracket_view.dart`): rounds side by side, each
+  match centred between the two that feed it.
+* Normal rooms: sitting on a taken seat (lobby) swaps the two people; the table shows the room code.
 
 ### 10.9 Next (see ROADMAP G5+)
 

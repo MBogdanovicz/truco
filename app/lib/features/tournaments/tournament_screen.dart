@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/tournaments.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../game/rules_screen.dart';
+import 'bracket_view.dart';
 
 /// One tournament: sign-up, the bracket or table, and the person's match.
 class TournamentScreen extends ConsumerStatefulWidget {
@@ -401,25 +402,74 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
         ),
       );
     }
-    for (final entry in rounds.entries) {
-      // Repescagem: matches whose teams aren't known yet, and empty ones.
-      final shown = [
-        for (final m in entry.value)
-          if (m.teamA != null || m.teamB != null) m,
-      ];
-      if (t.format == TournamentFormat.doubleElimination && shown.isEmpty) {
-        continue;
+    if (t.format != TournamentFormat.roundRobin) {
+      List<TournamentMatch> sorted(List<TournamentMatch> ms) =>
+          [...ms]..sort((x, y) => x.slot.compareTo(y.slot));
+      BracketColumn column(int round) => BracketColumn(
+        _roundName(t, round, rounds[round]!.length),
+        sorted(rounds[round]!),
+      );
+      final keys = rounds.keys.toList()..sort();
+      Widget section(String? header, List<int> rs, {String? footer}) =>
+          AppSection(
+            header: header,
+            footer: footer,
+            children: [
+              BracketView(
+                columns: [for (final r in rs) column(r)],
+                info: (m) => _cardInfo(d, m),
+              ),
+            ],
+          );
+      if (t.format == TournamentFormat.knockout) {
+        out.add(
+          section(
+            'Chave',
+            keys,
+            footer: 'Arraste para o lado para ver as próximas rodadas.',
+          ),
+        );
+      } else {
+        final finals = [
+          for (final r in keys)
+            if (r >= 200 &&
+                (r == 200 ||
+                    rounds[r]!.any((m) => m.teamA != null || m.teamB != null)))
+              r,
+        ];
+        out
+          ..add(
+            section('Chave principal', [
+              for (final r in keys)
+                if (r < 100) r,
+            ], footer: 'Quem perde aqui cai para a repescagem.'),
+          )
+          ..add(
+            section('Repescagem', [
+              for (final r in keys)
+                if (r > 100 && r < 200) r,
+            ], footer: 'Quem perde na repescagem está fora.'),
+          )
+          ..add(
+            section(
+              'Final',
+              finals,
+              footer:
+                  'O campeão da chave principal enfrenta o da repescagem. Se '
+                  'o da repescagem ganhar, tem a finalíssima.',
+            ),
+          );
       }
+      return out;
+    }
+    // Todos contra todos: the games round by round.
+    for (final entry in rounds.entries) {
       out.add(
         AppSection(
           header: _roundName(t, entry.key, entry.value.length),
           children: [
             for (final m in entry.value)
-              if (!(t.format == TournamentFormat.roundRobin && m.bye) &&
-                  !(t.format == TournamentFormat.doubleElimination &&
-                      m.teamA == null &&
-                      m.teamB == null))
-                _matchTile(d, m),
+              if (!m.bye) _matchTile(d, m),
           ],
         ),
       );
@@ -490,6 +540,51 @@ class _TournamentScreenState extends ConsumerState<TournamentScreen> {
           ? () => context.push('/torneios/assistir/${m.roomId}')
           : null,
       trailing: watchable ? const Text('Assistir') : null,
+    );
+  }
+
+  /// A match as a bracket card.
+  BracketCardInfo _cardInfo(TournamentDetail d, TournamentMatch m) {
+    final a = d.team(m.teamA);
+    final b = d.team(m.teamB);
+    final mine = a?.has(_me) == true || b?.has(_me) == true;
+    final watchable =
+        !mine &&
+        !m.done &&
+        m.roomId != null &&
+        (d.teamOf(_me) != null || d.tournament.ownerId == _me);
+    final enter = mine && !m.done && m.roomCode != null;
+    final bye = m.done && m.teamB == null;
+    String? score(int games, int? points) => !m.done || bye || m.walkover
+        ? (m.status == 'playing' && m.bestOf > 1 ? '$games' : null)
+        : m.bestOf > 1
+        ? '$games'
+        : '${points ?? 0}';
+    return BracketCardInfo(
+      top: a?.label ?? 'A definir',
+      bottom: bye ? 'Passou direto' : (b?.label ?? 'A definir'),
+      topScore: score(m.gamesA, m.scoreA),
+      bottomScore: score(m.gamesB, m.scoreB),
+      topWon: m.done && m.winner != null && m.winner == m.teamA,
+      bottomWon: m.done && m.winner != null && m.winner == m.teamB,
+      note: m.done
+          ? (m.walkover ? (m.winner == null ? 'Ninguém jogou' : 'W.O.') : null)
+          : m.status == 'playing'
+          ? 'Jogando agora'
+          : a != null && b != null && m.deadline != null
+          ? 'Até ${_when(m.deadline!)}'
+          : null,
+      mine: mine,
+      action: enter
+          ? 'Entrar na sala'
+          : watchable
+          ? 'Assistir'
+          : null,
+      onTap: enter
+          ? () => context.go('/jogo/entrar?codigo=${m.roomCode}')
+          : watchable
+          ? () => context.push('/torneios/assistir/${m.roomId}')
+          : null,
     );
   }
 

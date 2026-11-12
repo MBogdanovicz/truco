@@ -80,5 +80,8 @@ const releaseNotes = <ReleaseNote>[
     'Ao receber truco, se o primeiro correr, o parceiro decide.',
     'A carta coberta aparece para o parceiro.',
     'Se a rodada embuchar, o pé continua o mesmo.',
+    'Dá para assistir um jogo pelo código da sala e sentar à mesa quando '
+        'alguém sai. Na sala, dá para trocar de lugar e ver o código durante '
+        'o jogo.',
   ]),
 ];
