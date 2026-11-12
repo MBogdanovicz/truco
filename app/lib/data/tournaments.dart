@@ -315,11 +315,15 @@ class SpectatedMatch {
     required this.names,
     required this.wins,
     this.view,
+    this.freeSeats = 0,
   });
   final String status;
   final int version;
   final List<String> names;
   final (int, int) wins;
+
+  /// Seats the computer plays (someone left): a spectator may take one.
+  final int freeSeats;
 
   /// Null before the first game starts.
   final TableView? view;
@@ -466,6 +470,7 @@ class TournamentsRepository {
       version: (r['version'] as int?) ?? 0,
       names: names,
       wins: (wins[0], wins[1]),
+      freeSeats: bots.where((b) => b != null).length,
       view: frame is Map
           ? TableView.fromJson(Map<String, Object?>.from(frame))
           : null,
