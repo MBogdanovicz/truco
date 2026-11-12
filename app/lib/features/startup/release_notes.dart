@@ -98,5 +98,7 @@ const releaseNotes = <ReleaseNote>[
     'Mesa nova: a vira fica no meio, com o baralho por cima, e logo abaixo '
         'quanto a mão vale.',
     'Truco! Sofá de zona! Um grito na mesa quando alguém pede truco.',
+    'Mostrar cartas: depois de uma mão com truco ou mão de onze, dá para '
+        'mostrar as cartas que sobraram na mão para a mesa.',
   ]),
 ];

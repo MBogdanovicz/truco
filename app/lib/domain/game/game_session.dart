@@ -14,6 +14,12 @@ abstract final class FrameDelays {
   static const move = 850;
   static const afterRound = 1400;
   static const nextHand = 2200;
+
+  /// After someone showed their cards, a little longer to look at them.
+  static const afterShown = 3500;
+
+  /// How long players have to show their cards after a hand worth 3+.
+  static const revealWindow = 7000;
 }
 
 /// One game run by its authority (this device for a game against the
@@ -56,6 +62,10 @@ class GameSession {
   final TableTalk talk = TableTalk();
   int _seen = 0;
 
+  /// People done with the "mostrar cartas" moment of this hand.
+  final Set<int> _ready = {};
+  bool _revealClosed = false;
+
   bool isHuman(int seat) => bots[seat] == null;
   Iterable<int> get humanSeats => [
     for (var s = 0; s < 4; s++)
@@ -68,7 +78,47 @@ class GameSession {
     talk: talk,
     mayAnswer: isHuman,
     delayMs: delayMs,
+    revealing: revealing,
+    canShow: canShowFor(seat),
   );
+
+  /// After a hand worth 3+, the game waits a moment (see
+  /// [FrameDelays.revealWindow]) for people to show their cards, until each
+  /// person who could has shown them or passed, or the time runs out
+  /// ([timeout]). Not in slow games.
+  bool get revealing =>
+      !rules.isSlow &&
+      !_revealClosed &&
+      game.revealOpen &&
+      humanSeats.any((s) => game.canShow(s) && !_ready.contains(s));
+
+  bool canShowFor(int seat) =>
+      isHuman(seat) &&
+      revealing &&
+      game.canShow(seat) &&
+      !_ready.contains(seat);
+
+  /// [seat] shows their cards ("Mostrar cartas").
+  Frames show(int seat) {
+    if (!canShowFor(seat)) throw GameRuleError('nothing to show');
+    game.showCards(seat);
+    log.add({'t': 'show', 's': seat});
+    final frames = <int, List<TableView>>{};
+    _snapshot(frames, 0);
+    _advance(frames);
+    return frames;
+  }
+
+  /// [seat] doesn't want to show their cards: the next hand needn't wait.
+  Frames pass(int seat) {
+    if (!canShowFor(seat)) throw GameRuleError('nothing to pass');
+    _ready.add(seat);
+    log.add({'t': 'ready', 's': seat});
+    final frames = <int, List<TableView>>{};
+    _advance(frames);
+    if (frames.isEmpty) _snapshot(frames, 0);
+    return frames;
+  }
 
   /// A person's move. Throws [GameRuleError] if it isn't theirs to make.
   Frames act(int seat, GameAction action) {
@@ -123,6 +173,15 @@ class GameSession {
   /// [missLimit] (tournament games), missing that many moves in a row
   /// gives the game up (W.O.).
   Frames timeout({AiLevel level = AiLevel.medium, int? missLimit}) {
+    if (waitingFor == null && revealing) {
+      // Time to show the cards is over: deal the next hand.
+      _revealClosed = true;
+      log.add(const {'t': 'reveal-end'});
+      final frames = <int, List<TableView>>{};
+      _advance(frames);
+      if (frames.isEmpty) _snapshot(frames, 0);
+      return frames;
+    }
     final seat = waitingFor;
     if (seat == null) throw GameRuleError('nobody to wait for');
     final action = TrucoBot(level, random: _random).decide(game.viewFor(seat));
@@ -161,9 +220,12 @@ class GameSession {
   }
 
   /// Applies a person's action sent as JSON (online games).
-  Frames actJson(int seat, Map<String, Object?> j) => j['t'] == 'blind'
-      ? actBlind(seat, j['i']! as int)
-      : act(seat, actionFromJson({...j, 's': seat}));
+  Frames actJson(int seat, Map<String, Object?> j) => switch (j['t']) {
+    'blind' => actBlind(seat, j['i']! as int),
+    'show' => show(seat),
+    'ready' => pass(seat),
+    _ => act(seat, actionFromJson({...j, 's': seat})),
+  };
 
   /// Lets the computer play until a person must act (e.g. at the start).
   Frames advance() {
@@ -178,9 +240,13 @@ class GameSession {
       final phase = game.phase;
       if (phase == GamePhase.gameOver) return;
       if (phase == GamePhase.handOver) {
-        game.startNextHand();
+        if (revealing) return;
+        final wait = game.shown.isEmpty
+            ? FrameDelays.nextHand
+            : FrameDelays.afterShown;
+        _nextHand();
         log.add(const {'t': 'next'});
-        _snapshot(frames, FrameDelays.nextHand);
+        _snapshot(frames, wait);
         continue;
       }
       final seat = _botToMove();
@@ -234,9 +300,22 @@ class GameSession {
     }
   }
 
+  void _nextHand() {
+    game.startNextHand();
+    _ready.clear();
+    _revealClosed = false;
+  }
+
   void _applyLogged(Map<String, Object?> entry) {
-    if (entry['t'] == 'next') {
-      game.startNextHand();
+    final t = entry['t'];
+    if (t == 'next') {
+      _nextHand();
+    } else if (t == 'show') {
+      game.showCards(entry['s']! as int);
+    } else if (t == 'ready') {
+      _ready.add(entry['s']! as int);
+    } else if (t == 'reveal-end') {
+      _revealClosed = true;
     } else if (entry['t'] == 'forfeit') {
       game.forfeit(teamOfSeat(entry['s']! as int));
     } else {

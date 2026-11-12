@@ -22,8 +22,14 @@ interface EngineOut {
   feats?: Record<string, string[]>;
   /** The team that gave the game up (W.O.). */
   forfeit?: "a" | "b";
+  /** The hand is over and people may show their cards for a moment. */
+  reveal?: boolean;
   error?: string;
 }
+
+/** How long people have to show their cards after a hand worth 3+ (the
+ * engine's FrameDelays.revealWindow). */
+const REVEAL_MS = 7000;
 
 /** Time a person has for each move, after the previous moves are shown,
  * unless the room's rules say otherwise ("tempo", seconds; 0 = no limit). */
@@ -62,6 +68,7 @@ export function spectatorView(frame: Json): Json {
       "canRaise",
       "mustAnswer",
       "myTurn",
+      "canShow",
       "toast",
       "delay",
     ]
@@ -541,8 +548,10 @@ export class Game {
 
   /** When the person the game now waits for runs out of time. */
   private deadline(room: Room, out: EngineOut, seats: Seat[]): string | null {
-    if (out.waitingFor === undefined || out.phase === "gameOver") return null;
-    const turn = turnMs(room.rules);
+    if (out.phase === "gameOver") return null;
+    // The moment to show cards always ends, even without a move timer.
+    const turn = out.reveal ? REVEAL_MS : turnMs(room.rules);
+    if (out.waitingFor === undefined && !out.reveal) return null;
     if (turn === null) return null;
     // Everyone first watches the moves just made.
     const showing = Math.max(

@@ -52,6 +52,8 @@ class GameTableScreen extends ConsumerWidget {
           fold: ctrl.fold,
           onLeave: confirmLeave,
           onDismissTip: ctrl.dismissTip,
+          showCards: ctrl.showCards,
+          skipShow: ctrl.skipShow,
           onRematch: () async {
             await Ads.beforeGame(ref);
             ctrl.rematch();

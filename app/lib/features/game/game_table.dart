@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -86,6 +87,8 @@ class GameTableActions {
     this.gameOverExtra,
     this.onDismissTip,
     this.onShowCode,
+    this.showCards,
+    this.skipShow,
   });
 
   final void Function(deck.Card card, {bool covered}) playCard;
@@ -107,6 +110,10 @@ class GameTableActions {
 
   /// Online rooms: shows the room code (to call someone in).
   final VoidCallback? onShowCode;
+
+  /// "Mostrar cartas" after a hand worth 3+, and passing on it.
+  final VoidCallback? showCards;
+  final VoidCallback? skipShow;
 }
 
 /// The card table: the viewer at the bottom, partner on top, opponents at
@@ -575,6 +582,15 @@ class _GameTableState extends State<GameTable> {
           prompt = v.iron ? 'Sua vez: escolha uma carta às cegas.' : 'Sua vez.';
         }
       case GamePhase.handOver:
+        if (v.canShow && !m.busy) {
+          prompt = 'Quer mostrar suas cartas?';
+          buttons.addAll([
+            if (a.showCards != null)
+              _ActionButton('Mostrar cartas', AppColors.gold, a.showCards!),
+            if (a.skipShow != null)
+              _ActionButton('Não', Colors.white24, a.skipShow!),
+          ]);
+        }
       case GamePhase.gameOver:
         break;
     }
@@ -836,12 +852,16 @@ class _SeatBadge extends StatelessWidget {
     final said = v.speech[seat];
     // The pé (last to play this round) gets an orange tag and outline.
     final foot = v.foot == seat && v.phase != GamePhase.gameOver;
-    // The partner's cards we may see are face up in their hand.
-    final shown = position == 2 ? (v.partnerHand ?? const []) : const [];
+    // Cards shown after the hand ("Mostrar cartas"), or the partner's
+    // cards we may see, face up in their hand.
+    final showedAll = v.shown[seat];
+    final shown =
+        showedAll ?? (position == 2 ? (v.partnerHand ?? const []) : const []);
     final big =
-        shown.isNotEmpty &&
-        (v.partnerShownForRaise || v.phase == GamePhase.decision);
-    final hidden = v.handCounts[seat] - shown.length;
+        showedAll != null ||
+        (shown.isNotEmpty &&
+            (v.partnerShownForRaise || v.phase == GamePhase.decision));
+    final hidden = max(0, v.handCounts[seat] - shown.length);
     final name = Container(
       padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
       decoration: BoxDecoration(

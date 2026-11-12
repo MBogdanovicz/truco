@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,9 +65,13 @@ class LocalGameController extends Notifier<GameTableModel?> {
   /// The running game (tests read the engine through it).
   GameSession? get session => _session;
 
+  /// Ends the moment to show cards after a hand worth 3+.
+  Timer? _revealTimer;
+
   @override
   GameTableModel? build() {
     ref.onDispose(_player.dispose);
+    ref.onDispose(() => _revealTimer?.cancel());
     return null;
   }
 
@@ -98,6 +103,7 @@ class LocalGameController extends Notifier<GameTableModel?> {
       ],
       random: _random,
     );
+    _revealTimer?.cancel();
     _player.reset();
     state = null;
     _tip = null;
@@ -109,6 +115,7 @@ class LocalGameController extends Notifier<GameTableModel?> {
   }
 
   void quit() {
+    _revealTimer?.cancel();
     _player.reset();
     _session = null;
     state = null;
@@ -121,6 +128,22 @@ class LocalGameController extends Notifier<GameTableModel?> {
 
   /// "Mão de ferro": the human picks a face-down card by position.
   void playBlind(int index) => _human((s) => s.actBlind(humanSeat, index));
+
+  /// "Mostrar cartas" after a hand worth 3+.
+  void showCards() => _reveal((s) => s.show(humanSeat));
+
+  /// Doesn't show the cards: the next hand comes at once.
+  void skipShow() => _reveal((s) => s.pass(humanSeat));
+
+  void _reveal(Frames Function(GameSession s) action) {
+    final s = _session;
+    if (s == null || !(state?.view.canShow ?? false)) return;
+    try {
+      _play(action(s));
+    } on GameRuleError {
+      return;
+    }
+  }
 
   void raise() => _act(const Raise(humanSeat));
   void accept() => _act(const Accept(humanSeat));
@@ -180,6 +203,21 @@ class LocalGameController extends Notifier<GameTableModel?> {
       _wins = {..._wins, view.winner!: _wins[view.winner!]! + 1};
     }
     if (!busy) _maybeHint(view);
+    if (!busy && view.revealing) {
+      _revealTimer?.cancel();
+      final session = _session;
+      final hand = view.handNumber;
+      _revealTimer = Timer(
+        Duration(
+          milliseconds: (FrameDelays.revealWindow * _player.speed).round(),
+        ),
+        () {
+          if (_session != session || session == null) return;
+          if (!session.revealing || session.game.handNumber != hand) return;
+          _play(session.timeout());
+        },
+      );
+    }
     state = GameTableModel(
       view: view,
       names: _names,
