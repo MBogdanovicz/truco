@@ -153,6 +153,7 @@ enum Achievement {
     'tour_random_partner',
     'Máquina Mortífera',
     'Vença um torneio com um parceiro sorteado pelo app.',
+    hidden: true,
   );
 
   const Achievement(
