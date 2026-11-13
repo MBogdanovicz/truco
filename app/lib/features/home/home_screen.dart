@@ -12,6 +12,7 @@ import '../../data/slow_games.dart';
 import '../game/game_table.dart' show timeLeftLabel;
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
+import '../../ui/pwa_install_tile.dart';
 import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
 import '../game/local_game_controller.dart';
@@ -108,6 +109,14 @@ class HomeScreen extends ConsumerWidget {
           title: 'Baixe o app para Android',
           subtitle: AndroidDownloadCard.subtitle,
           onTap: AndroidDownloadCard.open,
+        ),
+      if (PwaInstallTile.isShown)
+        _MenuItem(
+          icon: AppIcon.download,
+          color: AppColors.felt,
+          title: PwaInstallTile.title,
+          subtitle: PwaInstallTile.subtitle,
+          onTap: () => PwaInstallTile.open(context),
         ),
     ];
     final sections = <(String?, List<_MenuItem>)>[

@@ -50,6 +50,14 @@
         return c.put('/push-base', new Response(pushBase));
       }).catch(function () {});
     } catch (e) {}
+    // Keep the browser's install prompt for the "Instalar o app" button.
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.trucoInstallPrompt = e;
+    });
+    window.addEventListener('appinstalled', function () {
+      delete window.trucoInstallPrompt;
+    });
     // Remove service workers left by older builds so they cannot serve a
     // stale version of the app. Keep the one of the "intimar" pushes.
     if ('serviceWorker' in navigator) {
