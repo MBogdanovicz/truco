@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/entitlements.dart';
+import '../../data/look_unlocks.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../premium/premium_screen.dart';
@@ -26,13 +26,9 @@ class _ScoreboardLookScreenState extends ConsumerState<ScoreboardLookScreen> {
 
   Future<void> _save() async {
     final skin = _skin;
-    if (skin != ScoreboardSkin.felt) {
-      final ent = await ref.read(entitlementsProvider.future);
-      if (!mounted) return;
-      if (!ent.canChooseScoreboardLook) {
-        await showPremiumRequired(context, 'Escolher o visual do placar');
-        return;
-      }
+    if (!ref.read(lookAccessProvider).skin(skin)) {
+      await showPremiumRequired(context, 'Escolher o visual do placar');
+      return;
     }
     await ref.read(scoreboardSkinProvider.notifier).choose(skin);
     if (!mounted) return;
@@ -43,6 +39,7 @@ class _ScoreboardLookScreenState extends ConsumerState<ScoreboardLookScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(scoreboardSkinProvider);
+    final access = ref.watch(lookAccessProvider);
     final skin = _skin;
     final theme = Theme.of(context);
     return AppScaffold(
@@ -129,6 +126,14 @@ class _ScoreboardLookScreenState extends ConsumerState<ScoreboardLookScreen> {
                               style: theme.textTheme.bodySmall,
                             ),
                           ),
+                          if (!access.skin(s) &&
+                              LookUnlocks.achievementFor(s) != null)
+                            Text(
+                              '🏆 ${LookUnlocks.achievementFor(s)!.title}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -140,8 +145,12 @@ class _ScoreboardLookScreenState extends ConsumerState<ScoreboardLookScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
           child: Text(
-            'Escolher o visual faz parte do Premium. Sem o Premium, dá para '
-            'ver como fica aqui, mas o placar continua o padrão.',
+            access.premium
+                ? 'Todos os visuais liberados pelo Premium.'
+                : 'Escolher o visual faz parte do Premium. Sem o Premium, dá '
+                      'para ver como fica aqui, mas o placar continua o '
+                      'padrão. Os marcados com 🏆 você ganha com a '
+                      'conquista.',
             style: theme.textTheme.bodySmall,
           ),
         ),

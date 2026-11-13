@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/achievements_repository.dart';
+import '../../data/look_unlocks.dart';
 import '../../data/game_prefs.dart';
 import '../../domain/achievements.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
@@ -83,14 +84,17 @@ class AchievementsScreen extends ConsumerWidget {
     ),
     // Secret ones stay a mystery until unlocked.
     title: a.hidden && !unlocked.containsKey(a) ? 'Conquista secreta' : a.title,
-    subtitle: switch (unlocked[a]) {
-      final at? =>
-        '${said(context, a.description)}\nConquistada em '
-            '${at.day.toString().padLeft(2, '0')}/'
-            '${at.month.toString().padLeft(2, '0')}/${at.year}',
-      null when a.hidden => 'Jogue para descobrir.',
-      null => said(context, a.description),
-    },
+    subtitle: [
+      switch (unlocked[a]) {
+        final at? =>
+          '${said(context, a.description)}\nConquistada em '
+              '${at.day.toString().padLeft(2, '0')}/'
+              '${at.month.toString().padLeft(2, '0')}/${at.year}',
+        null when a.hidden => 'Jogue para descobrir.',
+        null => said(context, a.description),
+      },
+      if (LookUnlocks.rewardOf(a) case final reward?) '🏆 $reward',
+    ].join('\n'),
     enabled: unlocked.containsKey(a),
   );
 }
