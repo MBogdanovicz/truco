@@ -6,7 +6,11 @@ import 'truco_game.dart';
 
 /// How hard a training situation is.
 enum TrainingLevel {
-  basic('Básico', 'O que toda dupla precisa saber.'),
+  basic(
+    'Básico',
+    'O que toda dupla precisa saber. No truco nem sempre há uma só jogada '
+        'certa: quando outra também vale, o app avisa.',
+  ),
   intermediate('Intermediário', 'Posição, planejamento e quando trucar.'),
   advanced('Avançado', 'Situações para pensar como um truqueiro de mesa.');
 
@@ -379,14 +383,30 @@ final trainingScenarios = <TrainingScenario>[
     level: TrainingLevel.basic,
     title: 'Abrindo a mão',
     situation:
-        'Primeira rodada e você é o primeiro a jogar. Vira 6♦: as manilhas '
-        'são os 7.',
+        'Primeira rodada e você é o primeiro a jogar, com gato, 3♥ e 5♠. '
+        'Vira 6♦: as manilhas são os 7.',
     vira: '6o',
     hand: '7p 3c 5e',
-    answer: 'card:3c',
+    answer: 'card:5e',
     explanation:
-        'Abra com o 3, que só perde para manilha, e guarde o gato: ele '
-        'ganha qualquer rodada depois, quando for preciso.',
+        'Abrindo a mão, você está longe do pé: quem deve jogar a carta forte '
+        'na dupla é o parceiro, que joga depois. Pense: se você joga o 3 e o '
+        'Juca põe uma manilha por cima, vocês perdem a primeira e ficam só '
+        'com o gato para fazer a segunda e a terceira. Guardando o 3, se o '
+        'Juca ganhar a primeira do mesmo jeito, você é o pé na segunda com o '
+        '3 e o gato: bem mais confortável.\n\n'
+        'No truco nem sempre existe uma única jogada certa: há várias linhas '
+        'de pensamento, e a melhor depende do que você sabe e do plano que '
+        'tem para a mão.',
+    alsoGood: {
+      'card:3c':
+          'Abrir com o 3 também é uma boa jogada: ele só perde para manilha e '
+          'pode garantir a primeira.',
+    },
+    wrong: {
+      'card:7p':
+          'O gato ganha qualquer rodada: guarde ele para quando for preciso.',
+    },
   ),
   TrainingScenario(
     id: 'tied_first',
