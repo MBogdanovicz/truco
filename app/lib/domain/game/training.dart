@@ -904,6 +904,32 @@ final trainingScenarios = <TrainingScenario>[
     },
   ),
   TrainingScenario(
+    id: 'eleven_out_of_position',
+    level: TrainingLevel.advanced,
+    title: 'Mão de onze fora de posição',
+    situation:
+        'Vocês estão com 11 e os adversários com 10. Você abre a primeira '
+        'rodada (o Tião é o pé). Vira K♠: as manilhas são os ases. Você tem '
+        'a salmoura e um 3; o resto da dupla é baixo.',
+    vira: 'Ke',
+    score: (11, 10),
+    hand: 'Ao 3p 5e',
+    partner: '4c 6p Qo',
+    answer: 'fold',
+    explanation:
+        'Se você fosse o pé, dava para jogar: duas cartas fortes ganham a '
+        'mão, e se um adversário pusesse uma carta boa na primeira, você '
+        'guardava as suas para as rodadas seguintes. Mas abrindo a mão fica '
+        'complicado: se você joga a salmoura e alguém mata, sobra só o 3 '
+        'para ganhar as duas próximas. Correndo, vem a mão de ferro (50%). '
+        'Aqui é melhor correr, só por causa da posição.',
+    wrong: {
+      'accept':
+          'As cartas seriam boas no pé. Abrindo a mão, a salmoura e o 3 '
+          'ficam expostos a quem joga depois.',
+    },
+  ),
+  TrainingScenario(
     id: 'broken_couple',
     level: TrainingLevel.advanced,
     title: 'Casal sem o gato',

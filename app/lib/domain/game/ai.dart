@@ -52,7 +52,12 @@ class TrucoBot {
     if (level == AiLevel.easy) {
       return _random.nextDouble() < 0.6 ? Accept(v.seat) : Fold(v.seat);
     }
-    final p = winProbability(v, samples: _samples);
+    var p = winProbability(v, samples: _samples);
+    // Leading the first round, our good cards are out of position: whoever
+    // plays after can kill them cheaply.
+    if (level == AiLevel.hard && teamOfSeat(nextSeat(v.dealer)) == v.team) {
+      p -= 0.08;
+    }
     // Playing risks the decision value; running gives away the base value.
     final play = v.rules.decisionHandValue;
     final run = v.rules.baseValue;
