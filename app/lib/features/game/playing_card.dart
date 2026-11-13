@@ -149,13 +149,21 @@ class CardBack extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: CustomPaint(
-        painter: _BackPattern(
-          back.edge == AppColors.gold
-              ? AppColors.gold.withValues(alpha: 0.35)
-              : Colors.white.withValues(alpha: 0.16),
-        ),
+        painter: back.image != null
+            ? null
+            : _BackPattern(
+                back.edge == AppColors.gold
+                    ? AppColors.gold.withValues(alpha: 0.35)
+                    : Colors.white.withValues(alpha: 0.16),
+              ),
         child: Center(
-          child: label != null
+          child: label == null && back.image != null
+              ? Image.asset(
+                  back.image!,
+                  width: width * 0.8,
+                  filterQuality: FilterQuality.medium,
+                )
+              : label != null
               ? Text(
                   label!,
                   style: TextStyle(

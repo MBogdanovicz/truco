@@ -29,15 +29,31 @@ enum CardBackStyle {
     Color(0xFF3A3A3A),
     Color(0xFF121212),
     AppColors.gold,
+  ),
+  capivara(
+    'Capivara E.C.',
+    Color(0xFF1E1E1E),
+    Color(0xFF050505),
+    Color(0xFF2BE62B),
+    image: 'assets/backs/capivara.png',
   );
 
-  const CardBackStyle(this.label, this.top, this.bottom, this.edge);
+  const CardBackStyle(
+    this.label,
+    this.top,
+    this.bottom,
+    this.edge, {
+    this.image,
+  });
   final String label;
   final Color top;
   final Color bottom;
 
   /// The border around the back.
   final Color edge;
+
+  /// A crest in the middle of the back, instead of the plain pattern.
+  final String? image;
 }
 
 /// How the face of the cards looks.
