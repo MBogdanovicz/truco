@@ -37,6 +37,16 @@ const _playGamesIds = <Achievement, String>{
   Achievement.game666: 'CgkI1Iv_lucZEAIQFw',
   Achievement.gameSeisBurro: 'CgkI1Iv_lucZEAIQGA',
   Achievement.gameShutout: 'CgkI1Iv_lucZEAIQGQ',
+  Achievement.tourFirst: 'CgkI1Iv_lucZEAIQGw',
+  Achievement.tourChampion: 'CgkI1Iv_lucZEAIQHA',
+  Achievement.tourChampion3: 'CgkI1Iv_lucZEAIQHQ',
+  Achievement.tourComeback: 'CgkI1Iv_lucZEAIQHg',
+  Achievement.tourUnbeaten: 'CgkI1Iv_lucZEAIQHw',
+  Achievement.tourBo5Final: 'CgkI1Iv_lucZEAIQIA',
+  Achievement.tourKnockout: 'CgkI1Iv_lucZEAIQIQ',
+  Achievement.tourClean: 'CgkI1Iv_lucZEAIQIg',
+  Achievement.tourRoundRobin: 'CgkI1Iv_lucZEAIQIw',
+  Achievement.tourRandomPartner: 'CgkI1Iv_lucZEAIQJA',
 };
 
 const _incrementalSteps = <Achievement, int>{
