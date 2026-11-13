@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/game/cards.dart';
+import '../../domain/game/table_view.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import 'playing_card.dart';
 import 'table_look.dart';
@@ -43,6 +44,31 @@ class DealerDraw {
   final bool timedOut;
 
   bool get revealed => dealer != null;
+
+  /// The draw of an online game, from the server's [DrawView].
+  factory DealerDraw.fromView(
+    DrawView v,
+    List<String> names, {
+    int? secondsLeft,
+  }) {
+    // Cards still face down are unknown: any card stands in for them.
+    final spread = List<Card>.filled(
+      v.count,
+      const Card(Rank.four, Suit.ouros),
+    );
+    for (final e in v.cards.entries) {
+      final i = v.picks[e.key];
+      if (i != null) spread[i] = e.value;
+    }
+    return DealerDraw(
+      names: names,
+      spread: spread,
+      picks: v.picks,
+      secondsLeft: secondsLeft ?? seconds,
+      dealer: v.dealer,
+      timedOut: v.timedOut,
+    );
+  }
 
   Card? cardOf(int seat) => picks[seat] == null ? null : spread[picks[seat]!];
 
@@ -106,10 +132,18 @@ class DealerDrawView extends StatelessWidget {
     required this.mySeat,
     required this.onPick,
     required this.onLeave,
+    this.mayPick = true,
+    this.spectator = false,
   });
+
+  /// Watching someone else's game: nobody is "você".
+  final bool spectator;
 
   final DealerDraw draw;
   final int mySeat;
+
+  /// Whether the viewer takes part in the draw (false for spectators).
+  final bool mayPick;
   final ValueChanged<int> onPick;
   final VoidCallback onLeave;
 
@@ -119,7 +153,7 @@ class DealerDrawView extends StatelessWidget {
     final theme = Theme.of(context);
     const light = Color(0xFFF4EBD8);
     final mine = draw.picks[mySeat];
-    final canPick = mine == null && !draw.timedOut;
+    final canPick = mayPick && mine == null && !draw.timedOut;
     final String status;
     if (draw.timedOut) {
       status = 'O tempo acabou: quem dá foi sorteado.';
@@ -127,8 +161,12 @@ class DealerDrawView extends StatelessWidget {
       status = draw.dealer == mySeat
           ? 'Você tirou a maior: você dá as cartas!'
           : '${draw.names[draw.dealer!]} tirou a maior e dá as cartas.';
-    } else if (mine == null) {
+    } else if (mine == null && mayPick) {
       status = 'Tire uma carta (${draw.secondsLeft} s)';
+    } else if (spectator || draw.picks.length < 4) {
+      status = spectator
+          ? 'Cada um tira uma carta...'
+          : 'Esperando os outros tirarem...';
     } else {
       status = 'Virando as cartas...';
     }
@@ -176,9 +214,13 @@ class DealerDrawView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    for (final seat in const [0, 1, 2, 3])
+                    for (var k = 0; k < 4; k++)
                       Expanded(
-                        child: _SeatDraw(draw: draw, seat: seat),
+                        child: _SeatDraw(
+                          draw: draw,
+                          seat: (mySeat + k) % 4,
+                          mySeat: spectator ? -1 : mySeat,
+                        ),
                       ),
                   ],
                 ),
@@ -215,10 +257,15 @@ class DealerDrawView extends StatelessWidget {
 }
 
 class _SeatDraw extends StatelessWidget {
-  const _SeatDraw({required this.draw, required this.seat});
+  const _SeatDraw({
+    required this.draw,
+    required this.seat,
+    required this.mySeat,
+  });
 
   final DealerDraw draw;
   final int seat;
+  final int mySeat;
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +275,7 @@ class _SeatDraw extends StatelessWidget {
     return Column(
       children: [
         Text(
-          seat == 0 ? 'Você' : draw.names[seat],
+          seat == mySeat ? 'Você' : draw.names[seat],
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -237,7 +284,11 @@ class _SeatDraw extends StatelessWidget {
           ),
         ),
         Text(
-          seat == 2 ? 'parceiro' : (seat == 0 ? '' : 'adversário'),
+          mySeat < 0
+              ? (seat.isEven ? 'dupla 1' : 'dupla 2')
+              : seat == mySeat
+              ? ''
+              : (seat == (mySeat + 2) % 4 ? 'parceiro' : 'adversário'),
           style: TextStyle(color: light.withValues(alpha: 0.6), fontSize: 11),
         ),
         const SizedBox(height: 6),

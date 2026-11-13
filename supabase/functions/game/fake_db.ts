@@ -262,6 +262,14 @@ export const asDb = (db: FakeDb) => db as any;
 /** Plays for [seat] like a simple person: accept, else the first card.
  * After a hand worth 3+, shows the cards (even seats) or passes. */
 export function move(view: Json): Json {
+  const draw = view.draw as Json | undefined;
+  if (draw) {
+    // Draws the first card nobody took.
+    const taken = Object.values(draw.p as Record<string, number>);
+    let i = 0;
+    while (taken.includes(i)) i++;
+    return { t: "pick", i };
+  }
   if (view.canShow) return { t: (view.me as number) % 2 === 0 ? "show" : "ready" };
   if (view.mustAnswer) return { t: "accept" };
   if (view.iron) return { t: "blind", i: 0 };
@@ -280,7 +288,10 @@ export async function playToEnd(db: FakeDb, roomId: string, players: Map<number,
     let moved = false;
     for (const [seat, game] of players) {
       const v = lastFrame(db, roomId, seat);
-      if (v && (v.myTurn || v.mustAnswer || v.canShow)) {
+      const canMove = v?.draw
+        ? (v.draw as Json).can
+        : v && (v.myTurn || v.mustAnswer || v.canShow);
+      if (v && canMove) {
         await game.act({ roomId, move: move(v) });
         moved = true;
         break;

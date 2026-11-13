@@ -106,4 +106,8 @@ const releaseNotes = <ReleaseNote>[
         '(Configurações > Mesa e baralho).',
     'Premium: novos visuais do marcador: Carta 10, Feijões, Lousa de giz e Palitos de fósforo (agora saindo da caixinha).',
   ]),
+  ReleaseNote(11, [
+    'Nas salas online, quem dá as cartas no primeiro jogo também é decidido '
+        'tirando uma carta: a maior dá.',
+  ]),
 ];

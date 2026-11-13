@@ -20,6 +20,15 @@ abstract final class FrameDelays {
 
   /// How long players have to show their cards after a hand worth 3+.
   static const revealWindow = 7000;
+
+  /// Between the computer players' draws for the first dealer.
+  static const drawPick = 600;
+
+  /// Showing the drawn cards before the first hand is dealt.
+  static const afterDraw = 2800;
+
+  /// How long people have to draw a card for the first dealer.
+  static const drawWindow = 10000;
 }
 
 /// One game run by its authority (this device for a game against the
@@ -38,16 +47,135 @@ class GameSession {
     required List<AiLevel?> bots,
     List<Map<String, Object?>> log = const [],
     Random? random,
+    bool drawDealer = false,
   }) : bots = List.unmodifiable(bots),
        _random = random ?? Random(),
+       // A game that started with a draw says so in its first log entry.
+       drawDealer = drawDealer || (log.isNotEmpty && log.first['t'] == 'draw'),
        log = [] {
     assert(this.bots.length == 4);
-    game = TrucoGame(rules: rules, seed: seed, firstDealer: firstDealer);
+    if (this.drawDealer) {
+      if (log.isEmpty) this.log.add(const {'t': 'draw'});
+      _drawing = true;
+      _spread = ([
+        ...fullDeck,
+      ]..shuffle(Random(seed ^ 0x2545F491))).take(drawCount).toList();
+      // Only so [game] is never empty: it is replaced once the dealer is
+      // known, and nobody sees or plays it.
+      game = TrucoGame(rules: rules, seed: seed ^ 0x5BD1E995);
+    } else {
+      game = TrucoGame(rules: rules, seed: seed, firstDealer: firstDealer);
+    }
     for (final entry in log) {
       _applyLogged(entry);
     }
-    talk.apply(game.events);
+    if (!_drawing) talk.apply(game.events.skip(_seen));
     _seen = game.events.length;
+  }
+
+  /// Before the first hand, everyone draws a card from the spread deck and
+  /// the highest deals ([firstDealer] is used only if no person draws).
+  final bool drawDealer;
+
+  /// Cards spread for the draw.
+  static const drawCount = 20;
+  bool _drawing = false;
+  List<Card> _spread = const [];
+  final Map<int, int> _picks = {};
+
+  /// The game waits for people to draw a card for the first dealer.
+  bool get drawing => _drawing;
+
+  /// Higher wins: rank first, then suit (paus > copas > espadas > ouros).
+  static int drawStrength(Card c) => c.rank.index * 4 + c.suit.index;
+
+  int _highestDraw() {
+    var best = _picks.keys.first;
+    for (final s in _picks.keys) {
+      if (drawStrength(_spread[_picks[s]!]) >
+          drawStrength(_spread[_picks[best]!])) {
+        best = s;
+      }
+    }
+    return best;
+  }
+
+  DrawView _drawView(int seat, {int? dealer, bool timedOut = false}) =>
+      DrawView(
+        count: _spread.length,
+        picks: Map.unmodifiable(_picks),
+        cards: dealer == null || timedOut
+            ? const {}
+            : {for (final e in _picks.entries) e.key: _spread[e.value]},
+        dealer: dealer,
+        timedOut: timedOut,
+        canPick:
+            _drawing &&
+            dealer == null &&
+            isHuman(seat) &&
+            !_picks.containsKey(seat),
+      );
+
+  void _drawSnapshot(
+    Frames frames,
+    int delayMs, {
+    int? dealer,
+    bool timedOut = false,
+  }) {
+    for (final s in humanSeats) {
+      (frames[s] ??= []).add(
+        TableView.of(
+          game,
+          s,
+          talk: TableTalk(),
+          mayAnswer: (_) => false,
+          delayMs: delayMs,
+          draw: _drawView(s, dealer: dealer, timedOut: timedOut),
+        ),
+      );
+    }
+  }
+
+  /// [seat] draws the card at [index] of the spread.
+  Frames pick(int seat, int index) {
+    if (!_drawing ||
+        !isHuman(seat) ||
+        _picks.containsKey(seat) ||
+        index < 0 ||
+        index >= _spread.length ||
+        _picks.containsValue(index)) {
+      throw GameRuleError('cannot draw $index');
+    }
+    _picks[seat] = index;
+    log.add({'t': 'pick', 's': seat, 'i': index});
+    final frames = <int, List<TableView>>{};
+    _drawSnapshot(frames, 0);
+    _advance(frames);
+    return frames;
+  }
+
+  /// Everyone has drawn (or time ran out): the real game starts.
+  void _beginGame(int dealer) {
+    _drawing = false;
+    game = TrucoGame(rules: rules, seed: seed, firstDealer: dealer);
+    talk.resetForNewGame();
+    _seen = 0;
+  }
+
+  /// Time to draw ran out: people who didn't draw get a random card; if
+  /// no person drew at all, the dealer is drawn by lot as before.
+  int? _closeDraw() {
+    if (!humanSeats.any(_picks.containsKey)) return null;
+    final r = Random(seed);
+    for (var s = 0; s < 4; s++) {
+      if (_picks.containsKey(s)) continue;
+      final free = [
+        for (var i = 0; i < _spread.length; i++)
+          if (!_picks.containsValue(i)) i,
+      ];
+      _picks[s] = free[r.nextInt(free.length)];
+    }
+    return _highestDraw();
   }
 
   final TrucoRules rules;
@@ -58,7 +186,7 @@ class GameSession {
   final List<AiLevel?> bots;
   final List<Map<String, Object?>> log;
   final Random _random;
-  late final TrucoGame game;
+  late TrucoGame game;
   final TableTalk talk = TableTalk();
   int _seen = 0;
 
@@ -75,11 +203,12 @@ class GameSession {
   TableView viewFor(int seat, {int delayMs = 0}) => TableView.of(
     game,
     seat,
-    talk: talk,
+    talk: _drawing ? TableTalk() : talk,
     mayAnswer: isHuman,
     delayMs: delayMs,
     revealing: revealing,
     canShow: canShowFor(seat),
+    draw: _drawing ? _drawView(seat) : null,
   );
 
   /// After a hand worth 3+, the game waits a moment (see
@@ -87,6 +216,7 @@ class GameSession {
   /// person who could has shown them or passed, or the time runs out
   /// ([timeout]). Not in slow games.
   bool get revealing =>
+      !_drawing &&
       !rules.isSlow &&
       !_revealClosed &&
       game.revealOpen &&
@@ -125,6 +255,7 @@ class GameSession {
     if (!isHuman(seat) || action.seat != seat) {
       throw GameRuleError('seat $seat is not a person');
     }
+    if (_drawing) throw GameRuleError('drawing for the dealer');
     game.apply(action);
     log.add(actionToJson(action));
     final frames = <int, List<TableView>>{};
@@ -144,6 +275,7 @@ class GameSession {
 
   /// The person the game waits for, or null (game over, or a bot's move).
   int? get waitingFor {
+    if (_drawing) return null;
     switch (game.phase) {
       case GamePhase.playing:
         return isHuman(game.turn) ? game.turn : null;
@@ -173,6 +305,14 @@ class GameSession {
   /// [missLimit] (tournament games), missing that many moves in a row
   /// gives the game up (W.O.).
   Frames timeout({AiLevel level = AiLevel.medium, int? missLimit}) {
+    if (_drawing) {
+      log.add(const {'t': 'draw-end'});
+      final frames = <int, List<TableView>>{};
+      final dealer = _closeDraw();
+      _finishDraw(frames, dealer);
+      _advance(frames);
+      return frames;
+    }
     if (waitingFor == null && revealing) {
       // Time to show the cards is over: deal the next hand.
       _revealClosed = true;
@@ -212,6 +352,7 @@ class GameSession {
 
   /// [seat]'s team gives the game up (left a tournament game).
   Frames forfeit(int seat) {
+    if (_drawing) _beginGame(firstDealer);
     game.forfeit(teamOfSeat(seat));
     log.add({'t': 'forfeit', 's': seat});
     final frames = <int, List<TableView>>{};
@@ -222,6 +363,7 @@ class GameSession {
   /// Applies a person's action sent as JSON (online games).
   Frames actJson(int seat, Map<String, Object?> j) => switch (j['t']) {
     'blind' => actBlind(seat, j['i']! as int),
+    'pick' => pick(seat, j['i']! as int),
     'show' => show(seat),
     'ready' => pass(seat),
     _ => act(seat, actionFromJson({...j, 's': seat})),
@@ -235,7 +377,37 @@ class GameSession {
     return frames;
   }
 
+  /// Shows the drawn cards (or that time ran out) and starts the game with
+  /// that dealer ([dealer] null: drawn by lot).
+  void _finishDraw(Frames frames, int? dealer) {
+    final timedOut = dealer == null;
+    final d = dealer ?? firstDealer;
+    _drawSnapshot(
+      frames,
+      timedOut ? 0 : FrameDelays.move,
+      dealer: d,
+      timedOut: timedOut,
+    );
+    _beginGame(d);
+    _snapshot(frames, timedOut ? 1800 : FrameDelays.afterDraw);
+  }
+
   void _advance(Frames frames) {
+    if (_drawing) {
+      // The computer players draw, one after another.
+      for (var s = 0; s < 4; s++) {
+        if (isHuman(s) || _picks.containsKey(s)) continue;
+        final free = [
+          for (var i = 0; i < _spread.length; i++)
+            if (!_picks.containsValue(i)) i,
+        ];
+        _picks[s] = free[_random.nextInt(free.length)];
+        log.add({'t': 'pick', 's': s, 'i': _picks[s]});
+        _drawSnapshot(frames, FrameDelays.drawPick);
+      }
+      if (_picks.length < 4) return;
+      _finishDraw(frames, _highestDraw());
+    }
     while (true) {
       final phase = game.phase;
       if (phase == GamePhase.gameOver) return;
@@ -308,7 +480,14 @@ class GameSession {
 
   void _applyLogged(Map<String, Object?> entry) {
     final t = entry['t'];
-    if (t == 'next') {
+    if (t == 'draw') {
+      // Marks a game that starts with the draw (see the constructor).
+    } else if (t == 'pick') {
+      _picks[entry['s']! as int] = entry['i']! as int;
+      if (_picks.length == 4) _beginGame(_highestDraw());
+    } else if (t == 'draw-end') {
+      _beginGame(_closeDraw() ?? firstDealer);
+    } else if (t == 'next') {
       _nextHand();
     } else if (t == 'show') {
       game.showCards(entry['s']! as int);
@@ -317,6 +496,7 @@ class GameSession {
     } else if (t == 'reveal-end') {
       _revealClosed = true;
     } else if (entry['t'] == 'forfeit') {
+      if (_drawing) _beginGame(firstDealer);
       game.forfeit(teamOfSeat(entry['s']! as int));
     } else {
       game.apply(actionFromJson(entry));

@@ -13,6 +13,7 @@ import '../../domain/game/ai.dart';
 import '../../domain/game/truco_game.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
+import 'dealer_draw.dart';
 import 'game_table.dart';
 import 'online_game_controller.dart';
 import 'rules_screen.dart';
@@ -180,6 +181,18 @@ class _OnlineGameState extends ConsumerState<OnlineGameScreen> {
         myId: _ctrl.myId,
         onLeave: _confirmLeave,
         run: _run,
+      );
+    } else if (model.view.draw case final draw?) {
+      // Before the first hand: who deals?
+      body = DealerDrawView(
+        draw: DealerDraw.fromView(draw, [
+          for (var seat = 0; seat < 4; seat++)
+            room.at(seat)?.name ?? model.names[seat],
+        ], secondsLeft: s.secondsLeft),
+        mySeat: model.view.me,
+        mayPick: draw.canPick,
+        onPick: (i) => _run(() => _ctrl.pickDealerCard(i)),
+        onLeave: _confirmLeave,
       );
     } else {
       final host = _ctrl.isHost;

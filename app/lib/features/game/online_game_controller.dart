@@ -302,6 +302,15 @@ class OnlineGameController extends Notifier<OnlineGameState?> {
   Future<void> accept() => _act({'t': 'accept'});
   Future<void> fold() => _act({'t': 'fold'});
 
+  /// Draws the card at [index] for the first dealer.
+  Future<void> pickDealerCard(int index) async {
+    if (!(tableModel?.view.draw?.canPick ?? false)) return;
+    await _send((b, id) async {
+      final u = await b.act(id, {'t': 'pick', 'i': index});
+      if (u != null && state?.roomId == id) _applyView(u.version, u.frames);
+    });
+  }
+
   /// "Mostrar cartas" after a hand worth 3+, or passing on it.
   Future<void> showCards() => _reveal('show');
   Future<void> skipShow() => _reveal('ready');

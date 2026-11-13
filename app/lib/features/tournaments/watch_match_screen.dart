@@ -8,6 +8,7 @@ import '../../data/tournaments.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../data/game_room_repository.dart';
+import '../game/dealer_draw.dart';
 import '../game/game_table.dart';
 import '../game/online_game_controller.dart';
 
@@ -130,6 +131,16 @@ class _WatchMatchState extends ConsumerState<WatchMatchScreen> {
                   textAlign: TextAlign.center,
                 ),
         ),
+      );
+    }
+    if (view.draw case final draw?) {
+      return DealerDrawView(
+        draw: DealerDraw.fromView(draw, m!.names),
+        mySeat: view.me,
+        mayPick: false,
+        spectator: true,
+        onPick: (_) {},
+        onLeave: _close,
       );
     }
     return GameTable(

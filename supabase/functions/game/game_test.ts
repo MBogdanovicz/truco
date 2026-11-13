@@ -24,6 +24,21 @@ Deno.test("two people and two computers play a whole game", async () => {
   // Each person only gets their own cards.
   const a = lastFrame(db, roomId, 0)!, b = lastFrame(db, roomId, 2)!;
   assert(a.me === 0 && b.me === 2);
+  // The first game starts with the draw for the dealer: the computers
+  // drew already; the people have 10 s.
+  const draw = a.draw as Json;
+  assert(draw?.can === true, "Ana may draw");
+  assert(Object.keys(draw.p as Json).sort().join() === "1,3");
+  const left = Date.parse(room.turn_deadline as string) - Date.now();
+  assert(left > 9_000 && left < 12_500, `draw deadline ${left}`);
+  await refused(() => ana.act({ roomId, move: { t: "play", c: "4o" } }), "illegal_move");
+  const taken = Object.values(draw.p as Record<string, number>);
+  const free = [...Array(20).keys()].filter((i) => !taken.includes(i));
+  await ana.act({ roomId, move: { t: "pick", i: free[0] } });
+  await refused(() => ana.act({ roomId, move: { t: "pick", i: free[1] } }), "illegal_move");
+  await bia.act({ roomId, move: { t: "pick", i: free[1] } });
+  const after = lastFrame(db, roomId, 0)!;
+  assert(after.draw === undefined, "the game started");
   await playToEnd(db, roomId, new Map([[0, ana], [2, bia]]));
   assert(room.status === "finished");
   assert(db.rpcs.length === 1 && db.rpcs[0].fn === "record_game_result");
@@ -31,10 +46,11 @@ Deno.test("two people and two computers play a whole game", async () => {
   assert(Math.max(...scores) === 12, `scores ${scores}`);
   assert((room.wins_a as number) + (room.wins_b as number) === 1);
 
-  // Rematch: the version keeps growing.
+  // Rematch: the version keeps growing; no draw this time.
   const before = db.tables.game_states[0].version as number;
   await ana.start({ roomId });
   assert((db.tables.game_states[0].version as number) === before + 1);
+  assert(lastFrame(db, roomId, 0)!.draw === undefined, "no draw in a rematch");
   assert((room.status as string) === "playing");
 });
 
