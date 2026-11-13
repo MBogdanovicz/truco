@@ -308,10 +308,12 @@ class _GameTableState extends State<GameTable> {
         final small = (cw * 0.42).clamp(20.0, 34.0).toDouble();
         final active = _activeSeat();
         Alignment playSpot(int seat) => switch (pos(seat)) {
-          0 => const Alignment(0, 0.62),
-          1 => const Alignment(0.78, -0.04),
-          2 => const Alignment(0, -0.72),
-          _ => const Alignment(-0.78, -0.04),
+          // Lower than the middle: the partner's badge on top may show
+          // their cards, and the viewer's badge below is just a name.
+          0 => const Alignment(0, 0.8),
+          1 => const Alignment(0.78, 0.08),
+          2 => const Alignment(0, -0.58),
+          _ => const Alignment(-0.78, 0.08),
         };
         Widget badge(int position, Alignment at) {
           final seat = seatAt(position);
@@ -335,7 +337,7 @@ class _GameTableState extends State<GameTable> {
             badge(3, const Alignment(-1, -0.42)),
             badge(0, const Alignment(0, 1)),
             Align(
-              alignment: const Alignment(0, -0.06),
+              alignment: const Alignment(0, 0.06),
               child: _DeckPile(
                 vira: v.vira,
                 width: cw * 0.85,

@@ -391,14 +391,24 @@ void main() {
     expect(TrucoRules.fromJson(g.rules.toJson()).partnerSeesCovered, isFalse);
   });
 
-  test('the hard bot rarely opens a hand with truco', () {
-    var opens = 0;
-    const deals = 300;
+  test('the hard bot rarely opens a hand with truco, strong or weak', () {
+    var strong = 0, weak = 0;
+    const deals = 600;
     for (var seed = 0; seed < deals; seed++) {
       final g = TrucoGame(rules: TrucoRules.paulista, seed: seed);
+      final seat = g.turn;
       final bot = TrucoBot(AiLevel.hard, random: Random(seed));
-      if (bot.decide(g.viewFor(g.turn)) is Raise) opens++;
+      if (bot.decide(g.viewFor(seat)) is! Raise) continue;
+      final v = g.viewFor(seat);
+      final best = v.hand.map(v.strength).reduce(max);
+      if (best >= 8) {
+        strong++;
+      } else {
+        weak++;
+      }
     }
-    expect(opens / deals, lessThan(0.06));
+    print('strong $strong, weak $weak of $deals');
+    expect((strong + weak) / deals, lessThan(0.08));
+    expect(weak, greaterThan(0));
   });
 }

@@ -123,11 +123,15 @@ class TrucoBot {
         if (p > 0.9 && v.hand.length > 1 && _random.nextDouble() < 0.8) {
           return false;
         }
-        // Opening the hand with truco is rarely right: it tells the table
-        // we're strong before any card shows, and the first round is still
-        // a guess. Only with a very strong hand, and not always.
+        // Opening the hand with truco is rarely right: the first round is
+        // still a guess. Only at the extremes, and not always: a very
+        // strong hand, or a very weak one (a 4-4-4) to passar facão, so
+        // an opening truco can't be read as strength.
         if (v.rounds.isEmpty) {
-          return p > 0.85 + _noise(0.03) && _random.nextDouble() < 0.35;
+          if (p > 0.85 + _noise(0.03)) return _random.nextDouble() < 0.35;
+          final weak = v.hand.every((c) => v.strength(c) <= 3); // 7 or less
+          if (weak) return _random.nextDouble() < 0.3;
+          return false;
         }
         if (p > 0.62 + _noise(0.03)) return true;
         // Rare "facão", late in the hand when fewer cards are hidden.
