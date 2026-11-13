@@ -44,9 +44,11 @@ const _incrementalSteps = <Achievement, int>{
   Achievement.veteran50: 50,
   Achievement.veteran100: 100,
   Achievement.gameWins10: 10,
+  Achievement.tourChampion3: 3,
 };
 
-/// Incremental ones that count game wins (the others count ranked games).
+/// Incremental ones that count game wins (the others count ranked games,
+/// except "Tricampeão", which counts tournament titles).
 const _countsGameWins = {Achievement.gameWins10};
 
 /// Mirrors the server's achievements to Google Play Games on Android.
@@ -77,12 +79,17 @@ class PlayGamesSync {
     Map<Achievement, DateTime> unlocked,
     int games,
     int gameWins,
+    int titles,
   ) {
     final wanted = <String>{};
     for (final a in _playGamesIds.keys) {
       final steps = _incrementalSteps[a];
       if (steps != null) {
-        final n = _countsGameWins.contains(a) ? gameWins : games;
+        final n = a == Achievement.tourChampion3
+            ? titles
+            : _countsGameWins.contains(a)
+            ? gameWins
+            : games;
         if (n > 0) wanted.add('${a.id}:${n.clamp(0, steps)}');
       } else if (unlocked.containsKey(a)) {
         wanted.add(a.id);
@@ -97,12 +104,18 @@ class PlayGamesSync {
     required Map<Achievement, DateTime> unlocked,
     required int rankedGames,
     required int gameWins,
+    required int titles,
   }) async {
     if (!supported || _running) return;
     final prefs = SharedPreferencesAsync();
     final key = 'play_games.sent.$userId';
     final sent = (await prefs.getStringList(key) ?? const []).toSet();
-    final pending = _wanted(unlocked, rankedGames, gameWins).difference(sent);
+    final pending = _wanted(
+      unlocked,
+      rankedGames,
+      gameWins,
+      titles,
+    ).difference(sent);
     final attempt = '$userId|${(pending.toList()..sort()).join(',')}';
     if (pending.isEmpty || !_tried.add(attempt)) return;
     _running = true;
@@ -209,11 +222,13 @@ final playGamesSyncProvider = FutureProvider.autoDispose<void>((ref) async {
   final unlocked = await ref.watch(unlockedAchievementsProvider.future);
   final games = await ref.watch(rankedGamesCountProvider.future);
   final gameWins = await ref.watch(rankedGameWinsCountProvider.future);
+  final titles = await ref.watch(tournamentTitlesCountProvider.future);
   await _playGames.sync(
     client: client,
     userId: userId,
     unlocked: unlocked,
     rankedGames: games,
     gameWins: gameWins,
+    titles: titles,
   );
 });

@@ -63,3 +63,25 @@ final rankedGameWinsCountProvider = FutureProvider.autoDispose<int>((
       .where((r) => (r['matches'] as Map?)?['winner'] == r['team'])
       .length;
 });
+
+/// Tournaments the signed-in player won (the progress of "Tricampeão").
+final tournamentTitlesCountProvider = FutureProvider.autoDispose<int>((
+  ref,
+) async {
+  final client = ref.watch(supabaseClientProvider);
+  final userId = ref.watch(_accountIdProvider);
+  if (client == null || userId == null) return 0;
+  final teams = await client
+      .from('tournament_teams')
+      .select('id')
+      .or('player_a.eq.$userId,player_b.eq.$userId');
+  final ids = [for (final t in teams) t['id'] as String];
+  if (ids.isEmpty) return 0;
+  final res = await client
+      .from('tournaments')
+      .select('id')
+      .eq('status', 'finished')
+      .inFilter('champion', ids)
+      .count(CountOption.exact);
+  return res.count;
+});
