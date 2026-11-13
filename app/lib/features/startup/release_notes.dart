@@ -112,5 +112,7 @@ const releaseNotes = <ReleaseNote>[
     'Revanche continua a rodada: dá as cartas quem está depois de quem deu '
         'por último.',
     'Novas conquistas de torneio: Campeão!, Tricampeão, Invictos e outras.',
+    'Treinar renovado: 35 situações em três níveis (básico, intermediário e '
+        'avançado), respondidas na própria mesa, tocando na carta ou no botão.',
   ]),
 ];

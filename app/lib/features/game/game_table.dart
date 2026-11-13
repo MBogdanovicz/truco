@@ -88,6 +88,7 @@ class GameTableActions {
     this.gameOverExtra,
     this.onDismissTip,
     this.onShowCode,
+    this.onInfo,
     this.showCards,
     this.skipShow,
   });
@@ -111,6 +112,9 @@ class GameTableActions {
 
   /// Online rooms: shows the room code (to call someone in).
   final VoidCallback? onShowCode;
+
+  /// "Treinar": reopens the situation (or the answer) popup.
+  final VoidCallback? onInfo;
 
   /// "Mostrar cartas" after a hand worth 3+, and passing on it.
   final VoidCallback? showCards;
@@ -202,6 +206,7 @@ class _GameTableState extends State<GameTable> {
                       view: v,
                       onBack: a.onLeave,
                       onShowCode: a.onShowCode,
+                      onInfo: a.onInfo,
                     ),
                     Expanded(child: _table()),
                     if (m.tip != null) _tip(m.tip!),
@@ -661,6 +666,9 @@ class _GameTableState extends State<GameTable> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: _TapCard(
+                      key: i < v.hand.length && !v.iron
+                          ? ValueKey('my-card-${v.hand[i].id}')
+                          : null,
                       enabled: canPlay,
                       onTap: () {
                         if (v.iron) {
@@ -693,6 +701,7 @@ class _GameTableState extends State<GameTable> {
 
 class _TapCard extends StatelessWidget {
   const _TapCard({
+    super.key,
     required this.enabled,
     required this.onTap,
     required this.child,
@@ -747,11 +756,17 @@ class _ActionButton extends StatelessWidget {
 // ------------------------------------------------------------- top bar --
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.view, required this.onBack, this.onShowCode});
+  const _TopBar({
+    required this.view,
+    required this.onBack,
+    this.onShowCode,
+    this.onInfo,
+  });
 
   final TableView view;
   final VoidCallback onBack;
   final VoidCallback? onShowCode;
+  final VoidCallback? onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -785,6 +800,13 @@ class _TopBar extends StatelessWidget {
               onPressed: onShowCode,
               icon: const Icon(Icons.tag, color: Colors.white),
               tooltip: 'Código da sala',
+            ),
+          if (onInfo != null)
+            IconButton(
+              key: const ValueKey('training-info'),
+              onPressed: onInfo,
+              icon: const Icon(Icons.school_outlined, color: Colors.white),
+              tooltip: 'Situação',
             ),
           IconButton(
             onPressed: () => context.push('/jogo/regras', extra: view.rules),
