@@ -390,4 +390,15 @@ void main() {
     expect(view(partnerOf(s)).currentPlays.single.card, isNull);
     expect(TrucoRules.fromJson(g.rules.toJson()).partnerSeesCovered, isFalse);
   });
+
+  test('the hard bot rarely opens a hand with truco', () {
+    var opens = 0;
+    const deals = 300;
+    for (var seed = 0; seed < deals; seed++) {
+      final g = TrucoGame(rules: TrucoRules.paulista, seed: seed);
+      final bot = TrucoBot(AiLevel.hard, random: Random(seed));
+      if (bot.decide(g.viewFor(g.turn)) is Raise) opens++;
+    }
+    expect(opens / deals, lessThan(0.06));
+  });
 }

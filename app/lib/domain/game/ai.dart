@@ -123,6 +123,12 @@ class TrucoBot {
         if (p > 0.9 && v.hand.length > 1 && _random.nextDouble() < 0.8) {
           return false;
         }
+        // Opening the hand with truco is rarely right: it tells the table
+        // we're strong before any card shows, and the first round is still
+        // a guess. Only with a very strong hand, and not always.
+        if (v.rounds.isEmpty) {
+          return p > 0.85 + _noise(0.03) && _random.nextDouble() < 0.35;
+        }
         if (p > 0.62 + _noise(0.03)) return true;
         // Rare "facão", late in the hand when fewer cards are hidden.
         return v.rounds.isNotEmpty && p < 0.3 && _random.nextDouble() < 0.04;
