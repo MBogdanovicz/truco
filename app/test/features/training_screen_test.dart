@@ -22,6 +22,10 @@ void main() {
         expect(find.text(s.title), findsOneWidget, reason: s.id);
         await tester.tap(find.text('Ver a mesa'));
         await tester.pumpAndSettle();
+        if (s.answer.startsWith('cover:')) {
+          await tester.tap(find.text('Jogar coberta'));
+          await tester.pump();
+        }
         await tester.tap(_moveFinder(s, s.answer));
         await tester.pumpAndSettle();
         expect(find.text('Isso mesmo! 👏'), findsOneWidget, reason: s.id);
@@ -62,7 +66,7 @@ void main() {
     await tester.tap(find.text('Truco!'));
     await tester.pumpAndSettle();
     expect(find.text('Não foi dessa vez 💡'), findsOneWidget);
-    expect(find.text('Melhor jogada: jogar o 2♠.'), findsOneWidget);
+    expect(find.text('Melhor jogada: jogar o 2♠ coberto.'), findsOneWidget);
     await tester.tap(find.text('Tentar de novo'));
     await tester.pumpAndSettle();
     expect(find.text(list[i].title), findsOneWidget);
@@ -77,8 +81,8 @@ void main() {
 }
 
 Finder _moveFinder(TrainingScenario s, TrainingMove move) {
-  if (move.startsWith('card:')) {
-    return find.byKey(ValueKey('my-card-${move.substring(5)}'));
+  if (move.contains(':')) {
+    return find.byKey(ValueKey('my-card-${move.split(':').last}'));
   }
   final level = s.raiseTo;
   return find.text(switch (move) {

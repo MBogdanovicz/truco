@@ -180,7 +180,8 @@ class _TrainingTableScreenState extends State<TrainingTableScreen> {
         busy: _picked != null,
       ),
       actions: GameTableActions(
-        playCard: (card, {covered = false}) => _answer('card:${card.id}'),
+        playCard: (card, {covered = false}) =>
+            _answer('${covered ? 'cover' : 'card'}:${card.id}'),
         playBlind: (_) {},
         raise: () => _answer('raise'),
         accept: () => _answer('accept'),
@@ -311,10 +312,13 @@ class _ResultDialog extends StatelessWidget {
   }
 
   String _label(TrainingMove move) {
-    if (move.startsWith('card:')) {
-      final id = move.substring(5);
+    final (kind, id) = switch (move.split(':')) {
+      [final k, final i] => (k, i),
+      _ => (move, ''),
+    };
+    if (id.isNotEmpty) {
       final card = scenario.hand.firstWhere((c) => c.id == id);
-      return 'jogar o ${card.label}';
+      return 'jogar o ${card.label}${kind == 'cover' ? ' coberto' : ''}';
     }
     final pending = scenario.raiseTo;
     return switch (move) {

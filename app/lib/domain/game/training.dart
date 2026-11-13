@@ -20,7 +20,7 @@ enum TrainingLevel {
 }
 
 /// What the player can do at the training table: play a card (`card:3o`),
-/// call or raise (`raise`), accept or play the mão de onze (`accept`), or
+/// play it face down (`cover:3o`), call or raise (`raise`), accept or play the mão de onze (`accept`), or
 /// run (`fold`).
 typedef TrainingMove = String;
 
@@ -53,6 +53,7 @@ class TrainingScenario {
     this.raiseTo,
     this.refusedByPartner = false,
     this.stake = 0,
+    this.cover = false,
     this.alsoGood = const {},
     this.wrong = const {},
   }) : vira = Card.parse(vira),
@@ -98,6 +99,9 @@ class TrainingScenario {
 
   /// Raises already accepted in this hand (0: worth 1).
   final int stake;
+
+  /// A covered card may be played ("Jogar coberta").
+  final bool cover;
 
   final TrainingMove answer;
   final String explanation;
@@ -174,7 +178,12 @@ class TrainingScenario {
         if (raiseBy != null && raiseTo! + 1 < rules.stakes.length) 'raise',
       ];
     }
-    return [for (final c in hand) 'card:${c.id}', if (_canRaise) 'raise'];
+    return [
+      for (final c in hand) 'card:${c.id}',
+      if (cover)
+        for (final c in hand) 'cover:${c.id}',
+      if (_canRaise) 'raise',
+    ];
   }
 
   bool get _canRaise =>
@@ -225,7 +234,7 @@ class TrainingScenario {
       handCounts: [for (var s = 0; s < 4; s++) 3 - _played(s)],
       partnerHand: partner,
       partnerShownForRaise: pending != null && partner != null,
-      canCover: false,
+      canCover: cover && phase == GamePhase.playing,
       canRaise: phase == GamePhase.playing && _canRaise,
       mustAnswer: phase != GamePhase.playing,
       myTurn: phase == GamePhase.playing && turn == 0,
@@ -910,14 +919,21 @@ final trainingScenarios = <TrainingScenario>[
     explanation:
         'Entregar a primeira só é seguro com o casal maior (gato e copas). '
         'Sem o gato, se um deles tiver o gato ele ganha de uma das suas '
-        'manilhas e a mão é deles. Faça a primeira com a espadilha e guarde '
-        'a copas, que só perde para o gato.',
+        'manilhas e a mão é deles. Faça a primeira com uma manilha e guarde '
+        'a outra.',
+    alsoGood: {
+      'card:5c':
+          'Jogar a copas é exatamente a mesma coisa: entre ela e a espadilha '
+          'não existe outra carta, e a única que ganha de qualquer uma das '
+          'duas é o gato.',
+      'raise':
+          'Pedir truco também é bom: você faz a primeira com uma manilha e '
+          'ainda guarda a outra.',
+    },
     wrong: {
       'card:Qo':
           'Perdendo a primeira você precisa ganhar as duas próximas, e o gato '
           'na mão deles derruba o plano.',
-      'card:5c':
-          'A copas também ganha, mas a espadilha já basta: guarde a maior.',
     },
   ),
   TrainingScenario(
@@ -985,16 +1001,19 @@ final trainingScenarios = <TrainingScenario>[
     dealer: 2,
     rounds: ['3o Ae 7c 2p', '6p 2o Qe 5c'],
     hand: 'Kc',
-    answer: 'card:Kc',
+    answer: 'raise',
     explanation:
-        'A copas só perde para o gato. Jogue sem trucar: sem o gato, eles '
-        'não ganham e você leva o ponto (e, se trucarem de facão, você '
-        'aceita). Com o gato, o Juca truca e você corre perdendo 1.',
+        'A copas só perde para o gato. Trucando antes de mostrar a carta, '
+        'quem tem a espadilha, a salmoura, um 3 ou até um 2 pode aceitar, e '
+        'aí a mão vale 3 para vocês. Se eles pedirem seis, a chance de terem '
+        'o gato é muito alta (facão no seis é um risco enorme), e correr '
+        'passa a ser uma decisão bem razoável.',
     wrong: {
-      'raise':
-          'Trucando antes, quem não tem o gato corre (você leva 1) e quem '
-          'tem pede seis: você perde 3 ou mais. Jogando primeiro, você '
-          'nunca perde mais que 1.',
+      'card:Kc':
+          'Jogar a copas quieto é conservador demais. Depois de ver a copas, '
+          'quem não tem o gato não truca, então a mão vale só 1. E se eles '
+          'trucarem, fica tão claro que têm o gato que você quase é obrigado '
+          'a correr, o que faz do facão deles uma boa jogada.',
     },
   ),
   TrainingScenario(
@@ -1017,6 +1036,13 @@ final trainingScenarios = <TrainingScenario>[
         'manilha, e o Juca joga por último vendo tudo. Passe por cima do '
         'parceiro com o 3: para ganhar, o Juca vai precisar de manilha. Não '
         'há próxima rodada para guardar carta.',
+    alsoGood: {
+      'raise':
+          'O truco também não é ruim: não faz cartas melhores correrem, mas '
+          'pode fazer um 2 pagar. E se o Juca tiver manilha e levar 3, não é '
+          'muito diferente de jogar o 3 quieto e pagar o truco dele (não '
+          'haveria motivo para correr).',
+    },
     wrong: {
       'card:Kp':
           'Guardando o 3, o Juca leva a rodada (e a mão) com qualquer 2, 3 '
@@ -1029,19 +1055,28 @@ final trainingScenarios = <TrainingScenario>[
     title: 'Mão ganha: não espante',
     situation:
         'Vocês fizeram a primeira com o seu 3. Na segunda você é o primeiro '
-        'e tem o gato e o 2♠. Vira Q♦: as manilhas são os valetes.',
+        'e tem o gato e o 2♠. Vira Q♦: as manilhas são os valetes. Nesta '
+        'mesa vale jogar coberta.',
     vira: 'Qo',
     rounds: ['3c Ao 5p Ke'],
     hand: '2e Jp',
-    answer: 'card:2e',
+    cover: true,
+    answer: 'cover:2e',
     explanation:
         'Com a primeira feita e o gato na mão, a mão já é sua: se perder a '
-        'segunda, o gato ganha a terceira. Jogue o 2 e deixe eles acharem que '
-        'têm chance. Se trucarem, peça seis.',
+        'segunda, o gato ganha a terceira. Encubra o 2: parece que você não '
+        'tem nada, eles fazem a segunda barato, guardam as cartas boas e '
+        'ficam animados para trucar na terceira. Aí você pede seis.',
+    alsoGood: {
+      'card:2e':
+          'Jogar o 2 aberto também segura a mão, mas pode fazer eles gastarem '
+          'a copas para ganhar dele, e sem ela ninguém truca na terceira.',
+    },
     wrong: {
       'raise': 'Truco com a mão ganha espanta: eles correm e a mão vale 1.',
       'card:Jp':
           'O gato agora fecha a mão valendo 1. Ele pode esperar a terceira.',
+      'cover:Jp': 'Coberto, o gato não vale nada: guarde ele para a terceira.',
     },
   ),
 ];
