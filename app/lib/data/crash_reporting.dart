@@ -30,6 +30,12 @@ abstract final class CrashReporting {
 
     FlutterError.onError = crashlytics.recordFlutterFatalError;
     PlatformDispatcher.instance.onError = (error, stack) {
+      // No internet (a background token refresh, say) is not a crash: the
+      // app keeps working and retries when the connection is back.
+      if (isOfflineError(error)) {
+        log('offline: $error');
+        return true;
+      }
       crashlytics.recordError(error, stack, fatal: true);
       return true;
     };
@@ -43,6 +49,18 @@ abstract final class CrashReporting {
         );
       }).sendPort,
     );
+  }
+
+  /// A network failure from being offline (no DNS, no route, connection
+  /// dropped), as thrown by Supabase and http.
+  @visibleForTesting
+  static bool isOfflineError(Object error) {
+    final text = error.toString();
+    return text.contains('AuthRetryableFetchException') ||
+        text.contains('SocketException') ||
+        text.contains('Failed host lookup') ||
+        text.contains('Connection closed') ||
+        text.contains('Connection reset');
   }
 
   /// A breadcrumb attached to the next crash report.
