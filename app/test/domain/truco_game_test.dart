@@ -407,7 +407,6 @@ void main() {
         weak++;
       }
     }
-    print('strong $strong, weak $weak of $deals');
     expect((strong + weak) / deals, lessThan(0.08));
     expect(weak, greaterThan(0));
   });
