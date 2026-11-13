@@ -10,8 +10,15 @@ unlocks the PWA when signing in with the same e-mail.
 | `premium_invite` | R$ 1,99 | an e-mail invited by a full-price buyer (3 invites each) |
 
 Premium unlocks: no ad before games, unlimited groups (free: 2 groups in
-total, created or joined), the scoreboard looks, and later detailed stats
-and championships.
+total, created or joined), every scoreboard/table/deck look, hosting online
+truco game rooms, the coach (modo professor) and the intermediate/advanced
+Treinar levels, creating tournaments, and renaming at will.
+
+Free for everyone (reviewed 2026-11-13): hosting scorekeeper rooms, the basic
+Treinar level, one name change (`free_rename` in the auth metadata), and
+three looks earned with achievements (`lib/data/look_unlocks.dart`): blue
+felt (Truqueiro), black and gold card back (Campeão!), matchsticks
+scoreboard (Veterano).
 
 ## How it works
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:truco/domain/game/training.dart';
@@ -74,9 +75,18 @@ void main() {
 
   testWidgets('the list groups the levels', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const MaterialApp(home: TrainingScreen()));
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: TrainingScreen())),
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('Básico · 0 de'), findsOneWidget);
+    // Without Premium the other levels are marked.
+    await tester.scrollUntilVisible(
+      find.textContaining('Intermediário · Premium'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Intermediário · Premium'), findsOneWidget);
   });
 }
 

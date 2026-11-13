@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/entitlements.dart';
 import '../../data/game_prefs.dart';
 import '../../domain/game/training.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../premium/premium_screen.dart';
 import 'game_table.dart';
 
 const _kDone = 'training.done.v1';
@@ -25,15 +28,16 @@ Future<void> _saveDone(Set<String> done) async {
   } catch (_) {}
 }
 
-/// "Treinar": situations by level, each played at the table.
-class TrainingScreen extends StatefulWidget {
+/// "Treinar": situations by level, each played at the table. The basic
+/// level is free; the others are Premium.
+class TrainingScreen extends ConsumerStatefulWidget {
   const TrainingScreen({super.key});
 
   @override
-  State<TrainingScreen> createState() => _TrainingScreenState();
+  ConsumerState<TrainingScreen> createState() => _TrainingScreenState();
 }
 
-class _TrainingScreenState extends State<TrainingScreen> {
+class _TrainingScreenState extends ConsumerState<TrainingScreen> {
   /// Scenarios answered right at least once.
   Set<String> _done = {};
 
@@ -49,6 +53,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }
 
   Future<void> _open(TrainingLevel level, int index) async {
+    if (level != TrainingLevel.basic) {
+      final ent = await ref.read(entitlementsProvider.future);
+      if (!mounted) return;
+      if (!ent.canUseCoach) {
+        await showPremiumRequired(context, 'Treinar: ${level.label}');
+        return;
+      }
+    }
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => TrainingTableScreen(level: level, index: index),
@@ -70,8 +83,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
   Widget _section(BuildContext context, TrainingLevel level) {
     final list = trainingAt(level);
     final done = list.where((s) => _done.contains(s.id)).length;
+    final locked =
+        level != TrainingLevel.basic &&
+        !(ref.watch(entitlementsProvider).value?.canUseCoach ?? false);
     return AppSection(
-      header: '${level.label} · $done de ${list.length}',
+      header:
+          '${level.label} · ${locked ? 'Premium' : '$done de ${list.length}'}',
       footer: level.blurb,
       children: [
         for (var i = 0; i < list.length; i++)

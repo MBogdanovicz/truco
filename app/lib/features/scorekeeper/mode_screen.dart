@@ -4,8 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/auth_repository.dart';
-import '../../data/entitlements.dart';
-import '../premium/premium_screen.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/theme/app_theme.dart';
 import 'online_room_controller.dart';
@@ -22,15 +20,7 @@ class _ModeState extends ConsumerState<ScorekeeperModeScreen> {
   bool _busy = false;
 
   Future<void> _createRoom() async {
-    final ent = await ref.read(entitlementsProvider.future);
-    if (!mounted) return;
-    if (!ent.canHostOnline) {
-      await showPremiumRequired(
-        context,
-        'Criar salas "cada um no seu celular"',
-      );
-      return;
-    }
+    // Free for everyone (only truco game rooms are Premium).
     setState(() => _busy = true);
     try {
       await ref.read(onlineRoomControllerProvider.notifier).create();
