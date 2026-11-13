@@ -143,6 +143,11 @@ class _GameTableState extends State<GameTable> {
   /// The raise the last balloon was for (hand, seat, level).
   String? _shoutedFor;
 
+  /// Balloons shown in this match, and the hand they were counted up to
+  /// (a lower hand number means a new match).
+  int _shouts = 0;
+  int _shoutsHand = 0;
+
   @override
   void initState() {
     super.initState();
@@ -155,9 +160,11 @@ class _GameTableState extends State<GameTable> {
     _checkShout();
   }
 
-  /// Shouts when someone calls truco (or raises: seis, nove, doze, once
-  /// they have phrases in [shoutPhrases]).
+  /// Sometimes shouts when someone calls truco or raises: at tense
+  /// moments, at most [maxShoutsPerMatch] times a match.
   void _checkShout() {
+    if (v.handNumber < _shoutsHand) _shouts = 0;
+    _shoutsHand = v.handNumber;
     final p = v.pending;
     if (p == null || p.refusedBy != null) return;
     final key = '${v.handNumber}-${p.seat}-${p.toLevel}';
@@ -169,8 +176,19 @@ class _GameTableState extends State<GameTable> {
       3 => ShoutEvent.nove,
       _ => ShoutEvent.doze,
     };
-    final text = pickShout(event);
+    final text = shoutForRaise(
+      event: event,
+      tense: isTenseRaise(
+        scoreA: v.scores[Team.a] ?? 0,
+        scoreB: v.scores[Team.b] ?? 0,
+        toLevel: p.toLevel,
+        stakes: v.rules.stakes,
+        target: v.rules.targetScore,
+      ),
+      shoutsSoFar: _shouts,
+    );
     if (text == null) return;
+    _shouts++;
     _shout = text;
     _shoutId++;
   }

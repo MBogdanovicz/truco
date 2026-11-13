@@ -5,16 +5,71 @@ import 'package:flutter/material.dart';
 /// Moments when the table "shouts" a comic-book balloon.
 enum ShoutEvent { truco, seis, nove, doze }
 
-/// What can be shouted at each moment; one is picked at random. Only truco
-/// shouts for now; add phrases here for seis, nove and doze.
+/// What can be shouted at each moment; one is picked at random.
 const shoutPhrases = <ShoutEvent, List<String>>{
-  ShoutEvent.truco: ['Truco! Sofá de zona!'],
+  ShoutEvent.truco: ['Truco! Sofá de zona!', 'Treis mio!', 'É o nome do jogo!'],
+  ShoutEvent.seis: ['Seeeiss burro!', 'Seis papudo!'],
+  ShoutEvent.nove: ['Nove facãozeiro!'],
+  ShoutEvent.doze: ['Vamos acabar com o jogo!'],
 };
+
+/// The rare variant of "Truco! Sofá de zona!" (1 in 1000).
+const rareTrucoShout = 'Truco! Penteadeira de puta!';
+
+/// At most this many balloons in one match.
+const maxShoutsPerMatch = 2;
+
+/// Chance of a balloon for a raise at a tense moment, and for a raise
+/// above truco (seis, nove, doze) at a calm one. A plain truco at a calm
+/// moment never shouts.
+const tenseShoutChance = 0.6;
+const calmRaiseShoutChance = 0.25;
+
+/// Whether a raise to [toLevel] comes at a tense moment: near the mão de
+/// ferro (both teams at 9 or more), a close score late in the match, or a
+/// hand that would now be worth enough to end it.
+bool isTenseRaise({
+  required int scoreA,
+  required int scoreB,
+  required int toLevel,
+  required List<int> stakes,
+  int target = 12,
+}) {
+  final high = math.max(scoreA, scoreB);
+  if (math.min(scoreA, scoreB) >= 9) return true;
+  if (high >= 7 && (scoreA - scoreB).abs() <= 2) return true;
+  final value = stakes[math.min(toLevel, stakes.length - 1)];
+  return high + value >= target;
+}
 
 String? pickShout(ShoutEvent event, [math.Random? random]) {
   final options = shoutPhrases[event];
   if (options == null || options.isEmpty) return null;
-  return options[(random ?? math.Random()).nextInt(options.length)];
+  final r = random ?? math.Random();
+  final text = options[r.nextInt(options.length)];
+  if (text == 'Truco! Sofá de zona!' && r.nextInt(1000) == 0) {
+    return rareTrucoShout;
+  }
+  return text;
+}
+
+/// The balloon for a raise, or null when this one stays quiet: decides by
+/// how tense the moment is and how many balloons the match already had.
+String? shoutForRaise({
+  required ShoutEvent event,
+  required bool tense,
+  required int shoutsSoFar,
+  math.Random? random,
+}) {
+  if (shoutsSoFar >= maxShoutsPerMatch) return null;
+  final r = random ?? math.Random();
+  final chance = tense
+      ? tenseShoutChance
+      : event == ShoutEvent.truco
+      ? 0.0
+      : calmRaiseShoutChance;
+  if (r.nextDouble() >= chance) return null;
+  return pickShout(event, r);
 }
 
 /// A comic-book "shout" balloon that pops in the middle of the table and
