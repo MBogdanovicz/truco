@@ -151,7 +151,7 @@ enum Achievement {
   ),
   tourRandomPartner(
     'tour_random_partner',
-    'Dupla do acaso',
+    'Máquina Mortífera',
     'Vença um torneio com um parceiro sorteado pelo app.',
   );
 
