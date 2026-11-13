@@ -109,5 +109,8 @@ const releaseNotes = <ReleaseNote>[
   ReleaseNote(11, [
     'Nas salas online, quem dá as cartas no primeiro jogo também é decidido '
         'tirando uma carta: a maior dá.',
+    'Revanche continua a rodada: dá as cartas quem está depois de quem deu '
+        'por último.',
+    'Novas conquistas de torneio: Campeão!, Tricampeão, Invictos e outras.',
   ]),
 ];

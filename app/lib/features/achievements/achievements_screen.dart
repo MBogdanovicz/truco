@@ -40,7 +40,7 @@ class AchievementsScreen extends ConsumerWidget {
                     'jogadores com conta e as duas duplas confirmando o placar.',
                 children: [
                   for (final a in Achievement.values)
-                    if (!a.game) _tile(context, a, unlocked),
+                    if (!a.game && !a.tournament) _tile(context, a, unlocked),
                 ],
               ),
               AppSection(
@@ -51,6 +51,16 @@ class AchievementsScreen extends ConsumerWidget {
                 children: [
                   for (final a in Achievement.values)
                     if (a.game) _tile(context, a, unlocked),
+                ],
+              ),
+              AppSection(
+                header: 'Torneios',
+                footer:
+                    'Nos torneios do app. Um título ganho por W.O. também '
+                    'conta.',
+                children: [
+                  for (final a in Achievement.values)
+                    if (a.tournament) _tile(context, a, unlocked),
                 ],
               ),
             ],

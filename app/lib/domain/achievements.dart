@@ -112,6 +112,47 @@ enum Achievement {
     'game_casal_vermelho',
     'Casal vermelho',
     'Ganhe uma mão em que você recebeu a salmoura e a copas.',
+  ),
+
+  // Tournaments (unlocked by the server: supabase/functions/game/tournament.ts).
+  tourFirst('tour_first', 'Estreante', 'Jogue uma partida de torneio.'),
+  tourChampion('tour_champion', 'Campeão!', 'Vença um torneio.'),
+  tourChampion3('tour_champion_3', 'Tricampeão', 'Vença 3 torneios.'),
+  tourComeback(
+    'tour_comeback',
+    'Voltou da repescagem',
+    'Seja campeão depois de cair para a repescagem.',
+    hidden: true,
+  ),
+  tourUnbeaten(
+    'tour_unbeaten',
+    'Invictos',
+    'Vença um torneio todos contra todos sem perder nenhum jogo.',
+  ),
+  tourBo5Final(
+    'tour_bo5_final',
+    'Contra a variância',
+    'Vença uma final melhor de 5.',
+  ),
+  tourKnockout(
+    'tour_knockout',
+    'Rei do mata-mata',
+    'Vença um torneio mata-mata.',
+  ),
+  tourClean(
+    'tour_clean',
+    'Direto ao título',
+    'Vença um torneio com repescagem sem nunca cair para ela.',
+  ),
+  tourRoundRobin(
+    'tour_round_robin',
+    'Pontos corridos',
+    'Vença um torneio todos contra todos.',
+  ),
+  tourRandomPartner(
+    'tour_random_partner',
+    'Dupla do acaso',
+    'Vença um torneio com um parceiro sorteado pelo app.',
   );
 
   const Achievement(
@@ -130,6 +171,9 @@ enum Achievement {
 
   /// From the app's truco game (not the scorekeeper).
   bool get game => id.startsWith('game_');
+
+  /// From tournaments.
+  bool get tournament => id.startsWith('tour_');
 
   static Achievement? byId(String id) {
     for (final a in values) {
