@@ -206,8 +206,13 @@ class TableView {
     final v = g.viewFor(seat);
     PlayView play(Play p) => PlayView(
       p.seat,
-      // Covered cards: the partner sees which one it was too.
-      p.covered && p.seat != seat && p.seat != partnerOf(seat) ? null : p.card,
+      // Covered cards: the partner sees which one it was too (if the rules
+      // say so).
+      p.covered &&
+              p.seat != seat &&
+              (p.seat != partnerOf(seat) || !g.rules.partnerSeesCovered)
+          ? null
+          : p.card,
       covered: p.covered,
     );
     final team = teamOfSeat(seat);

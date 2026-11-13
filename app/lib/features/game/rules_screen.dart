@@ -74,7 +74,8 @@ class _RulesScreenState extends State<RulesScreen> {
               'primeira e embuchou a segunda (ou a terceira): leva quem ganhou '
               'a primeira. Embuchou tudo: ninguém marca.',
           'Opcional: da segunda rodada em diante você pode jogar uma carta coberta '
-              '(virada para baixo). Ela não vale nada, mas esconde a carta.',
+              '(virada para baixo). Ela não vale nada, mas esconde a carta. '
+              'Opcional: o parceiro vê qual carta foi coberta.',
         ],
       ),
       (
@@ -164,6 +165,8 @@ class TableRulesSection extends StatelessWidget {
     final items = <(String, String)>[
       ('Manilhas', rules.manilhaMode == ManilhaMode.vira ? 'Virada' : 'Fixas'),
       ('Pode jogar coberta', yes(rules.allowCoveredCard)),
+      if (rules.allowCoveredCard)
+        ('Parceiro vê a coberta', yes(rules.partnerSeesCovered)),
       ('Mão de ferro no 11 × 11', yes(rules.ironHand)),
       ('Ver o parceiro ao receber truco', yes(rules.seePartnerOnRaise)),
       ('Mão de onze: as duas duplas veem', yes(rules.bothTeamsSeeOnDecision)),

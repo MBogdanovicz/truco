@@ -27,6 +27,7 @@ class TrucoRules {
     required this.decisionHandValue,
     this.targetScore = 12,
     this.allowCoveredCard = true,
+    this.partnerSeesCovered = true,
     this.ironHand = true,
     this.seePartnerOnRaise = true,
     this.bothTeamsSeeOnDecision = true,
@@ -56,6 +57,10 @@ class TrucoRules {
 
   /// Whether a card may be played face down from the second round on.
   final bool allowCoveredCard;
+
+  /// Whether the partner sees which card was played face down (the
+  /// opponents never do).
+  final bool partnerSeesCovered;
 
   /// When both teams are at [decisionScore] ("mão de ferro"), everyone plays
   /// without seeing their own cards.
@@ -108,6 +113,7 @@ class TrucoRules {
   TrucoRules copyWith({
     ManilhaMode? manilhaMode,
     bool? allowCoveredCard,
+    bool? partnerSeesCovered,
     bool? ironHand,
     bool? seePartnerOnRaise,
     bool? bothTeamsSeeOnDecision,
@@ -123,6 +129,7 @@ class TrucoRules {
     decisionHandValue: decisionHandValue,
     targetScore: targetScore,
     allowCoveredCard: allowCoveredCard ?? this.allowCoveredCard,
+    partnerSeesCovered: partnerSeesCovered ?? this.partnerSeesCovered,
     ironHand: ironHand ?? this.ironHand,
     seePartnerOnRaise: seePartnerOnRaise ?? this.seePartnerOnRaise,
     bothTeamsSeeOnDecision:
@@ -137,6 +144,7 @@ class TrucoRules {
   Map<String, Object?> toJson() => {
     'manilhas': manilhaMode.name,
     'coberta': allowCoveredCard,
+    if (!partnerSeesCovered) 'cobertaParceiro': false,
     'ferro': ironHand,
     'verNoTruco': seePartnerOnRaise,
     'verNaMaoDeOnze': bothTeamsSeeOnDecision,
@@ -148,6 +156,7 @@ class TrucoRules {
   static TrucoRules fromJson(Map<String, Object?> j) => paulista.copyWith(
     manilhaMode: ManilhaMode.values.asNameMap()[j['manilhas']],
     allowCoveredCard: j['coberta'] as bool?,
+    partnerSeesCovered: j['cobertaParceiro'] as bool?,
     ironHand: j['ferro'] as bool?,
     seePartnerOnRaise: j['verNoTruco'] as bool?,
     bothTeamsSeeOnDecision: j['verNaMaoDeOnze'] as bool?,

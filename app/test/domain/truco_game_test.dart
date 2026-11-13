@@ -369,4 +369,25 @@ void main() {
     expect(view(partnerOf(s)).currentPlays.single.card, card);
     expect(view(nextSeat(s)).currentPlays.single.card, isNull);
   });
+
+  test('the partner does not see a covered card when the rules say so', () {
+    final g = TrucoGame(
+      rules: TrucoRules.paulista.copyWith(partnerSeesCovered: false),
+      seed: 4,
+      firstDealer: 3,
+    );
+    for (var i = 0; i < 4; i++) {
+      final s = g.turn;
+      g.apply(PlayCard(s, g.handOf(s).first));
+    }
+    if (g.phase != GamePhase.playing) return;
+    final s = g.turn;
+    final card = g.handOf(s).first;
+    g.apply(PlayCard(s, card, covered: true));
+    TableView view(int seat) =>
+        TableView.of(g, seat, talk: TableTalk(), mayAnswer: (_) => true);
+    expect(view(s).currentPlays.single.card, card);
+    expect(view(partnerOf(s)).currentPlays.single.card, isNull);
+    expect(TrucoRules.fromJson(g.rules.toJson()).partnerSeesCovered, isFalse);
+  });
 }
