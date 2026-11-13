@@ -120,7 +120,7 @@ enum Achievement {
   tourChampion3('tour_champion_3', 'Tricampeão', 'Vença 3 torneios.'),
   tourComeback(
     'tour_comeback',
-    'Voltou da repescagem',
+    'Fênix',
     'Seja campeão depois de cair para a repescagem.',
     hidden: true,
   ),
