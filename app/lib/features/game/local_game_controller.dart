@@ -198,8 +198,12 @@ class LocalGameController extends Notifier<GameTableModel?> {
     _draw = null;
   }
 
+  /// The next game goes on as if it were the same one: the seat after
+  /// whoever dealt the last hand deals.
   void rematch() {
-    if (_setup != null) _newGame();
+    if (_setup == null) return;
+    final last = _session?.game.dealer;
+    _newGame(dealer: last == null ? null : (last + 1) % 4);
   }
 
   void _newGame({int? dealer}) {

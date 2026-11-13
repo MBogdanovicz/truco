@@ -48,7 +48,13 @@ Deno.test("two people and two computers play a whole game", async () => {
 
   // Rematch: the version keeps growing; no draw this time.
   const before = db.tables.game_states[0].version as number;
+  const lastDealer = lastFrame(db, roomId, 0)!.dealer as number;
   await ana.start({ roomId });
+  // ...dealt by the next seat after whoever dealt the last hand.
+  assert(
+    db.tables.game_states[0].first_dealer === (lastDealer + 1) % 4,
+    "the deal goes on",
+  );
   assert((db.tables.game_states[0].version as number) === before + 1);
   assert(lastFrame(db, roomId, 0)!.draw === undefined, "no draw in a rematch");
   assert((room.status as string) === "playing");

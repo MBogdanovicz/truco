@@ -18,6 +18,7 @@
 //         forfeit?: seat}                  // seat's team gives up (W.O.)
 //   out: {log, frames: {"<seat>": [TableView json]}, phase, winner?,
 //         scores: [a, b], hands: [{w?, p}],
+//         dealer: seat                     // who dealt the current hand
 //         feats?: {"<seat>": [achievement id]}   // when the game is over
 //         forfeit?: "a"|"b"                // the team that gave up
 //         reveal?: true                    // waiting a moment for people
@@ -88,6 +89,7 @@ String run(String input) {
     'phase': g.phase.name,
     if (g.winner != null) 'winner': g.winner!.name,
     'scores': [g.scores[Team.a], g.scores[Team.b]],
+    'dealer': g.dealer,
     'waitingFor': ?session.waitingFor,
     if (session.revealing) 'reveal': true,
     if (session.drawing) 'draw': true,

@@ -17,6 +17,8 @@ interface EngineOut {
   winner?: "a" | "b";
   scores: [number, number];
   hands: Json[];
+  /** Who dealt the current (or last) hand. */
+  dealer?: number;
   waitingFor?: number;
   /** Achievement ids earned per seat, when the game is over. */
   feats?: Record<string, string[]>;
@@ -418,7 +420,8 @@ export class Game {
     if (claimError) throw claimError;
     if (!claimed?.length) throw new Refused("game_started");
     const seats = await this.seats(room.id);
-    const { data: old } = await this.db.from("game_states").select("version")
+    const { data: old } = await this.db.from("game_states")
+      .select("version, seed, first_dealer, log")
       .eq("room_id", room.id).maybeSingle();
     // Versions keep growing across games, so the app never mixes them up.
     const version = (old?.version ?? 0) + 1;
@@ -426,7 +429,12 @@ export class Game {
       seats.some((s) => s.seat === i) ? null : room.bot_level
     );
     const seed = randomInt(2 ** 31);
-    const firstDealer = randomInt(4);
+    // A rematch goes on as if it were the same game: the next seat after
+    // whoever dealt the last hand deals.
+    const last = room.game_no > 0 && old?.log
+      ? runEngine(this.input(room, old as State)).dealer
+      : undefined;
+    const firstDealer = last === undefined ? randomInt(4) : (last + 1) % 4;
     const out = runEngine({
       rules: room.rules,
       seed,

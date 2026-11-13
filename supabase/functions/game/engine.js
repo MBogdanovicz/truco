@@ -2122,6 +2122,7 @@ b2=n.db
 if(b2!=null)b0.i(0,"winner",b2.b)
 b2=n.c
 b0.i(0,"scores",A.e([b2.j(0,B.b),b2.j(0,B.c)],t.e))
+b0.i(0,"dealer",n.e)
 b2=s.gaF()
 if(b2!=null)b0.i(0,"waitingFor",b2)
 if(s.ga1())b0.i(0,"reveal",!0)
