@@ -19,7 +19,7 @@ abstract final class FrameDelays {
   static const afterShown = 3500;
 
   /// How long players have to show their cards after a hand worth 3+.
-  static const revealWindow = 7000;
+  static const revealWindow = 5000;
 
   /// Between the computer players' draws for the first dealer.
   static const drawPick = 600;
@@ -245,8 +245,9 @@ class GameSession {
     _ready.add(seat);
     log.add({'t': 'ready', 's': seat});
     final frames = <int, List<TableView>>{};
+    // The question goes away at once; the next hand follows as usual.
+    _snapshot(frames, 0);
     _advance(frames);
-    if (frames.isEmpty) _snapshot(frames, 0);
     return frames;
   }
 
@@ -412,6 +413,7 @@ class GameSession {
       final phase = game.phase;
       if (phase == GamePhase.gameOver) return;
       if (phase == GamePhase.handOver) {
+        _botsReveal(frames);
         if (revealing) return;
         final wait = game.shown.isEmpty
             ? FrameDelays.nextHand
@@ -476,6 +478,28 @@ class GameSession {
     game.startNextHand();
     _ready.clear();
     _revealClosed = false;
+    _botsRevealed = false;
+  }
+
+  /// Computer players decided whether to show their cards this hand.
+  bool _botsRevealed = false;
+
+  /// Chance that a computer player shows its cards after a hand worth 3+.
+  static const botShowChance = 0.001;
+
+  /// The computer players almost never show their cards (1 in 1000), and
+  /// decide at once, so nobody waits for them.
+  void _botsReveal(Frames frames) {
+    if (_botsRevealed || !game.revealOpen || rules.isSlow) return;
+    _botsRevealed = true;
+    log.add(const {'t': 'bots-reveal'});
+    for (var s = 0; s < 4; s++) {
+      if (isHuman(s) || !game.canShow(s)) continue;
+      if (_random.nextDouble() >= botShowChance) continue;
+      game.showCards(s);
+      log.add({'t': 'show', 's': s});
+      _snapshot(frames, FrameDelays.move);
+    }
   }
 
   void _applyLogged(Map<String, Object?> entry) {
@@ -495,6 +519,8 @@ class GameSession {
       _ready.add(entry['s']! as int);
     } else if (t == 'reveal-end') {
       _revealClosed = true;
+    } else if (t == 'bots-reveal') {
+      _botsRevealed = true;
     } else if (entry['t'] == 'forfeit') {
       if (_drawing) _beginGame(firstDealer);
       game.forfeit(teamOfSeat(entry['s']! as int));

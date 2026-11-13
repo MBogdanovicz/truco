@@ -185,6 +185,17 @@ void main() {
       expect(again.revealing, isFalse);
     });
 
+    test('passing hides the question at once; bots never hold it up', () {
+      final s = trucoHand();
+      final seat = [
+        for (var x = 0; x < 4; x++)
+          if (s.canShowFor(x)) x,
+      ].first;
+      final frames = s.pass(seat);
+      expect(frames[seat]!.first.canShow, isFalse);
+      expect(frames[seat]!.first.delayMs, 0);
+    });
+
     test('hands without truco do not wait', () {
       final s = people();
       var guard = 0;
