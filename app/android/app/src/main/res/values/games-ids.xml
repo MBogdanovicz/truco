@@ -2,4 +2,12 @@
 <!-- Google Play Games ids (Play Console > Play Games Services). -->
 <resources>
     <string name="game_services_project_id" translatable="false">886690530772</string>
+  <!--achievement Formado no ensino fundamental-->
+  <string name="achievement_formado_no_ensino_fundamental" translatable="false">CgkI1Iv_lucZEAIQJQ</string>
+  <!--achievement Formado no ensino médio-->
+  <string name="achievement_formado_no_ensino_mdio" translatable="false">CgkI1Iv_lucZEAIQJg</string>
+  <!--achievement Colação de grau-->
+  <string name="achievement_colao_de_grau" translatable="false">CgkI1Iv_lucZEAIQJw</string>
+  <!--achievement Dominou a cartilha-->
+  <string name="achievement_dominou_a_cartilha" translatable="false">CgkI1Iv_lucZEAIQKA</string>
 </resources>

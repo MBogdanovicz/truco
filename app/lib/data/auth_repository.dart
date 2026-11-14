@@ -98,11 +98,14 @@ class AuthRepository {
 
   /// Stores the display name in the auth metadata (available offline from the
   /// cached session) and in the public `profiles` table (used by rankings).
-  Future<void> setDisplayName(String name) async {
+  /// [freeRename]: a free account's one name change after the first name.
+  Future<void> setDisplayName(String name, {bool freeRename = false}) async {
     final client = _client!;
     final trimmed = name.trim();
     await client.auth.updateUser(
-      UserAttributes(data: {'display_name': trimmed}),
+      UserAttributes(
+        data: {'display_name': trimmed, if (freeRename) 'free_rename': true},
+      ),
     );
     // The database also copies the metadata name into profiles (trigger
     // on auth.users); this update just makes it visible right away.
@@ -111,6 +114,10 @@ class AuthRepository {
         .update({'display_name': trimmed})
         .eq('id', client.auth.currentUser!.id);
   }
+
+  /// Whether this account already used its one free name change.
+  bool get usedFreeRename =>
+      _client?.auth.currentUser?.userMetadata?['free_rename'] == true;
 
   Future<void> signOut() async => _client?.auth.signOut();
 

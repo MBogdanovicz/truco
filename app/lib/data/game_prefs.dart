@@ -13,6 +13,7 @@ import '../domain/game/terms.dart';
 class PreferredRulesNotifier extends Notifier<TrucoRules> {
   static const _kFixed = 'game.fixedManilhas';
   static const _kCover = 'game.coveredCard';
+  static const _kCoverPartner = 'game.partnerSeesCovered';
   static const _kIron = 'game.ironHand';
   static const _kSeeOnRaise = 'game.seePartnerOnRaise';
   static const _kSeeOnDecision = 'game.bothTeamsSeeOnDecision';
@@ -35,6 +36,7 @@ class PreferredRulesNotifier extends Notifier<TrucoRules> {
             ? ManilhaMode.fixed
             : ManilhaMode.vira,
         allowCoveredCard: p.getBool(_kCover),
+        partnerSeesCovered: p.getBool(_kCoverPartner),
         ironHand: p.getBool(_kIron),
         seePartnerOnRaise: p.getBool(_kSeeOnRaise),
         bothTeamsSeeOnDecision: p.getBool(_kSeeOnDecision),
@@ -52,6 +54,7 @@ class PreferredRulesNotifier extends Notifier<TrucoRules> {
       final p = await SharedPreferences.getInstance();
       await p.setBool(_kFixed, rules.manilhaMode == ManilhaMode.fixed);
       await p.setBool(_kCover, rules.allowCoveredCard);
+      await p.setBool(_kCoverPartner, rules.partnerSeesCovered);
       await p.setBool(_kIron, rules.ironHand);
       await p.setBool(_kSeeOnRaise, rules.seePartnerOnRaise);
       await p.setBool(_kSeeOnDecision, rules.bothTeamsSeeOnDecision);

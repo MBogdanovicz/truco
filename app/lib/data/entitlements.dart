@@ -25,10 +25,12 @@ class Entitlements {
   /// Choosing a scoreboard look other than the default felt.
   bool get canChooseScoreboardLook => _unlocked;
 
-  /// Changing the display name after the first one (onboarding is free).
+  /// Changing the display name as often as wanted (onboarding and one
+  /// change are free: see AuthRepository.usedFreeRename).
   bool get canRename => _unlocked;
 
-  /// Creating "cada um no seu celular" online rooms (joining stays free).
+  /// Creating online truco game rooms (joining stays free). Scorekeeper
+  /// rooms are free for everyone.
   bool get canHostOnline => _unlocked;
 
   /// "Modo professor": tips on the moves against the computer.

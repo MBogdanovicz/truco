@@ -88,6 +88,7 @@ class GameTableActions {
     this.gameOverExtra,
     this.onDismissTip,
     this.onShowCode,
+    this.onInfo,
     this.showCards,
     this.skipShow,
   });
@@ -111,6 +112,9 @@ class GameTableActions {
 
   /// Online rooms: shows the room code (to call someone in).
   final VoidCallback? onShowCode;
+
+  /// "Treinar": reopens the situation (or the answer) popup.
+  final VoidCallback? onInfo;
 
   /// "Mostrar cartas" after a hand worth 3+, and passing on it.
   final VoidCallback? showCards;
@@ -139,6 +143,11 @@ class _GameTableState extends State<GameTable> {
   /// The raise the last balloon was for (hand, seat, level).
   String? _shoutedFor;
 
+  /// Balloons shown in this match, and the hand they were counted up to
+  /// (a lower hand number means a new match).
+  int _shouts = 0;
+  int _shoutsHand = 0;
+
   @override
   void initState() {
     super.initState();
@@ -151,9 +160,11 @@ class _GameTableState extends State<GameTable> {
     _checkShout();
   }
 
-  /// Shouts when someone calls truco (or raises: seis, nove, doze, once
-  /// they have phrases in [shoutPhrases]).
+  /// Sometimes shouts when someone calls truco or raises: at tense
+  /// moments, at most [maxShoutsPerMatch] times a match.
   void _checkShout() {
+    if (v.handNumber < _shoutsHand) _shouts = 0;
+    _shoutsHand = v.handNumber;
     final p = v.pending;
     if (p == null || p.refusedBy != null) return;
     final key = '${v.handNumber}-${p.seat}-${p.toLevel}';
@@ -165,8 +176,19 @@ class _GameTableState extends State<GameTable> {
       3 => ShoutEvent.nove,
       _ => ShoutEvent.doze,
     };
-    final text = pickShout(event);
+    final text = shoutForRaise(
+      event: event,
+      tense: isTenseRaise(
+        scoreA: v.scores[Team.a] ?? 0,
+        scoreB: v.scores[Team.b] ?? 0,
+        toLevel: p.toLevel,
+        stakes: v.rules.stakes,
+        target: v.rules.targetScore,
+      ),
+      shoutsSoFar: _shouts,
+    );
     if (text == null) return;
+    _shouts++;
     _shout = text;
     _shoutId++;
   }
@@ -202,6 +224,7 @@ class _GameTableState extends State<GameTable> {
                       view: v,
                       onBack: a.onLeave,
                       onShowCode: a.onShowCode,
+                      onInfo: a.onInfo,
                     ),
                     Expanded(child: _table()),
                     if (m.tip != null) _tip(m.tip!),
@@ -285,10 +308,12 @@ class _GameTableState extends State<GameTable> {
         final small = (cw * 0.42).clamp(20.0, 34.0).toDouble();
         final active = _activeSeat();
         Alignment playSpot(int seat) => switch (pos(seat)) {
-          0 => const Alignment(0, 0.62),
-          1 => const Alignment(0.78, -0.04),
-          2 => const Alignment(0, -0.72),
-          _ => const Alignment(-0.78, -0.04),
+          // Lower than the middle: the partner's badge on top may show
+          // their cards, and the viewer's badge below is just a name.
+          0 => const Alignment(0, 0.8),
+          1 => const Alignment(0.78, 0.08),
+          2 => const Alignment(0, -0.58),
+          _ => const Alignment(-0.78, 0.08),
         };
         Widget badge(int position, Alignment at) {
           final seat = seatAt(position);
@@ -312,7 +337,7 @@ class _GameTableState extends State<GameTable> {
             badge(3, const Alignment(-1, -0.42)),
             badge(0, const Alignment(0, 1)),
             Align(
-              alignment: const Alignment(0, -0.06),
+              alignment: const Alignment(0, 0.06),
               child: _DeckPile(
                 vira: v.vira,
                 width: cw * 0.85,
@@ -661,6 +686,9 @@ class _GameTableState extends State<GameTable> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: _TapCard(
+                      key: i < v.hand.length && !v.iron
+                          ? ValueKey('my-card-${v.hand[i].id}')
+                          : null,
                       enabled: canPlay,
                       onTap: () {
                         if (v.iron) {
@@ -693,6 +721,7 @@ class _GameTableState extends State<GameTable> {
 
 class _TapCard extends StatelessWidget {
   const _TapCard({
+    super.key,
     required this.enabled,
     required this.onTap,
     required this.child,
@@ -747,11 +776,17 @@ class _ActionButton extends StatelessWidget {
 // ------------------------------------------------------------- top bar --
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.view, required this.onBack, this.onShowCode});
+  const _TopBar({
+    required this.view,
+    required this.onBack,
+    this.onShowCode,
+    this.onInfo,
+  });
 
   final TableView view;
   final VoidCallback onBack;
   final VoidCallback? onShowCode;
+  final VoidCallback? onInfo;
 
   @override
   Widget build(BuildContext context) {
@@ -785,6 +820,13 @@ class _TopBar extends StatelessWidget {
               onPressed: onShowCode,
               icon: const Icon(Icons.tag, color: Colors.white),
               tooltip: 'Código da sala',
+            ),
+          if (onInfo != null)
+            IconButton(
+              key: const ValueKey('training-info'),
+              onPressed: onInfo,
+              icon: const Icon(Icons.school_outlined, color: Colors.white),
+              tooltip: 'Situação',
             ),
           IconButton(
             onPressed: () => context.push('/jogo/regras', extra: view.rules),

@@ -28,11 +28,13 @@ class GameSetupScreen extends ConsumerStatefulWidget {
 class _GameSetupState extends ConsumerState<GameSetupScreen> {
   static const _kPartner = 'game.partner';
   static const _kOpponents = 'game.opponents';
-  static const _kCoach = 'game.coach';
   static const _kSlow = 'game.slowDays';
+  static const _kSlowMode = 'game.slowMode';
 
-  bool _coach = false;
   int _slow = 1;
+
+  /// The online room is a slow game ("Lenta") instead of a live one.
+  bool _slowMode = false;
 
   /// This game's rules when changed here; otherwise the preferred ones.
   TrucoRules? _changed;
@@ -57,9 +59,9 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
       final p = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() {
-        _coach = p.getBool(_kCoach) ?? _coach;
         final slow = p.getInt(_kSlow);
         if (TrucoRules.slowDaysOptions.contains(slow)) _slow = slow!;
+        _slowMode = p.getBool(_kSlowMode) ?? _slowMode;
         _partner =
             AiLevel.values.asNameMap()[p.getString(_kPartner)] ?? _partner;
         _opponents =
@@ -71,8 +73,8 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   Future<void> _save() async {
     try {
       final p = await SharedPreferences.getInstance();
-      await p.setBool(_kCoach, _coach);
       await p.setInt(_kSlow, _slow);
+      await p.setBool(_kSlowMode, _slowMode);
       await p.setString(_kPartner, _partner.name);
       await p.setString(_kOpponents, _opponents.name);
     } catch (_) {}
@@ -81,8 +83,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   Future<void> _start() async {
     _save();
     await Ads.beforeGame(ref);
-    if (!mounted) return;
-    final ent = await ref.read(entitlementsProvider.future);
     if (!mounted) return;
     final me = ref.read(authRepositoryProvider).currentUser;
     final name = me?.displayName?.trim();
@@ -94,7 +94,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
             partnerLevel: _partner,
             opponentLevel: _opponents,
             myName: name == null || name.isEmpty ? 'Você' : name,
-            coach: _coach && ent.canUseCoach,
             drawDealer: true,
           ),
         );
@@ -102,18 +101,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   }
 
   bool _creating = false;
-
-  Future<void> _setCoach(bool on) async {
-    if (on) {
-      final ent = await ref.read(entitlementsProvider.future);
-      if (!mounted) return;
-      if (!ent.canUseCoach) {
-        await showPremiumRequired(context, 'Modo professor');
-        return;
-      }
-    }
-    setState(() => _coach = on);
-  }
 
   Future<void> _createRoom({bool slow = false}) async {
     final user = ref.read(authRepositoryProvider).currentUser;
@@ -208,19 +195,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
             _levels(_opponents, (v) => setState(() => _opponents = v)),
           ],
         ),
-        AppSection(
-          header: 'Professor (Premium)',
-          footer:
-              'O professor comenta as suas jogadas quando havia uma melhor, '
-              'e explica por quê.',
-          children: [
-            AppTile(
-              title: 'Modo professor',
-              subtitle: 'Dicas sobre as jogadas, só contra o computador.',
-              trailing: AppSwitch(value: _coach, onChanged: _setCoach),
-            ),
-          ],
-        ),
         Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -237,66 +211,65 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
         const SizedBox(height: 24),
         AppSection(
           header: 'Online, com amigos',
-          footer:
-              'A sala usa as regras acima; o computador joga nos lugares '
-              'vazios no nível dos adversários. Quando o tempo de jogada '
-              'acaba, o computador joga pela pessoa. Só conta para o ranking '
-              'com 4 pessoas com conta.',
+          footer: _slowMode
+              ? 'Para 4 pessoas jogarem sem combinar horário: cada uma tem o '
+                    'prazo acima para fazer a sua jogada e recebe um aviso '
+                    'quando for a vez dela. A partida fica na tela inicial. Se '
+                    'o prazo acabar, o computador joga pela pessoa e a partida '
+                    'deixa de contar para o ranking.'
+              : 'A sala usa as regras acima; o computador joga nos lugares '
+                    'vazios no nível dos adversários. Quando o tempo de jogada '
+                    'acaba, o computador joga pela pessoa. Só conta para o '
+                    'ranking com 4 pessoas com conta.',
           children: [
-            AppTile(title: 'Tempo de jogada'),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: AppSegmented<int>(
-                segments: {
-                  for (final t in TrucoRules.turnSecondsOptions)
-                    t: turnSecondsLabel(t),
-                },
-                value: rules.turnSeconds,
-                onChanged: (v) => setState(() => _turn = v),
+              padding: const EdgeInsets.all(12),
+              child: AppSegmented<bool>(
+                segments: const {false: 'Ao vivo', true: 'Partida lenta'},
+                value: _slowMode,
+                onChanged: (v) => setState(() => _slowMode = v),
               ),
             ),
+            AppTile(title: _slowMode ? 'Prazo por jogada' : 'Tempo de jogada'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: _slowMode
+                  ? AppSegmented<int>(
+                      key: const ValueKey('slow-days'),
+                      segments: {
+                        for (final d in TrucoRules.slowDaysOptions)
+                          d: slowDaysLabel(d),
+                      },
+                      value: _slow,
+                      onChanged: (v) => setState(() => _slow = v),
+                    )
+                  : AppSegmented<int>(
+                      key: const ValueKey('turn-seconds'),
+                      segments: {
+                        for (final t in TrucoRules.turnSecondsOptions)
+                          t: turnSecondsLabel(t),
+                      },
+                      value: rules.turnSeconds,
+                      onChanged: (v) => setState(() => _turn = v),
+                    ),
+            ),
             AppTile(
-              title: 'Criar sala',
-              subtitle: 'Mande o código para os amigos.',
-              leading: const AppTileIcon(AppIcon.online, color: Colors.red),
+              title: _slowMode ? 'Criar partida lenta' : 'Criar sala',
+              subtitle: _slowMode
+                  ? 'Mande o código para os outros 3.'
+                  : 'Mande o código para os amigos.',
+              leading: AppTileIcon(
+                AppIcon.online,
+                color: _slowMode ? Colors.teal : Colors.red,
+              ),
               trailing: _creating ? const AppProgress() : null,
-              onTap: _creating ? null : _createRoom,
+              onTap: _creating ? null : () => _createRoom(slow: _slowMode),
             ),
             AppTile(
               title: 'Entrar com código',
+              subtitle: 'Vale para salas ao vivo e partidas lentas.',
               leading: const AppTileIcon(AppIcon.key, color: Colors.indigo),
               onTap: () => context.push('/jogo/entrar'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        AppSection(
-          header: 'Partida lenta',
-          footer:
-              'Para 4 pessoas jogarem sem combinar horário: cada uma tem o '
-              'prazo acima para fazer a sua jogada e recebe um aviso quando '
-              'for a vez dela. A partida fica na tela inicial. Se o prazo '
-              'acabar, o computador joga pela pessoa e a partida deixa de '
-              'contar para o ranking.',
-          children: [
-            AppTile(title: 'Prazo por jogada'),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: AppSegmented<int>(
-                segments: {
-                  for (final d in TrucoRules.slowDaysOptions)
-                    d: slowDaysLabel(d),
-                },
-                value: _slow,
-                onChanged: (v) => setState(() => _slow = v),
-              ),
-            ),
-            AppTile(
-              title: 'Criar partida lenta',
-              subtitle: 'Mande o código para os outros 3.',
-              leading: const AppTileIcon(AppIcon.online, color: Colors.teal),
-              trailing: _creating ? const AppProgress() : null,
-              onTap: _creating ? null : () => _createRoom(slow: true),
             ),
           ],
         ),

@@ -85,6 +85,7 @@ class TableView {
     this.toast,
     this.showLastRound = false,
     this.delayMs = 0,
+    this.draw,
   });
 
   final int me;
@@ -138,6 +139,10 @@ class TableView {
   /// How long to wait before showing this frame, so moves can be followed.
   final int delayMs;
 
+  /// Before the first hand: everyone draws a card to see who deals. While
+  /// set, the screen shows the draw instead of the table.
+  final DrawView? draw;
+
   Team get team => teamOfSeat(me);
   int scoreOf(Team t) => scores[t]!;
 
@@ -183,6 +188,7 @@ class TableView {
     toast: toast,
     showLastRound: showLastRound,
     delayMs: delayMs ?? this.delayMs,
+    draw: draw,
   );
 
   /// The view of [seat] right now. [answerers] are the seats that may answer
@@ -195,12 +201,18 @@ class TableView {
     int delayMs = 0,
     bool revealing = false,
     bool canShow = false,
+    DrawView? draw,
   }) {
     final v = g.viewFor(seat);
     PlayView play(Play p) => PlayView(
       p.seat,
-      // Covered cards: the partner sees which one it was too.
-      p.covered && p.seat != seat && p.seat != partnerOf(seat) ? null : p.card,
+      // Covered cards: the partner sees which one it was too (if the rules
+      // say so).
+      p.covered &&
+              p.seat != seat &&
+              (p.seat != partnerOf(seat) || !g.rules.partnerSeesCovered)
+          ? null
+          : p.card,
       covered: p.covered,
     );
     final team = teamOfSeat(seat);
@@ -253,6 +265,7 @@ class TableView {
       toast: talk.toastFor(team),
       showLastRound: talk.showLastRound,
       delayMs: delayMs,
+      draw: draw,
     );
   }
 
@@ -300,6 +313,7 @@ class TableView {
     if (toast != null) 'toast': toast,
     if (showLastRound) 'showLast': true,
     if (delayMs > 0) 'delay': delayMs,
+    if (draw != null) 'draw': draw!.toJson(),
   };
 
   static TableView fromJson(Map<String, Object?> j) {
@@ -364,8 +378,66 @@ class TableView {
       toast: j['toast'] as String?,
       showLastRound: j['showLast'] == true,
       delayMs: (j['delay'] as int?) ?? 0,
+      draw: j['draw'] == null
+          ? null
+          : DrawView.fromJson((j['draw']! as Map).cast<String, Object?>()),
     );
   }
+}
+
+/// The draw for the first dealer, as one seat sees it.
+class DrawView {
+  const DrawView({
+    required this.count,
+    required this.picks,
+    this.cards = const {},
+    this.dealer,
+    this.timedOut = false,
+    this.canPick = false,
+  });
+
+  /// Face-down cards spread on the table.
+  final int count;
+
+  /// Seat → position of the card they drew.
+  final Map<int, int> picks;
+
+  /// The drawn cards, once everyone has drawn (seat → card).
+  final Map<int, Card> cards;
+
+  /// Who deals, once decided.
+  final int? dealer;
+
+  /// Time ran out before anyone drew: the dealer was drawn by lot.
+  final bool timedOut;
+
+  /// The viewer may draw a card now.
+  final bool canPick;
+
+  Map<String, Object?> toJson() => {
+    'n': count,
+    'p': {for (final e in picks.entries) '${e.key}': e.value},
+    if (cards.isNotEmpty)
+      'c': {for (final e in cards.entries) '${e.key}': e.value.id},
+    'd': ?dealer,
+    if (timedOut) 'to': true,
+    if (canPick) 'can': true,
+  };
+
+  static DrawView fromJson(Map<String, Object?> j) => DrawView(
+    count: j['n']! as int,
+    picks: {
+      for (final e in ((j['p'] as Map?) ?? const {}).entries)
+        int.parse(e.key as String): e.value as int,
+    },
+    cards: {
+      for (final e in ((j['c'] as Map?) ?? const {}).entries)
+        int.parse(e.key as String): Card.parse(e.value as String),
+    },
+    dealer: j['d'] as int?,
+    timedOut: j['to'] == true,
+    canPick: j['can'] == true,
+  );
 }
 
 /// Table talk built from the engine's events: what each seat said this hand,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart' hide Card;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/entitlements.dart';
+import '../../data/look_unlocks.dart';
 import '../../domain/game/cards.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../game/playing_card.dart';
@@ -25,13 +25,9 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
 
   Future<void> _save() async {
     final look = _look;
-    if (!look.isStandard) {
-      final ent = await ref.read(entitlementsProvider.future);
-      if (!mounted) return;
-      if (!ent.canChooseScoreboardLook) {
-        await showPremiumRequired(context, 'Escolher o visual da mesa');
-        return;
-      }
+    if (!ref.read(lookAccessProvider).table(look)) {
+      await showPremiumRequired(context, 'Escolher o visual da mesa');
+      return;
     }
     await ref.read(tableLookProvider.notifier).set(look);
     if (!mounted) return;
@@ -45,6 +41,7 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
     required String Function(T) label,
     required Widget Function(T) preview,
     required ValueChanged<T> onPick,
+    required bool Function(T) allowed,
   }) => Padding(
     padding: const EdgeInsets.all(12),
     child: Wrap(
@@ -72,6 +69,13 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(label(v), style: Theme.of(context).textTheme.bodySmall),
+                if (_unlockNote(v, allowed(v)) case final note?)
+                  Text(
+                    note,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -79,9 +83,18 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
     ),
   );
 
+  /// "🏆 Truqueiro" under a look earned with an achievement not yet
+  /// unlocked.
+  String? _unlockNote(Object? item, bool allowed) {
+    if (allowed) return null;
+    final a = LookUnlocks.achievementFor(item);
+    return a == null ? null : '🏆 ${a.title}';
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.watch(tableLookProvider);
+    final access = ref.watch(lookAccessProvider);
     final look = _look;
     void pick(TableLook l) => setState(() => _draft = l);
     const sample = [
@@ -138,6 +151,7 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
                     ),
                   ),
                   onPick: (f) => pick(look.copyWith(felt: f)),
+                  allowed: access.felt,
                 ),
               ],
             ),
@@ -153,6 +167,7 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
                     child: const CardBack(width: 40),
                   ),
                   onPick: (b) => pick(look.copyWith(back: b)),
+                  allowed: access.back,
                 ),
               ],
             ),
@@ -181,14 +196,19 @@ class _TableLookScreenState extends ConsumerState<TableLookScreen> {
                     ),
                   ),
                   onPick: (f) => pick(look.copyWith(face: f)),
+                  allowed: access.face,
                 ),
               ],
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
               child: Text(
-                'Escolher o visual faz parte do Premium. Sem o Premium, dá '
-                'para ver como fica aqui, mas a mesa continua a padrão.',
+                access.premium
+                    ? 'Todos os visuais liberados pelo Premium.'
+                    : 'Escolher o visual faz parte do Premium. Sem o Premium, '
+                          'dá para ver como fica aqui, mas a mesa continua a '
+                          'padrão. Os marcados com 🏆 você ganha com a '
+                          'conquista.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),

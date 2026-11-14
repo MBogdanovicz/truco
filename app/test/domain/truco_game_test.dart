@@ -369,4 +369,45 @@ void main() {
     expect(view(partnerOf(s)).currentPlays.single.card, card);
     expect(view(nextSeat(s)).currentPlays.single.card, isNull);
   });
+
+  test('the partner does not see a covered card when the rules say so', () {
+    final g = TrucoGame(
+      rules: TrucoRules.paulista.copyWith(partnerSeesCovered: false),
+      seed: 4,
+      firstDealer: 3,
+    );
+    for (var i = 0; i < 4; i++) {
+      final s = g.turn;
+      g.apply(PlayCard(s, g.handOf(s).first));
+    }
+    if (g.phase != GamePhase.playing) return;
+    final s = g.turn;
+    final card = g.handOf(s).first;
+    g.apply(PlayCard(s, card, covered: true));
+    TableView view(int seat) =>
+        TableView.of(g, seat, talk: TableTalk(), mayAnswer: (_) => true);
+    expect(view(s).currentPlays.single.card, card);
+    expect(view(partnerOf(s)).currentPlays.single.card, isNull);
+    expect(TrucoRules.fromJson(g.rules.toJson()).partnerSeesCovered, isFalse);
+  });
+
+  test('the hard bot rarely opens a hand with truco, strong or weak', () {
+    var strong = 0, weak = 0;
+    const deals = 600;
+    for (var seed = 0; seed < deals; seed++) {
+      final g = TrucoGame(rules: TrucoRules.paulista, seed: seed);
+      final seat = g.turn;
+      final bot = TrucoBot(AiLevel.hard, random: Random(seed));
+      if (bot.decide(g.viewFor(seat)) is! Raise) continue;
+      final v = g.viewFor(seat);
+      final best = v.hand.map(v.strength).reduce(max);
+      if (best >= 8) {
+        strong++;
+      } else {
+        weak++;
+      }
+    }
+    expect((strong + weak) / deals, lessThan(0.08));
+    expect(weak, greaterThan(0));
+  });
 }

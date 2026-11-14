@@ -501,7 +501,8 @@ export class Tournaments {
       const order = shuffle(alone);
       for (let i = 0; i + 1 < order.length; i += 2) {
         const [a, b] = [order[i], order[i + 1]];
-        merged.push({ ...a, player_b: b.player_a, name_b: b.name_a, solo: false });
+        // Stays "solo": a pair drawn by the app (see championFeats).
+        merged.push({ ...a, player_b: b.player_a, name_b: b.name_a, solo: true });
         drop.push(b.id);
       }
       if (order.length % 2) drop.push(order[order.length - 1].id);
@@ -523,7 +524,6 @@ export class Tournaments {
       await this.db.from("tournament_teams").update({
         player_b: m.player_b,
         name_b: m.name_b,
-        solo: false,
       }).eq("id", m.id);
     }
     if (drop.length) await this.db.from("tournament_teams").delete().in("id", drop);
@@ -675,6 +675,10 @@ export class Tournaments {
       }).eq("id", m.id).eq("games_a", m.games_a).eq("games_b", m.games_b)
         .neq("status", "done").select("id");
       if (!saved?.length) continue; // Changed meanwhile: read again.
+      // "Estreante": played a tournament game.
+      const { data: both } = await this.db.from("tournament_teams").select()
+        .in("id", [m.team_a, m.team_b].filter(Boolean));
+      await this.unlock(players((both ?? []) as Team[]), ["tour_first"]);
       if (over) await this.advance(await this.get(m.tournament_id));
       return !over;
     }
@@ -873,6 +877,7 @@ export class Tournaments {
     if (!data?.length) return;
     const team = teams.find((x) => x.id === champion);
     const winners = team ? [team.player_a, team.player_b!] : [];
+    if (team) await this.championFeats(t, team);
     await this.notify(players(teams).filter((id) => !winners.includes(id)), t, {
       title: `Torneio ${t.name}`,
       body: team
@@ -886,6 +891,70 @@ export class Tournaments {
         kind: "champion",
       });
     }
+  }
+
+  // ----------------------------------------------------- achievements --
+
+  /** Unlocks achievements [ids] for [users] (already unlocked: kept). The
+   * app mirrors them to Google Play Games. */
+  private async unlock(users: string[], ids: string[]) {
+    const rows = users.flatMap((u) =>
+      ids.map((achievement) => ({
+        user_id: u,
+        achievement,
+        unlocked_at: new Date().toISOString(),
+      }))
+    );
+    if (!rows.length) return;
+    const { error } = await this.db.from("achievements_unlocked")
+      .upsert(rows, { onConflict: "user_id,achievement", ignoreDuplicates: true });
+    if (error) console.error("tournament achievements", error);
+  }
+
+  /** The champions' achievements (ids in lib/domain/achievements.dart). */
+  private async championFeats(t: Tourney, team: Team) {
+    const mine = (await this.matches(t.id)).filter((m) =>
+      m.team_a === team.id || m.team_b === team.id
+    );
+    const played = mine.filter((m) => m.team_b && m.status === "done");
+    const lost = played.filter((m) => m.winner !== team.id);
+    const gamesLost = played.reduce(
+      (n, m) => n + (m.team_a === team.id ? m.games_b : m.games_a),
+      0,
+    );
+    const ids = ["tour_champion"];
+    if (t.format === "round_robin") {
+      ids.push("tour_round_robin");
+      if (!lost.length && !gamesLost) ids.push("tour_unbeaten");
+    } else {
+      ids.push("tour_knockout");
+      if (t.final_best_of === 5) ids.push("tour_bo5_final");
+    }
+    if (t.format === "double_elimination") {
+      // Lost a winners' bracket match: came back through the repescagem.
+      const dropped = lost.some((m) => m.bracket === "winners");
+      ids.push(dropped ? "tour_comeback" : "tour_clean");
+    }
+    // A pair drawn by the app (people who signed up alone).
+    if (team.solo) ids.push("tour_random_partner");
+    const people = [team.player_a, team.player_b!];
+    await this.unlock(people, ids);
+    for (const u of people) {
+      if ((await this.titles(u)) >= 3) await this.unlock([u], ["tour_champion_3"]);
+    }
+  }
+
+  /** Tournaments [userId] has won. */
+  private async titles(userId: string): Promise<number> {
+    const [{ data: a }, { data: b }] = await Promise.all([
+      this.db.from("tournament_teams").select("id").eq("player_a", userId),
+      this.db.from("tournament_teams").select("id").eq("player_b", userId),
+    ]);
+    const ids = [...(a ?? []), ...(b ?? [])].map((x) => x.id as string);
+    if (!ids.length) return 0;
+    const { data } = await this.db.from("tournaments").select("id")
+      .eq("status", "finished").in("champion", ids);
+    return data?.length ?? 0;
   }
 
   // -------------------------------------------------------- walkovers --

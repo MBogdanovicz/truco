@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Card;
 
 import '../../domain/game/cards.dart';
 import '../../ui/theme/app_theme.dart';
+import 'suit_glyph.dart';
 import 'table_look.dart';
 
 /// Width / height of a card.
@@ -89,19 +90,14 @@ class PlayingCardView extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(card.rank.symbol, style: corner),
-                  Text(
-                    card.suit.symbol,
-                    style: corner.copyWith(fontSize: width * 0.2),
-                  ),
+                  SizedBox(height: width * 0.03),
+                  SuitGlyph(card.suit, size: width * 0.16, color: color),
                 ],
               ),
             ),
             Align(
               alignment: const Alignment(0.15, 0.35),
-              child: Text(
-                card.suit.symbol,
-                style: TextStyle(color: color, fontSize: width * 0.5),
-              ),
+              child: SuitGlyph(card.suit, size: width * 0.36, color: color),
             ),
             if (manilha)
               Align(
@@ -153,13 +149,21 @@ class CardBack extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: CustomPaint(
-        painter: _BackPattern(
-          back.edge == AppColors.gold
-              ? AppColors.gold.withValues(alpha: 0.35)
-              : Colors.white.withValues(alpha: 0.16),
-        ),
+        painter: back.image != null
+            ? null
+            : _BackPattern(
+                back.edge == AppColors.gold
+                    ? AppColors.gold.withValues(alpha: 0.35)
+                    : Colors.white.withValues(alpha: 0.16),
+              ),
         child: Center(
-          child: label != null
+          child: label == null && back.image != null
+              ? Image.asset(
+                  back.image!,
+                  width: width * 0.8,
+                  filterQuality: FilterQuality.medium,
+                )
+              : label != null
               ? Text(
                   label!,
                   style: TextStyle(

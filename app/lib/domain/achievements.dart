@@ -112,6 +112,71 @@ enum Achievement {
     'game_casal_vermelho',
     'Casal vermelho',
     'Ganhe uma mão em que você recebeu a salmoura e a copas.',
+  ),
+
+  // Tournaments (unlocked by the server: supabase/functions/game/tournament.ts).
+  tourFirst('tour_first', 'Estreante', 'Jogue uma partida de torneio.'),
+  tourChampion('tour_champion', 'Campeão!', 'Vença um torneio.'),
+  tourChampion3('tour_champion_3', 'Tricampeão', 'Vença 3 torneios.'),
+  tourComeback(
+    'tour_comeback',
+    'Fênix',
+    'Seja campeão depois de cair para a repescagem.',
+    hidden: true,
+  ),
+  tourUnbeaten(
+    'tour_unbeaten',
+    'Invictos',
+    'Vença um torneio todos contra todos sem perder nenhum jogo.',
+  ),
+  tourBo5Final(
+    'tour_bo5_final',
+    'Contra a variância',
+    'Vença uma final melhor de 5.',
+  ),
+  tourKnockout(
+    'tour_knockout',
+    'Rei do mata-mata',
+    'Vença um torneio mata-mata.',
+  ),
+  tourClean(
+    'tour_clean',
+    'Direto ao título',
+    'Vença um torneio com repescagem sem nunca cair para ela.',
+  ),
+  tourRoundRobin(
+    'tour_round_robin',
+    'Pontos corridos',
+    'Vença um torneio todos contra todos.',
+  ),
+  tourRandomPartner(
+    'tour_random_partner',
+    'Máquina Mortífera',
+    'Vença um torneio com um parceiro sorteado pelo app.',
+    hidden: true,
+  ),
+
+  // Treinar: the exam at the end of each level (a game with the professor).
+  courseBasic(
+    'course_basic',
+    'Formado no ensino fundamental',
+    'Passe na prova do nível básico do Treinamento.',
+  ),
+  courseIntermediate(
+    'course_intermediate',
+    'Formado no ensino médio',
+    'Passe na prova do nível intermediário do Treinamento.',
+  ),
+  courseAdvanced(
+    'course_advanced',
+    'Colação de grau',
+    'Passe na prova do nível avançado do Treinamento.',
+  ),
+  courseAll(
+    'course_all',
+    'Dominou a cartilha',
+    'Passe nas três provas do Treinamento: sabe a cartilha de cor.',
+    hidden: true,
   );
 
   const Achievement(
@@ -130,6 +195,12 @@ enum Achievement {
 
   /// From the app's truco game (not the scorekeeper).
   bool get game => id.startsWith('game_');
+
+  /// From tournaments.
+  bool get tournament => id.startsWith('tour_');
+
+  /// From the Treinar exams.
+  bool get course => id.startsWith('course_');
 
   static Achievement? byId(String id) {
     for (final a in values) {

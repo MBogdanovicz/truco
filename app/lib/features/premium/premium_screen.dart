@@ -28,15 +28,27 @@ class PremiumScreen extends ConsumerWidget {
     ),
     (
       AppIcon.palette,
-      'Visuais do placar',
-      'Madeira, palitos de fósforo e outros que vierem.',
+      'Visuais do placar e da mesa',
+      'Todos os temas do placar, da mesa e do baralho (sem o Premium, '
+          'só três saem com conquistas).',
     ),
     (
       AppIcon.online,
-      'Salas "cada um no seu celular"',
-      'Crie salas online. Para entrar na sala de alguém não precisa.',
+      'Salas de jogo online',
+      'Crie salas para jogar truco online. Para entrar na sala de alguém '
+          'não precisa, e as salas do marcador são grátis.',
     ),
-    (AppIcon.edit, 'Mudar seu nome', 'Troque o nome quando quiser.'),
+    (
+      AppIcon.info,
+      'Treinamento completo',
+      'Os níveis intermediário e avançado, com as provas. O básico e a '
+          'prova dele são grátis.',
+    ),
+    (
+      AppIcon.edit,
+      'Mudar seu nome',
+      'Troque o nome quando quiser (sem o Premium, uma vez).',
+    ),
     (
       AppIcon.people,
       'Convide 3 amigos',

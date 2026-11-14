@@ -54,6 +54,19 @@ const live = (db: FakeDb) =>
     m.status !== "done" && m.team_b && m.room_id
   );
 
+/** Achievement ids unlocked by [user]. */
+function feats(db: FakeDb, user: unknown): string[] {
+  return db.tables.achievements_unlocked
+    .filter((r) => r.user_id === user).map((r) => r.achievement as string).sort();
+}
+
+/** The champion team's players. */
+function champions(db: FakeDb): string[] {
+  const t = db.tables.tournaments[0];
+  const team = db.tables.tournament_teams.find((x) => x.id === t.champion)!;
+  return [team.player_a as string, team.player_b as string];
+}
+
 Deno.test("spectators never see covered cards", () => {
   const v = spectatorView({
     hand: ["4p"],
@@ -157,6 +170,17 @@ Deno.test("knockout with pairs, a best-of-3 final", async () => {
   assert(final >= 2 && final <= 3, `final had ${final} games`);
   const last = db.tables.tournament_matches.at(-1)!;
   assert(last.round === 3 && last.winner === t.champion);
+  // Achievements: the champions'; everyone who played gets "Estreante".
+  for (const p of champions(db)) {
+    assert(
+      feats(db, p).join() === "tour_champion,tour_first,tour_knockout",
+      `champion feats ${feats(db, p)}`,
+    );
+  }
+  const playedSomething = db.tables.achievements_unlocked
+    .filter((r) => r.achievement === "tour_first").length;
+  assert(playedSomething >= 6, `estreantes ${playedSomething}`);
+  assert(!db.tables.achievements_unlocked.some((r) => r.achievement === "tour_bo5_final"));
 });
 
 Deno.test("round robin of people alone; walkovers", async () => {
@@ -192,6 +216,14 @@ Deno.test("round robin of people alone; walkovers", async () => {
   assert(m.winner === m.team_a && m.walkover === true);
   assert(matches.filter((x) => x.winner === null).length === 2, "both lost");
   assert(db.tables.tournaments[0].status === "finished");
+  // A pair drawn by the app won (by walkover: no game, no "Estreante"; a
+  // match both teams lost by walkover: not unbeaten).
+  for (const p of champions(db)) {
+    assert(
+      feats(db, p).join() === "tour_champion,tour_random_partner,tour_round_robin",
+      `feats ${feats(db, p)}`,
+    );
+  }
 });
 
 Deno.test("slow knockout: games start by themselves", async () => {
@@ -273,6 +305,17 @@ Deno.test("repescagem: nobody is out with one loss", async () => {
   }
   const reset = db.tables.tournament_matches.find((m) => m.round === FINAL_ROUND + 1)!;
   assert(reset.status === "done");
+  // Came back through the repescagem, or went straight to the title.
+  const droppedOnce = db.tables.tournament_matches.some((m) =>
+    m.bracket === "winners" && m.status === "done" && m.team_b &&
+    (m.team_a === t.champion || m.team_b === t.champion) && m.winner !== t.champion
+  );
+  for (const p of champions(db)) {
+    const f = feats(db, p);
+    assert(f.includes("tour_knockout") && f.includes("tour_champion"));
+    assert(f.includes(droppedOnce ? "tour_comeback" : "tour_clean"), `feats ${f}`);
+    assert(!f.includes(droppedOnce ? "tour_clean" : "tour_comeback"));
+  }
 });
 
 Deno.test("round robin plays round by round; the champions are congratulated", async () => {
@@ -308,6 +351,15 @@ Deno.test("round robin plays round by round; the champions are congratulated", a
   }
   assert((t.status as string) === "finished", `status ${t.status}`);
   assert(opened().length === 6, "every match got its room");
+  const lostAGame = matches.some((m) =>
+    (m.team_a === t.champion && (m.games_b as number) > 0) ||
+    (m.team_b === t.champion && (m.games_a as number) > 0)
+  );
+  for (const p of champions(db)) {
+    const f = feats(db, p);
+    assert(f.includes("tour_round_robin") && !f.includes("tour_knockout"));
+    assert(f.includes("tour_unbeaten") === !lostAGame, `feats ${f}`);
+  }
 });
 
 Deno.test("leaving a tournament game gives it up (W.O.)", async () => {

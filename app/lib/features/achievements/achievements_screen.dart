@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/achievements_repository.dart';
+import '../../data/look_unlocks.dart';
 import '../../data/game_prefs.dart';
 import '../../domain/achievements.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
@@ -40,7 +41,8 @@ class AchievementsScreen extends ConsumerWidget {
                     'jogadores com conta e as duas duplas confirmando o placar.',
                 children: [
                   for (final a in Achievement.values)
-                    if (!a.game) _tile(context, a, unlocked),
+                    if (!a.game && !a.tournament && !a.course)
+                      _tile(context, a, unlocked),
                 ],
               ),
               AppSection(
@@ -51,6 +53,26 @@ class AchievementsScreen extends ConsumerWidget {
                 children: [
                   for (final a in Achievement.values)
                     if (a.game) _tile(context, a, unlocked),
+                ],
+              ),
+              AppSection(
+                header: 'Torneios',
+                footer:
+                    'Nos torneios do app. Um título ganho por W.O. também '
+                    'conta.',
+                children: [
+                  for (final a in Achievement.values)
+                    if (a.tournament) _tile(context, a, unlocked),
+                ],
+              ),
+              AppSection(
+                header: 'Treinamento',
+                footer:
+                    'A prova no fim de cada nível: uma partida com o '
+                    'professor contra o computador.',
+                children: [
+                  for (final a in Achievement.values)
+                    if (a.course) _tile(context, a, unlocked),
                 ],
               ),
             ],
@@ -73,14 +95,17 @@ class AchievementsScreen extends ConsumerWidget {
     ),
     // Secret ones stay a mystery until unlocked.
     title: a.hidden && !unlocked.containsKey(a) ? 'Conquista secreta' : a.title,
-    subtitle: switch (unlocked[a]) {
-      final at? =>
-        '${said(context, a.description)}\nConquistada em '
-            '${at.day.toString().padLeft(2, '0')}/'
-            '${at.month.toString().padLeft(2, '0')}/${at.year}',
-      null when a.hidden => 'Jogue para descobrir.',
-      null => said(context, a.description),
-    },
+    subtitle: [
+      switch (unlocked[a]) {
+        final at? =>
+          '${said(context, a.description)}\nConquistada em '
+              '${at.day.toString().padLeft(2, '0')}/'
+              '${at.month.toString().padLeft(2, '0')}/${at.year}',
+        null when a.hidden => 'Jogue para descobrir.',
+        null => said(context, a.description),
+      },
+      if (LookUnlocks.rewardOf(a) case final reward?) '🏆 $reward',
+    ].join('\n'),
     enabled: unlocked.containsKey(a),
   );
 }

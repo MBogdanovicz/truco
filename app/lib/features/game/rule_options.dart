@@ -29,6 +29,15 @@ List<Widget> ruleOptionTiles(
       onChanged: (v) => onChanged(rules.copyWith(allowCoveredCard: v)),
     ),
   ),
+  if (rules.allowCoveredCard)
+    AppTile(
+      title: 'Parceiro vê a coberta',
+      subtitle: 'O parceiro sabe qual carta foi jogada coberta.',
+      trailing: AppSwitch(
+        value: rules.partnerSeesCovered,
+        onChanged: (v) => onChanged(rules.copyWith(partnerSeesCovered: v)),
+      ),
+    ),
   AppTile(
     title: 'Mão de ferro',
     subtitle: 'No 11 × 11, todos jogam sem ver as cartas.',
@@ -70,7 +79,9 @@ List<Widget> ruleOptionTiles(
 /// mão de ferro · vê o parceiro no truco".
 String rulesLine(TrucoRules r) => [
   r.manilhaMode == ManilhaMode.fixed ? 'Manilhas fixas' : 'Manilha virada',
-  r.allowCoveredCard ? 'coberta' : 'sem coberta',
+  r.allowCoveredCard
+      ? (r.partnerSeesCovered ? 'coberta' : 'coberta (parceiro não vê)')
+      : 'sem coberta',
   r.ironHand ? 'mão de ferro' : 'sem mão de ferro',
   if (r.seePartnerOnRaise) 'vê o parceiro no truco',
   if (r.bothTeamsSeeOnDecision) 'mão de onze: as duas veem',

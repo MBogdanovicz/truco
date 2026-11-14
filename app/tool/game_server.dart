@@ -5,8 +5,11 @@
 // function that takes and returns JSON text:
 //
 //   in:  {rules, seed, firstDealer, bots: [level|null x4], log,
+//         drawDealer?: true,               // new game: draw for the dealer
+//                                          // (later calls see it in the log)
 //         act?: {seat, action}             // action: {t, c?, x?, i?};
-//                                          // t "show"/"ready" after a hand
+//                                          // t "show"/"ready" after a hand,
+//                                          // "pick" {i} in the dealer draw
 //         timeout?: true,                  // the computer moves for the
 //                                          // person the game waits for (or
 //                                          // the time to show cards ends)
@@ -15,10 +18,13 @@
 //         forfeit?: seat}                  // seat's team gives up (W.O.)
 //   out: {log, frames: {"<seat>": [TableView json]}, phase, winner?,
 //         scores: [a, b], hands: [{w?, p}],
+//         dealer: seat                     // who dealt the current hand
 //         feats?: {"<seat>": [achievement id]}   // when the game is over
 //         forfeit?: "a"|"b"                // the team that gave up
 //         reveal?: true                    // waiting a moment for people
 //                                          // to show their cards
+//         draw?: true                      // waiting for people to draw a
+//                                          // card for the first dealer
 //         error?}
 //
 // Without "act" the computer plays until a person must act (game start).
@@ -41,6 +47,7 @@ String run(String input) {
     rules: TrucoRules.fromJson((j['rules']! as Map).cast<String, Object?>()),
     seed: j['seed']! as int,
     firstDealer: j['firstDealer']! as int,
+    drawDealer: j['drawDealer'] == true,
     bots: [
       for (final b in j['bots']! as List)
         b == null ? null : AiLevel.values.byName(b as String),
@@ -82,8 +89,10 @@ String run(String input) {
     'phase': g.phase.name,
     if (g.winner != null) 'winner': g.winner!.name,
     'scores': [g.scores[Team.a], g.scores[Team.b]],
+    'dealer': g.dealer,
     'waitingFor': ?session.waitingFor,
     if (session.revealing) 'reveal': true,
+    if (session.drawing) 'draw': true,
     'hands': [
       for (final e in g.events.whereType<HandEnded>())
         {if (e.winner != null) 'w': e.winner!.name, 'p': e.points},

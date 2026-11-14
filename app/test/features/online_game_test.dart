@@ -88,6 +88,8 @@ class FakeRooms implements GameRoomBackend {
   @override
   Future<void> start(String roomId) async {
     final r = rooms[roomId]!;
+    // Like the server: the first game in the room starts with the draw.
+    final first = r.session == null;
     r.session = GameSession(
       rules: r.rules,
       seed: 7,
@@ -96,6 +98,7 @@ class FakeRooms implements GameRoomBackend {
         for (var s = 0; s < 4; s++) r.seats.containsKey(s) ? null : r.botLevel,
       ],
       random: Random(1),
+      drawDealer: first,
     );
     r.status = GameRoomStatus.playing;
     r.publish(r.session!.advance());
@@ -342,6 +345,24 @@ void main() {
     await tester.tap(find.text('Começar a partida'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
+
+    // Who deals? I draw a card on the screen; Ana draws hers.
+    final room0 = rooms.rooms['r1']!;
+    expect(room0.session!.drawing, isTrue);
+    expect(find.text('Quem dá as cartas?'), findsOneWidget);
+    final taken = ctrl.tableModel!.view.draw!.picks.values.toSet();
+    final free = [
+      for (var i = 0; i < GameSession.drawCount; i++)
+        if (!taken.contains(i)) i,
+    ];
+    final card = find.byKey(ValueKey('draw-card-${free[0]}'));
+    await tester.tapAt(tester.getTopLeft(card) + const Offset(4, 30));
+    await tester.pump(const Duration(seconds: 1));
+    expect(ctrl.tableModel!.view.draw!.picks.containsKey(0), isTrue);
+    room0.publish(room0.session!.pick(2, free[1]));
+    await tester.pump(const Duration(seconds: 5));
+    expect(room0.session!.drawing, isFalse);
+    expect(find.text('Quem dá as cartas?'), findsNothing);
 
     final me = TrucoBot(AiLevel.medium, random: Random(2));
     final ana = TrucoBot(AiLevel.medium, random: Random(3));

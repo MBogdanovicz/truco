@@ -12,6 +12,7 @@ import '../../data/slow_games.dart';
 import '../game/game_table.dart' show timeLeftLabel;
 import '../../ui/adaptive/adaptive_widgets.dart';
 import '../../ui/android_download_card.dart';
+import '../../ui/pwa_install_tile.dart';
 import '../premium/premium_screen.dart';
 import '../../ui/theme/app_theme.dart';
 import '../game/local_game_controller.dart';
@@ -109,6 +110,14 @@ class HomeScreen extends ConsumerWidget {
           subtitle: AndroidDownloadCard.subtitle,
           onTap: AndroidDownloadCard.open,
         ),
+      if (PwaInstallTile.isShown)
+        _MenuItem(
+          icon: AppIcon.download,
+          color: AppColors.felt,
+          title: PwaInstallTile.title,
+          subtitle: PwaInstallTile.subtitle,
+          onTap: () => PwaInstallTile.open(context),
+        ),
     ];
     final sections = <(String?, List<_MenuItem>)>[
       if (menu.isNotEmpty) (null, menu),
@@ -134,17 +143,9 @@ class HomeScreen extends ConsumerWidget {
           _MenuItem(
             icon: AppIcon.info,
             color: Colors.teal,
-            title: 'Treinar',
-            subtitle: 'Situações de jogo com o professor (Premium).',
-            onTap: () async {
-              final ent = await ref.read(entitlementsProvider.future);
-              if (!context.mounted) return;
-              if (!ent.canUseCoach) {
-                await showPremiumRequired(context, 'Treinar com o professor');
-                return;
-              }
-              context.push('/jogo/treinar');
-            },
+            title: 'Treinamento',
+            subtitle: 'Situações de jogo com o professor. O básico é grátis.',
+            onTap: () => context.push('/jogo/treinar'),
           ),
         ],
       ),
@@ -265,11 +266,19 @@ class HomeScreen extends ConsumerWidget {
                   onPressed: () async {
                     final ent = await ref.read(entitlementsProvider.future);
                     if (!context.mounted) return;
-                    if (!ent.canRename) {
+                    final free =
+                        !ent.canRename &&
+                        !ref.read(authRepositoryProvider).usedFreeRename;
+                    if (!ent.canRename && !free) {
                       showPremiumRequired(context, 'Mudar o nome');
                       return;
                     }
-                    await _rename(context, ref, user.displayName!);
+                    await _rename(
+                      context,
+                      ref,
+                      user.displayName!,
+                      freeRename: free,
+                    );
                   },
                 ),
               ],
@@ -404,20 +413,35 @@ Future<void> _accountMenu(BuildContext context, WidgetRef ref) async {
 Future<void> _rename(
   BuildContext context,
   WidgetRef ref,
-  String current,
-) async {
+  String current, {
+  bool freeRename = false,
+}) async {
   final name = TextEditingController(text: current);
   final ok = await showAppDialog<bool>(
     context,
     title: 'Seu nome',
     content: Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: AppTextField(
-        controller: name,
-        label: 'Nome',
-        autofocus: true,
-        maxLength: 24,
-        textCapitalization: TextCapitalization.words,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppTextField(
+            controller: name,
+            label: 'Nome',
+            autofocus: true,
+            maxLength: 24,
+            textCapitalization: TextCapitalization.words,
+          ),
+          if (freeRename)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Sem o Premium, dá para trocar o nome uma vez.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ],
       ),
     ),
     actions: const [
@@ -433,7 +457,9 @@ Future<void> _rename(
     return;
   }
   try {
-    await ref.read(authRepositoryProvider).setDisplayName(value);
+    await ref
+        .read(authRepositoryProvider)
+        .setDisplayName(value, freeRename: freeRename);
     if (context.mounted) showAppToast(context, 'Nome atualizado');
   } on Object {
     if (context.mounted) {

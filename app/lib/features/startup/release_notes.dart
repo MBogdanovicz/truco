@@ -106,4 +106,25 @@ const releaseNotes = <ReleaseNote>[
         '(Configurações > Mesa e baralho).',
     'Premium: novos visuais do marcador: Carta 10, Feijões, Lousa de giz e Palitos de fósforo (agora saindo da caixinha).',
   ]),
+  ReleaseNote(11, [
+    'Nas salas online, quem dá as cartas no primeiro jogo também é decidido '
+        'tirando uma carta: a maior dá.',
+    'Revanche continua a rodada: dá as cartas quem está depois de quem deu '
+        'por último.',
+    'Novas conquistas de torneio: Campeão!, Tricampeão, Invictos e outras.',
+    'Treinamento renovado: 36 situações em três níveis (básico, intermediário e '
+        'avançado), respondidas na própria mesa, tocando na carta ou no botão.',
+    'O nível básico do Treinamento agora é grátis.',
+    'Salas "cada um no seu celular" do marcador agora são grátis para criar.',
+    'Sem o Premium, dá para trocar o nome uma vez.',
+    'Três visuais saem com conquistas: feltro azul (Truqueiro), verso preto '
+        'e dourado (Campeão!) e placar de palitos (Veterano).',
+    'Nova regra opcional: o parceiro vê ou não a carta coberta.',
+    'O grito da mesa ficou mais raro e só sai nos momentos tensos, com '
+        'frases novas.',
+    'O professor foi para o Treinamento: no fim de cada nível tem uma prova, '
+        'uma partida com o professor contra o computador. Passou, ganha a '
+        'conquista de formado.',
+    'Jogar online: ao vivo e partida lenta na mesma seção.',
+  ]),
 ];

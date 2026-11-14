@@ -17,6 +17,8 @@ interface EngineOut {
   winner?: "a" | "b";
   scores: [number, number];
   hands: Json[];
+  /** Who dealt the current (or last) hand. */
+  dealer?: number;
   waitingFor?: number;
   /** Achievement ids earned per seat, when the game is over. */
   feats?: Record<string, string[]>;
@@ -24,12 +26,18 @@ interface EngineOut {
   forfeit?: "a" | "b";
   /** The hand is over and people may show their cards for a moment. */
   reveal?: boolean;
+  /** Before the first hand: people draw a card to see who deals. */
+  draw?: boolean;
   error?: string;
 }
 
 /** How long people have to show their cards after a hand worth 3+ (the
  * engine's FrameDelays.revealWindow). */
 const REVEAL_MS = 7000;
+
+/** How long people have to draw a card for the first dealer (the
+ * engine's FrameDelays.drawWindow). */
+const DRAW_MS = 10_000;
 
 /** Time a person has for each move, after the previous moves are shown,
  * unless the room's rules say otherwise ("tempo", seconds; 0 = no limit). */
@@ -74,6 +82,10 @@ export function spectatorView(frame: Json): Json {
     ]
   ) {
     delete out[k];
+  }
+  if (frame.draw) {
+    const { can: _can, ...draw } = frame.draw as Json;
+    out.draw = draw;
   }
   out.plays = hide(frame.plays);
   out.rounds = ((frame.rounds as Json[] | undefined) ?? []).map((r) => ({
@@ -408,7 +420,8 @@ export class Game {
     if (claimError) throw claimError;
     if (!claimed?.length) throw new Refused("game_started");
     const seats = await this.seats(room.id);
-    const { data: old } = await this.db.from("game_states").select("version")
+    const { data: old } = await this.db.from("game_states")
+      .select("version, seed, first_dealer, log")
       .eq("room_id", room.id).maybeSingle();
     // Versions keep growing across games, so the app never mixes them up.
     const version = (old?.version ?? 0) + 1;
@@ -416,13 +429,21 @@ export class Game {
       seats.some((s) => s.seat === i) ? null : room.bot_level
     );
     const seed = randomInt(2 ** 31);
-    const firstDealer = randomInt(4);
+    // A rematch goes on as if it were the same game: the next seat after
+    // whoever dealt the last hand deals.
+    const last = room.game_no > 0 && old?.log
+      ? runEngine(this.input(room, old as State)).dealer
+      : undefined;
+    const firstDealer = last === undefined ? randomInt(4) : (last + 1) % 4;
     const out = runEngine({
       rules: room.rules,
       seed,
       firstDealer,
       bots,
       log: [],
+      // The first game in a room starts with everyone drawing a card: the
+      // highest deals. Not in slow games (nobody would wait days for it).
+      drawDealer: room.game_no === 0 && !slowDays(room.rules),
     });
     const { error } = await this.db.from("game_states").upsert({
       room_id: room.id,
@@ -549,9 +570,14 @@ export class Game {
   /** When the person the game now waits for runs out of time. */
   private deadline(room: Room, out: EngineOut, seats: Seat[]): string | null {
     if (out.phase === "gameOver") return null;
-    // The moment to show cards always ends, even without a move timer.
-    const turn = out.reveal ? REVEAL_MS : turnMs(room.rules);
-    if (out.waitingFor === undefined && !out.reveal) return null;
+    // The moment to show cards (or to draw for the dealer) always ends,
+    // even without a move timer.
+    const turn = out.draw
+      ? DRAW_MS
+      : out.reveal
+      ? REVEAL_MS
+      : turnMs(room.rules);
+    if (out.waitingFor === undefined && !out.reveal && !out.draw) return null;
     if (turn === null) return null;
     // Everyone first watches the moves just made.
     const showing = Math.max(

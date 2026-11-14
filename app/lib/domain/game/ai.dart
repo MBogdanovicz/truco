@@ -52,7 +52,12 @@ class TrucoBot {
     if (level == AiLevel.easy) {
       return _random.nextDouble() < 0.6 ? Accept(v.seat) : Fold(v.seat);
     }
-    final p = winProbability(v, samples: _samples);
+    var p = winProbability(v, samples: _samples);
+    // Leading the first round, our good cards are out of position: whoever
+    // plays after can kill them cheaply.
+    if (level == AiLevel.hard && teamOfSeat(nextSeat(v.dealer)) == v.team) {
+      p -= 0.08;
+    }
     // Playing risks the decision value; running gives away the base value.
     final play = v.rules.decisionHandValue;
     final run = v.rules.baseValue;
@@ -75,9 +80,12 @@ class TrucoBot {
     final asked = v.rules.stakes[pending.toLevel];
     // A raise says the other team likes its cards (the hard bot already
     // weighs that in its simulation).
+    // A re-raise over our own call ("seis!" after our truco) is rarely a
+    // facão: the risk is too big. Weigh it as real strength.
+    final reraise = pending.toLevel >= 2;
     final p =
         winProbability(v, samples: _samples) -
-        (level == AiLevel.hard ? 0 : 0.08);
+        (level == AiLevel.hard ? (reraise ? 0.12 : 0) : 0.08);
     final opp = v.scoreOf(v.team.other);
     if (opp + current >= v.rules.targetScore) {
       // Running ends the game: fight.
@@ -115,6 +123,16 @@ class TrucoBot {
         if (p > 0.9 && v.hand.length > 1 && _random.nextDouble() < 0.8) {
           return false;
         }
+        // Opening the hand with truco is rarely right: the first round is
+        // still a guess. Only at the extremes, and not always: a very
+        // strong hand, or a very weak one (a 4-4-4) to passar facão, so
+        // an opening truco can't be read as strength.
+        if (v.rounds.isEmpty) {
+          if (p > 0.85 + _noise(0.03)) return _random.nextDouble() < 0.35;
+          final weak = v.hand.every((c) => v.strength(c) <= 3); // 7 or less
+          if (weak) return _random.nextDouble() < 0.3;
+          return false;
+        }
         if (p > 0.62 + _noise(0.03)) return true;
         // Rare "facão", late in the hand when fewer cards are hidden.
         return v.rounds.isNotEmpty && p < 0.3 && _random.nextDouble() < 0.04;
@@ -150,6 +168,20 @@ class TrucoBot {
         v.canCover &&
         !_wins(v, card) &&
         _random.nextDouble() < 0.5) {
+      return PlayCard(v.seat, card, covered: true);
+    }
+    // Leading after winning the first with the hand all but won (the gato
+    // kept for the third): a low card face down looks weak, so they keep
+    // their good cards and may call truco, instead of spending a manilha
+    // to beat a card shown.
+    if (level == AiLevel.hard &&
+        v.canCover &&
+        v.currentPlays.isEmpty &&
+        v.rounds.length == 1 &&
+        v.rounds.first.winner == v.team &&
+        hand.length > 1 &&
+        !v.rules.isManilha(card, vira: v.vira) &&
+        winProbability(v, samples: 120) > 0.9) {
       return PlayCard(v.seat, card, covered: true);
     }
     return PlayCard(v.seat, card);
@@ -328,13 +360,10 @@ int heuristicPick(
     // After winning the first, lead low: the partner, closer to the pé,
     // answers if needed, and the strong card stays for the third round.
     if (roundWinners.isNotEmpty) return decisive ? idxMax() : idxMin();
-    // First round: lead the best card, but keep a manilha for later when
-    // there is a decent card to lead instead.
-    final sorted = [...hand]..sort();
-    if (sorted.last >= 10 && sorted[sorted.length - 2] >= 6) {
-      return hand.indexOf(sorted[sorted.length - 2]);
-    }
-    return idxMax();
+    // First round: whoever leads is far from the pé. Lead low and let the
+    // partner (closer to the pé) play the strong card: a 3 led here can be
+    // killed by a manilha, while kept it may come back with us at the pé.
+    return idxMin();
   }
   var bestOpp = -2, bestOurs = -2;
   for (final (s, str) in current) {

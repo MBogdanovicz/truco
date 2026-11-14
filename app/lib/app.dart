@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'data/entitlements.dart';
+import 'data/look_unlocks.dart';
 import 'data/game_prefs.dart';
 import 'data/premium_repository.dart';
 import 'features/game/table_look.dart';
@@ -23,11 +23,11 @@ class TrucoApp extends ConsumerWidget {
     ref.listen(premiumStoreProvider, (_, _) {});
     // Loads the player's words early, so every screen uses them.
     ref.listen(termsProvider, (_, _) {});
-    // The table's look is Premium: everyone else gets the standard one.
-    final chosen = ref.watch(tableLookProvider);
-    final premium =
-        ref.watch(entitlementsProvider).value?.canChooseScoreboardLook ?? false;
-    final look = premium ? chosen : TableLook.standard;
+    // The table's look is Premium: everyone else gets the standard one,
+    // plus the parts earned with achievements.
+    final look = ref
+        .watch(lookAccessProvider)
+        .allowed(ref.watch(tableLookProvider));
     final effective = style ?? defaultPlatformStyle;
     final cupertino = effective == AppPlatformStyle.cupertino;
     return PlatformStyleScope(

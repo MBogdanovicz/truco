@@ -3,12 +3,14 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/training_exams.dart';
 import '../../domain/game/ai.dart';
 import '../../domain/game/cards.dart';
 import '../../domain/game/coach.dart';
 import '../../domain/game/game_session.dart';
 import '../../domain/game/rules.dart';
 import '../../domain/game/table_view.dart';
+import '../../domain/game/training.dart';
 import '../../domain/game/truco_game.dart';
 import '../../domain/scorekeeper/team.dart';
 import 'dealer_draw.dart';
@@ -24,6 +26,7 @@ class LocalGameSetup {
     required this.myName,
     this.coach = false,
     this.drawDealer = false,
+    this.exam,
   });
 
   final TrucoRules rules;
@@ -36,6 +39,9 @@ class LocalGameSetup {
 
   /// Before the first game, everyone draws a card: the highest deals.
   final bool drawDealer;
+
+  /// The Treinar exam of this level: winning the game passes it.
+  final TrainingLevel? exam;
 }
 
 /// The human always sits at seat 0 (bottom); 1 is on the right, 2 (partner)
@@ -198,8 +204,12 @@ class LocalGameController extends Notifier<GameTableModel?> {
     _draw = null;
   }
 
+  /// The next game goes on as if it were the same one: the seat after
+  /// whoever dealt the last hand deals.
   void rematch() {
-    if (_setup != null) _newGame();
+    if (_setup == null) return;
+    final last = _session?.game.dealer;
+    _newGame(dealer: last == null ? null : (last + 1) % 4);
   }
 
   void _newGame({int? dealer}) {
@@ -316,6 +326,18 @@ class LocalGameController extends Notifier<GameTableModel?> {
         before != GamePhase.gameOver &&
         view.winner != null) {
       _wins = {..._wins, view.winner!: _wins[view.winner!]! + 1};
+      final exam = _setup?.exam;
+      _examResult = exam == null
+          ? null
+          : view.winner == teamOfSeat(humanSeat)
+          ? '🎓 Você passou na prova do ${exam.lower}!'
+          : 'Não foi dessa vez. Jogue de novo para passar na prova do '
+                '${exam.lower}.';
+      if (exam != null && view.winner == teamOfSeat(humanSeat)) {
+        ref.read(trainingExamsProvider.notifier).pass(exam);
+      }
+    } else if (view.phase != GamePhase.gameOver) {
+      _examResult = null;
     }
     if (!busy) _maybeHint(view);
     if (!busy && view.revealing) {
@@ -340,10 +362,16 @@ class LocalGameController extends Notifier<GameTableModel?> {
       busy: busy,
       tip: _tip,
       hint: _hint,
-      coachSummary: _coaching && view.phase == GamePhase.gameOver
-          ? _report.summary()
-          : null,
+      coachSummary: view.phase != GamePhase.gameOver ? null : _endNote(),
     );
+  }
+
+  /// "Passou na prova" (or not), shown when an exam game ends.
+  String? _examResult;
+
+  String? _endNote() {
+    final parts = [?_examResult, if (_coaching) _report.summary()];
+    return parts.isEmpty ? null : parts.join('\n\n');
   }
 
   /// Before the person answers a raise or decides a mão de onze, a word on
