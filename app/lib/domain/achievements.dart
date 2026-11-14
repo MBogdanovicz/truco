@@ -159,18 +159,23 @@ enum Achievement {
   // Treinar: the exam at the end of each level (a game with the professor).
   courseBasic(
     'course_basic',
-    'Formado no básico',
+    'Formado no ensino fundamental',
     'Passe na prova do nível básico do Treinamento.',
   ),
   courseIntermediate(
     'course_intermediate',
-    'Formado no intermediário',
+    'Formado no ensino médio',
     'Passe na prova do nível intermediário do Treinamento.',
   ),
   courseAdvanced(
     'course_advanced',
-    'Formado no avançado',
+    'Colação de grau',
     'Passe na prova do nível avançado do Treinamento.',
+  ),
+  courseAll(
+    'course_all',
+    'Dominou a cartilha',
+    'Passe nas três provas do Treinamento: sabe a cartilha de cor.',
   );
 
   const Achievement(

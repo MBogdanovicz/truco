@@ -225,7 +225,30 @@ def graduated(stars):
         star(d, x, 372, 30)
     return im
 
+def cartilha():
+    """Mastered the cartilha: the open primer of truco, with a crown."""
+    im, d = base()
+    dark = (18, 82, 55)
+    cx, top, bottom = 256, 232, 372
+    # Two pages, slightly raised at the outer corners.
+    d.polygon([(cx, top + 14), (cx - 150, top - 6), (cx - 150, bottom - 16), (cx, bottom)], fill=GOLD)
+    d.polygon([(cx, top + 14), (cx + 150, top - 6), (cx + 150, bottom - 16), (cx, bottom)], fill=GOLD)
+    d.line((cx, top + 14, cx, bottom), fill=dark, width=6)
+    # Lines of text on each page.
+    for i in range(4):
+        y = top + 30 + i * 24
+        d.line((cx - 128, y - 14 + i * 0, cx - 22, y + 2), fill=dark, width=6)
+        d.line((cx + 22, y + 2, cx + 128, y - 14), fill=dark, width=6)
+    # The crown above the book.
+    cy = 196
+    d.polygon([(cx - 70, cy), (cx - 70, cy - 54), (cx - 35, cy - 22), (cx, cy - 70),
+               (cx + 35, cy - 22), (cx + 70, cy - 54), (cx + 70, cy)], fill=GOLD)
+    for x, y in [(cx - 70, cy - 60), (cx, cy - 76), (cx + 70, cy - 60)]:
+        d.ellipse((x - 10, y - 10, x + 10, y + 10), fill=GOLD)
+    return im
+
 COURSE = {
+    'course_all': cartilha,
     'course_basic': lambda: graduated(1),
     'course_intermediate': lambda: graduated(2),
     'course_advanced': lambda: graduated(3),

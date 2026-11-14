@@ -62,10 +62,20 @@ class TrainingExamsNotifier extends Notifier<Set<TrainingLevel>> {
     final user = ref.read(authRepositoryProvider).currentUser;
     if (client == null || user == null || user.isGuest) return;
     try {
-      await client.rpc(
-        'unlock_course_achievement',
-        params: {'p_achievement': level.examAchievement.id},
-      );
+      // Every exam passed on this device (some may have been offline).
+      for (final l in state) {
+        await client.rpc(
+          'unlock_course_achievement',
+          params: {'p_achievement': l.examAchievement.id},
+        );
+      }
+      // All three courses: "Dominou a cartilha".
+      if (state.length == TrainingLevel.values.length) {
+        await client.rpc(
+          'unlock_course_achievement',
+          params: {'p_achievement': Achievement.courseAll.id},
+        );
+      }
       ref.invalidate(unlockedAchievementsProvider);
     } on Object {
       // Offline or not migrated yet: the exam stays passed on the device.
