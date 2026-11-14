@@ -11,11 +11,11 @@ unlocks the PWA when signing in with the same e-mail.
 
 Premium unlocks: no ad before games, unlimited groups (free: 2 groups in
 total, created or joined), every scoreboard/table/deck look, hosting online
-truco game rooms, the coach (modo professor) and the intermediate/advanced
-Treinar levels, creating tournaments, and renaming at will.
+truco game rooms, the intermediate/advanced Treinar levels and their exams
+(the professor now lives only in Treinar), creating tournaments, and renaming at will.
 
 Free for everyone (reviewed 2026-11-13): hosting scorekeeper rooms, the basic
-Treinar level, one name change (`free_rename` in the auth metadata), and
+Treinar level and its exam (a game with the professor vs the easy AI), one name change (`free_rename` in the auth metadata), and
 three looks earned with achievements (`lib/data/look_unlocks.dart`): blue
 felt (Truqueiro), black and gold card back (Campeão!), matchsticks
 scoreboard (Veterano).

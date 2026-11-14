@@ -41,7 +41,8 @@ class AchievementsScreen extends ConsumerWidget {
                     'jogadores com conta e as duas duplas confirmando o placar.',
                 children: [
                   for (final a in Achievement.values)
-                    if (!a.game && !a.tournament) _tile(context, a, unlocked),
+                    if (!a.game && !a.tournament && !a.course)
+                      _tile(context, a, unlocked),
                 ],
               ),
               AppSection(
@@ -62,6 +63,16 @@ class AchievementsScreen extends ConsumerWidget {
                 children: [
                   for (final a in Achievement.values)
                     if (a.tournament) _tile(context, a, unlocked),
+                ],
+              ),
+              AppSection(
+                header: 'Treinar',
+                footer:
+                    'A prova no fim de cada nível: uma partida com o '
+                    'professor contra o computador.',
+                children: [
+                  for (final a in Achievement.values)
+                    if (a.course) _tile(context, a, unlocked),
                 ],
               ),
             ],

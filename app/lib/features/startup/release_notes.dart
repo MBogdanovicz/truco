@@ -122,5 +122,9 @@ const releaseNotes = <ReleaseNote>[
     'Nova regra opcional: o parceiro vê ou não a carta coberta.',
     'O grito da mesa ficou mais raro e só sai nos momentos tensos, com '
         'frases novas.',
+    'O professor foi para o Treinar: no fim de cada nível tem uma prova, '
+        'uma partida com o professor contra o computador. Passou, ganha a '
+        'conquista de formado.',
+    'Jogar online: ao vivo e partida lenta na mesma seção.',
   ]),
 ];

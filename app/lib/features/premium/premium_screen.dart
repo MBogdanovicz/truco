@@ -39,6 +39,12 @@ class PremiumScreen extends ConsumerWidget {
           'não precisa, e as salas do marcador são grátis.',
     ),
     (
+      AppIcon.info,
+      'Treinar completo',
+      'Os níveis intermediário e avançado, com as provas. O básico e a '
+          'prova dele são grátis.',
+    ),
+    (
       AppIcon.edit,
       'Mudar seu nome',
       'Troque o nome quando quiser (sem o Premium, uma vez).',

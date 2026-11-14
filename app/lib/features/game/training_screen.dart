@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:go_router/go_router.dart';
+
+import '../../data/ads.dart';
+import '../../data/auth_repository.dart';
 import '../../data/entitlements.dart';
+import '../../data/training_exams.dart';
 import '../../data/game_prefs.dart';
 import '../../domain/game/training.dart';
 import '../../domain/scorekeeper/team.dart';
 import '../../ui/adaptive/adaptive_widgets.dart';
+import '../../ui/theme/app_theme.dart';
 import '../premium/premium_screen.dart';
 import 'game_table.dart';
+import 'local_game_controller.dart';
 
 const _kDone = 'training.done.v1';
 
@@ -104,8 +111,69 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
             ),
             onTap: () => _open(level, i),
           ),
+        _examTile(context, level, ready: done == list.length),
       ],
     );
+  }
+
+  /// The level's exam: a whole game with the professor against the
+  /// computer at that level, opened once every situation was answered.
+  Widget _examTile(
+    BuildContext context,
+    TrainingLevel level, {
+    required bool ready,
+  }) {
+    final passed = ref.watch(trainingExamsProvider).contains(level);
+    return AppTile(
+      key: ValueKey('exam-${level.name}'),
+      title: passed
+          ? 'Prova do ${level.lower}: aprovado 🎓'
+          : 'Prova do ${level.lower}',
+      subtitle: ready
+          ? 'Uma partida com o professor contra o computador no '
+                '${level.examAi.label.toLowerCase()}. Ganhou, passou.'
+          : 'Responda todas as situações acima para fazer a prova.',
+      leading: Icon(
+        Icons.school,
+        color: passed
+            ? AppColors.gold
+            : ready
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).disabledColor,
+      ),
+      enabled: ready,
+      onTap: ready ? () => _startExam(level) : null,
+    );
+  }
+
+  Future<void> _startExam(TrainingLevel level) async {
+    final ent = await ref.read(entitlementsProvider.future);
+    if (!mounted) return;
+    if (level != TrainingLevel.basic && !ent.canUseCoach) {
+      await showPremiumRequired(context, 'Prova do ${level.lower}');
+      return;
+    }
+    await Ads.beforeGame(ref);
+    if (!mounted) return;
+    final name = ref
+        .read(authRepositoryProvider)
+        .currentUser
+        ?.displayName
+        ?.trim();
+    ref
+        .read(localGameControllerProvider.notifier)
+        .start(
+          LocalGameSetup(
+            rules: ref.read(preferredRulesProvider),
+            partnerLevel: level.examAi,
+            opponentLevel: level.examAi,
+            myName: name == null || name.isEmpty ? 'Você' : name,
+            coach: true,
+            drawDealer: true,
+            exam: level,
+          ),
+        );
+    context.go('/jogo/partida');
   }
 }
 

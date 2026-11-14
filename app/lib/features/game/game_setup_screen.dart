@@ -28,11 +28,9 @@ class GameSetupScreen extends ConsumerStatefulWidget {
 class _GameSetupState extends ConsumerState<GameSetupScreen> {
   static const _kPartner = 'game.partner';
   static const _kOpponents = 'game.opponents';
-  static const _kCoach = 'game.coach';
   static const _kSlow = 'game.slowDays';
   static const _kSlowMode = 'game.slowMode';
 
-  bool _coach = false;
   int _slow = 1;
 
   /// The online room is a slow game ("Lenta") instead of a live one.
@@ -61,7 +59,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
       final p = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() {
-        _coach = p.getBool(_kCoach) ?? _coach;
         final slow = p.getInt(_kSlow);
         if (TrucoRules.slowDaysOptions.contains(slow)) _slow = slow!;
         _slowMode = p.getBool(_kSlowMode) ?? _slowMode;
@@ -76,7 +73,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   Future<void> _save() async {
     try {
       final p = await SharedPreferences.getInstance();
-      await p.setBool(_kCoach, _coach);
       await p.setInt(_kSlow, _slow);
       await p.setBool(_kSlowMode, _slowMode);
       await p.setString(_kPartner, _partner.name);
@@ -88,8 +84,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
     _save();
     await Ads.beforeGame(ref);
     if (!mounted) return;
-    final ent = await ref.read(entitlementsProvider.future);
-    if (!mounted) return;
     final me = ref.read(authRepositoryProvider).currentUser;
     final name = me?.displayName?.trim();
     ref
@@ -100,7 +94,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
             partnerLevel: _partner,
             opponentLevel: _opponents,
             myName: name == null || name.isEmpty ? 'Você' : name,
-            coach: _coach && ent.canUseCoach,
             drawDealer: true,
           ),
         );
@@ -108,18 +101,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
   }
 
   bool _creating = false;
-
-  Future<void> _setCoach(bool on) async {
-    if (on) {
-      final ent = await ref.read(entitlementsProvider.future);
-      if (!mounted) return;
-      if (!ent.canUseCoach) {
-        await showPremiumRequired(context, 'Modo professor');
-        return;
-      }
-    }
-    setState(() => _coach = on);
-  }
 
   Future<void> _createRoom({bool slow = false}) async {
     final user = ref.read(authRepositoryProvider).currentUser;
@@ -212,19 +193,6 @@ class _GameSetupState extends ConsumerState<GameSetupScreen> {
           header: 'Adversários',
           children: [
             _levels(_opponents, (v) => setState(() => _opponents = v)),
-          ],
-        ),
-        AppSection(
-          header: 'Professor (Premium)',
-          footer:
-              'O professor comenta as suas jogadas quando havia uma melhor, '
-              'e explica por quê.',
-          children: [
-            AppTile(
-              title: 'Modo professor',
-              subtitle: 'Dicas sobre as jogadas, só contra o computador.',
-              trailing: AppSwitch(value: _coach, onChanged: _setCoach),
-            ),
           ],
         ),
         Center(

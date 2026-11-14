@@ -154,6 +154,23 @@ enum Achievement {
     'Máquina Mortífera',
     'Vença um torneio com um parceiro sorteado pelo app.',
     hidden: true,
+  ),
+
+  // Treinar: the exam at the end of each level (a game with the professor).
+  courseBasic(
+    'course_basic',
+    'Formado no básico',
+    'Passe na prova do nível básico do Treinar.',
+  ),
+  courseIntermediate(
+    'course_intermediate',
+    'Formado no intermediário',
+    'Passe na prova do nível intermediário do Treinar.',
+  ),
+  courseAdvanced(
+    'course_advanced',
+    'Formado no avançado',
+    'Passe na prova do nível avançado do Treinar.',
   );
 
   const Achievement(
@@ -175,6 +192,9 @@ enum Achievement {
 
   /// From tournaments.
   bool get tournament => id.startsWith('tour_');
+
+  /// From the Treinar exams.
+  bool get course => id.startsWith('course_');
 
   static Achievement? byId(String id) {
     for (final a in values) {
