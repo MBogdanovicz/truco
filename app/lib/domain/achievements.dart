@@ -160,17 +160,17 @@ enum Achievement {
   courseBasic(
     'course_basic',
     'Formado no básico',
-    'Passe na prova do nível básico do Treinar.',
+    'Passe na prova do nível básico do Treinamento.',
   ),
   courseIntermediate(
     'course_intermediate',
     'Formado no intermediário',
-    'Passe na prova do nível intermediário do Treinar.',
+    'Passe na prova do nível intermediário do Treinamento.',
   ),
   courseAdvanced(
     'course_advanced',
     'Formado no avançado',
-    'Passe na prova do nível avançado do Treinar.',
+    'Passe na prova do nível avançado do Treinamento.',
   );
 
   const Achievement(

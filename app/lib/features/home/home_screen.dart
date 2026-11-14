@@ -143,7 +143,7 @@ class HomeScreen extends ConsumerWidget {
           _MenuItem(
             icon: AppIcon.info,
             color: Colors.teal,
-            title: 'Treinar',
+            title: 'Treinamento',
             subtitle: 'Situações de jogo com o professor. O básico é grátis.',
             onTap: () => context.push('/jogo/treinar'),
           ),

@@ -66,7 +66,7 @@ class AchievementsScreen extends ConsumerWidget {
                 ],
               ),
               AppSection(
-                header: 'Treinar',
+                header: 'Treinamento',
                 footer:
                     'A prova no fim de cada nível: uma partida com o '
                     'professor contra o computador.',

@@ -64,7 +64,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
       final ent = await ref.read(entitlementsProvider.future);
       if (!mounted) return;
       if (!ent.canUseCoach) {
-        await showPremiumRequired(context, 'Treinar: ${level.label}');
+        await showPremiumRequired(context, 'Treinamento: ${level.label}');
         return;
       }
     }
@@ -80,7 +80,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
-      title: 'Treinar',
+      title: 'Treinamento',
       children: [
         for (final level in TrainingLevel.values) _section(context, level),
       ],

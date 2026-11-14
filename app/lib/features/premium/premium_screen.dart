@@ -40,7 +40,7 @@ class PremiumScreen extends ConsumerWidget {
     ),
     (
       AppIcon.info,
-      'Treinar completo',
+      'Treinamento completo',
       'Os níveis intermediário e avançado, com as provas. O básico e a '
           'prova dele são grátis.',
     ),
