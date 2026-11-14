@@ -176,6 +176,7 @@ enum Achievement {
     'course_all',
     'Dominou a cartilha',
     'Passe nas três provas do Treinamento: sabe a cartilha de cor.',
+    hidden: true,
   );
 
   const Achievement(
