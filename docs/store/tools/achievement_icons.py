@@ -199,7 +199,43 @@ TOURNAMENT = {
     'tour_random_partner': t_random_partner,
 }
 
+
+# -------------------------------------------------------------- Treinar --
+
+def star(d, cx, cy, r, color=GOLD):
+    pts = []
+    for i in range(10):
+        a = -math.pi / 2 + i * math.pi / 5
+        rr = r if i % 2 == 0 else r * 0.42
+        pts.append((cx + rr * math.cos(a), cy + rr * math.sin(a)))
+    d.polygon(pts, fill=color)
+
+def graduated(stars):
+    """Passed a Treinar exam: a mortarboard, with 1-3 stars for the level."""
+    im, d = base()
+    cx, top = 256, 150
+    # The board (a flat diamond), the cap under it and the tassel.
+    d.polygon([(cx, top), (cx + 150, top + 60), (cx, top + 120), (cx - 150, top + 60)], fill=GOLD)
+    d.polygon([(cx - 92, top + 84), (cx + 92, top + 84), (cx + 92, top + 150), (cx, top + 176), (cx - 92, top + 150)], fill=GOLD)
+    d.line((cx - 150, top + 60, cx - 150, top + 140), fill=GOLD, width=10)
+    d.ellipse((cx - 166, top + 134, cx - 134, top + 166), fill=GOLD)
+    d.line((cx, top + 60, cx - 150, top + 60), fill=(18, 82, 55), width=6)
+    for i in range(stars):
+        x = cx + (i - (stars - 1) / 2) * 70
+        star(d, x, 372, 30)
+    return im
+
+COURSE = {
+    'course_basic': lambda: graduated(1),
+    'course_intermediate': lambda: graduated(2),
+    'course_advanced': lambda: graduated(3),
+}
+
 if __name__ == '__main__':
+    if len(sys.argv) > 2 and sys.argv[2] == 'treinar':
+        for name, draw in COURSE.items():
+            draw().save(f'{sys.argv[1]}/{name}.png')
+        sys.exit()
     out = sys.argv[1]
     if len(sys.argv) > 2 and sys.argv[2] == 'torneios':
         for name, draw in TOURNAMENT.items():
