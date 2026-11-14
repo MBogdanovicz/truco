@@ -74,14 +74,17 @@ class _StartupChecksState extends State<StartupChecks> {
     final prefs = SharedPreferencesAsync();
     final latest = releaseNotes.last.id;
     final seen = await prefs.getInt(_seenKey);
-    await prefs.setInt(_seenKey, latest);
     // A fresh install has nothing "new" to show.
+    if (seen == null) await prefs.setInt(_seenKey, latest);
     if (seen == null || seen >= latest || !mounted) return;
     final items = [
       for (final n in releaseNotes)
         if (n.id > seen) ...[...n.items, if (!kIsWeb) ...n.appOnly],
     ];
-    if (items.isEmpty) return;
+    if (items.isEmpty) {
+      await prefs.setInt(_seenKey, latest);
+      return;
+    }
     await showAppDialog<void>(
       context,
       title: 'Novidades',
@@ -103,6 +106,9 @@ class _StartupChecksState extends State<StartupChecks> {
         AppDialogAction(label: 'Legal!', value: null, isPrimary: true),
       ],
     );
+    // Seen only once closed: right after an in-app update the app may
+    // restart while the dialog is open, and the notes must come back.
+    await prefs.setInt(_seenKey, latest);
   }
 
   @override
