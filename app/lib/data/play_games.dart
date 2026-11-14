@@ -47,6 +47,10 @@ const _playGamesIds = <Achievement, String>{
   Achievement.tourClean: 'CgkI1Iv_lucZEAIQIg',
   Achievement.tourRoundRobin: 'CgkI1Iv_lucZEAIQIw',
   Achievement.tourRandomPartner: 'CgkI1Iv_lucZEAIQJA',
+  Achievement.courseBasic: 'CgkI1Iv_lucZEAIQJQ',
+  Achievement.courseIntermediate: 'CgkI1Iv_lucZEAIQJg',
+  Achievement.courseAdvanced: 'CgkI1Iv_lucZEAIQJw',
+  Achievement.courseAll: 'CgkI1Iv_lucZEAIQKA',
 };
 
 const _incrementalSteps = <Achievement, int>{
