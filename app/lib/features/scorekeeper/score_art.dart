@@ -1,6 +1,8 @@
+import 'dart:ui' as ui;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/scorekeeper/team.dart';
 import '../game/table_look.dart';
@@ -60,14 +62,18 @@ class ScoreArt extends StatelessWidget {
           tween: Tween(end: score.toDouble()),
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeOutCubic,
-          builder: (context, v, _) => CustomPaint(
-            painter: _Card10Painter(
-              shown: v,
-              red: team == Team.a,
-              target: target,
-              backTop: back.top,
-              backBottom: back.bottom,
-              edge: back.edge,
+          builder: (context, v, _) => FutureBuilder<ui.Image?>(
+            future: _crest(back.image),
+            builder: (context, crest) => CustomPaint(
+              painter: _Card10Painter(
+                shown: v,
+                red: team == Team.a,
+                target: target,
+                backTop: back.top,
+                backBottom: back.bottom,
+                edge: back.edge,
+                crest: crest.data,
+              ),
             ),
           ),
         ),
@@ -139,8 +145,24 @@ const _pips = [
   Offset(0.88, 0.80),
 ];
 
+/// The crest of a card back with an image (loaded once per asset).
+final _crests = <String, Future<ui.Image?>>{};
+
+Future<ui.Image?> _crest(String? asset) {
+  if (asset == null) return Future.value();
+  return _crests[asset] ??= () async {
+    try {
+      final data = await rootBundle.load(asset);
+      return await decodeImageFromList(data.buffer.asUint8List());
+    } on Object {
+      return null;
+    }
+  }();
+}
+
 class _Card10Painter extends CustomPainter {
   _Card10Painter({
+    this.crest,
     required this.shown,
     required this.red,
     required this.target,
@@ -148,6 +170,10 @@ class _Card10Painter extends CustomPainter {
     required this.backBottom,
     required this.edge,
   });
+
+  /// The crest in the middle of the cover card, when the back has one
+  /// (instead of the lattice).
+  final ui.Image? crest;
 
   /// Colors of the cover card, from the chosen card back.
   final Color backTop;
@@ -244,6 +270,31 @@ class _Card10Painter extends CustomPainter {
           colors: [backTop, backBottom],
         ).createShader(inner.outerRect),
     );
+    final image = crest;
+    if (image != null) {
+      final r = inner.outerRect;
+      final side = r.width * 0.8;
+      final src = Rect.fromLTWH(
+        0,
+        0,
+        image.width.toDouble(),
+        image.height.toDouble(),
+      );
+      final scale = side / math.max(src.width, src.height);
+      final dst = Rect.fromCenter(
+        center: r.center,
+        width: src.width * scale,
+        height: src.height * scale,
+      );
+      canvas.drawImageRect(
+        image,
+        src,
+        dst,
+        Paint()..filterQuality = FilterQuality.medium,
+      );
+      canvas.restore();
+      return;
+    }
     // A diamond lattice, like the back of a deck.
     canvas.save();
     canvas.clipRRect(inner);
@@ -342,7 +393,11 @@ class _Card10Painter extends CustomPainter {
 
   @override
   bool shouldRepaint(_Card10Painter old) =>
-      old.shown != shown || old.red != red || old.edge != edge;
+      old.shown != shown ||
+      old.red != red ||
+      old.edge != edge ||
+      old.backTop != backTop ||
+      old.crest != crest;
 }
 
 // --------------------------------------------------------------- feijões --
